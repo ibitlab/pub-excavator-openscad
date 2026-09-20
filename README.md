@@ -89,20 +89,20 @@ python3 tools/viewer.py --export file.html        # a static page with no server
 ### The 3D page with no backend: OpenSCAD-WASM in the browser (Step 2.1)
 
 ```
-cd tools/viewer-wasm && npm install      # dependencies: three, openscad-wasm (OpenSCAD 2025.07 + Manifold, 14 MB), vite
+cd tools/viewer-wasm && npm install      # dependencies: three, openscad-wasm-prebuilt (OpenSCAD 2025.01 + Manifold, 11 MB), vite
 npm run dev                              # http://localhost:8766/ — editing scad/excavator_boom.scad reloads the page at once
-npm run build                            # a static site in dist/ (≈15 MB): drop it on any static host
+npm run build                            # a static site in dist/ (≈12 MB): drop it on any static host
 npm run preview                          # view the built dist/ locally
 npm test                                 # a smoke test with no browser
 # the same in one command from the repository root: tools/viewer-wasm.sh [build|preview|test]
 ```
 
 - The same page and the same controls as the server version (which is still there: `tools/viewer.sh`), except that **OpenSCAD runs in a web worker in the browser**; neither Python nor an installed OpenSCAD is needed. The model is embedded into the page at build time (a `?raw` import) and the Customizer parameters are parsed by JavaScript (`src/schema.js`).
-- One engine run per parameter change: in `part="view_all"` mode the model lays all 12 parts out with an offset along Y and the page cuts the mesh back apart (`src/offmesh.js`). Measured in Chrome: the first start takes ≈ 5 s (loading the engine), a **rebuild after a parameter change ≈ 1.4 s**; the angles remain instant. For comparison, the server version rebuilds in ≈ 0.4 s.
+- One engine run per parameter change: in `part="view_all"` mode the model lays all 12 parts out with an offset along Y and the page cuts the mesh back apart (`src/offmesh.js`). Measured in Chrome: the first start takes ≈ 5 s (loading the engine), a **rebuild after a parameter change ≈ 2.2 s**; the angles remain instant. For comparison, the server version rebuilds in ≈ 0.4 s.
 - **Two languages: English and Ukrainian.** A `UK | EN` switch sits in the panel header; the language comes from `?lang=en` in the URL, then from the browser's storage, then from the browser's own language. Switching only redraws the labels — OpenSCAD is not restarted, and the angles, checkboxes and changed parameters all stay as they were. The group names and the descriptions of all 103 model parameters are translated too: the English texts live in `src/i18n.js` while the Ukrainian ones are read straight from the `.scad` comments, so the model remains the single source of truth. `npm test` verifies that the dictionary has not drifted from the model (every group and every documented parameter has a translation) and that both languages carry the same keys. Warnings printed by the model itself (`!!!`) stay in Ukrainian — they come from `echo()` in the `.scad`. The server page (`tools/viewer.sh`) is Ukrainian only.
 - "Open .scad…" loads your own variant of the model from disk (the file is never uploaded anywhere). Initial values in the URL work the same way (`?boom_L1=1000&view=iso`).
 - `dist/` cannot be opened by double-clicking (`file://` does not allow module workers) — you need any static web server (`npm run preview`, GitHub Pages and so on). `node_modules/` and `dist/` never reach git.
-- The in-browser engine is older (2025.07) than the desktop OpenSCAD (2026.09). `npm test` checks that it builds the model without warnings, that no part comes out empty, that the JavaScript pose matches the model's echo, and that the pose block is identical in both versions of the page.
+- The in-browser engine is older (2025.01) than the desktop OpenSCAD (2026.09). `npm test` checks that it builds the model without warnings, that no part comes out empty, that the JavaScript pose matches the model's echo, and that the pose block is identical in both versions of the page.
 
 ### A 3Dconnexion SpaceMouse in the browser (Step 2.2)
 
@@ -272,6 +272,12 @@ Deliberately left for the next stage: internal diaphragms under D/F are impossib
 - The ends of every doubler are eased (a radius or a taper), welded all round, with no "tails" left on the tube wall; grease nipples at A, B, E and R.
 - Sequence: the boom segments → the joint → bushings A/B → the cheeks → the saddles and clevises D/F (on a jig, with the cylinders closed) → the stick in the same way → trial-fit the cylinders → the bucket.
 
-## 7. Next stages
+## 7. Licence
+
+**No licence has been chosen for this project yet**, so what was authored here is "all rights reserved" for the time being. This is deliberate: a licence can be added later, but one that has been granted cannot be withdrawn. The output of OpenSCAD (STL, DXF, sketches, BOM) belongs to the project either way: OpenSCAD's own GPL does not reach its output, and this model includes no external SCAD library.
+
+Separately: the `tools/viewer-wasm/dist/` build **embeds OpenSCAD itself under GPL-2.0** ([tools/viewer-wasm/LICENSE](tools/viewer-wasm/LICENSE)). The engine comes from `openscad-wasm-prebuilt@1.2.0`, which ships the GPL text and names its source, so the terms can be met: when you publish `dist/`, put `tools/viewer-wasm/LICENSE` and [THIRD-PARTY.md](THIRD-PARTY.md) next to it — that file lists every third-party component and points at the engine sources.
+
+## 8. Next stages
 
 A swing column with the ЦС50.25.300.510 swing cylinder (clevis A + pin C), the hoses, and travel stops (check the extreme positions on the model: `folded`, `max_reach`).

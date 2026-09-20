@@ -11,6 +11,6 @@ export default defineConfig({
   server: { port: 8766, fs: { allow: [path.resolve(here, '../..')] } },
   preview: { port: 8767 },
   worker: { format: 'es' },
-  optimizeDeps: { exclude: ['openscad-wasm'] }, // 14 МБ з убудованим wasm — не передзбирати
+  optimizeDeps: { exclude: ['openscad-wasm-prebuilt'] }, // 14 МБ з убудованим wasm — не передзбирати
   build: { target: 'esnext', chunkSizeWarningLimit: 20000, outDir: 'dist', emptyOutDir: true },
 });

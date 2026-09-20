@@ -14,7 +14,7 @@
     "test:spacemouse": "node test/spacemouse.mjs"
   },
   "dependencies": {
-    "openscad-wasm": "0.0.4",
+    "openscad-wasm-prebuilt": "^1.2.0",
     "three": "^0.160.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 // Димовий тест без браузера: `npm test`
-//  1) рушій openscad-wasm (він старіший за настільний OpenSCAD!) будує модель у режимі part="view_all" без помилок;
+//  1) рушій openscad-wasm-prebuilt (він старіший за настільний OpenSCAD!) будує модель у режимі part="view_all" без помилок;
 //  2) усі деталі зі списку view_parts непорожні, echo(VIEW) читається, схема параметрів розбирається;
 //  3) блок //<pose> однаковий у цій сторінці та в tools/viewer/index.html (поза рахується однаково в обох версіях);
 //  4) поза з JavaScript збігається з echo самої моделі ("ЗУБ КОВША: x=… z=…");
@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { createOpenSCAD } from 'openscad-wasm';
+import { createOpenSCAD } from 'openscad-wasm-prebuilt';
 import { splitOff } from '../src/offmesh.js';
 import { readSchema, scadLiteral } from '../src/schema.js';
 import { UI, LANGS, GROUPS_EN, PARAMS_EN } from '../src/i18n.js';

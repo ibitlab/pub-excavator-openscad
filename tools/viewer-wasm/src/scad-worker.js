@@ -1,6 +1,6 @@
-// Веб-воркер: OpenSCAD-WASM (пакет openscad-wasm, рушій Manifold). Один запуск part="view_all" → OFF з кольорами →
+// Веб-воркер: OpenSCAD-WASM (пакет openscad-wasm-prebuilt, рушій Manifold). Один запуск part="view_all" → OFF з кольорами →
 // деталі у власних системах координат + echo(VIEW = …) з точками шарнірів. Кожна побудова — свіжий екземпляр (callMain одноразовий).
-import { createOpenSCAD } from 'openscad-wasm';
+import { createOpenSCAD } from 'openscad-wasm-prebuilt';
 import { splitOff } from './offmesh.js';
 
 self.onmessage = async ({ data: { id, source, defs } }) => {
