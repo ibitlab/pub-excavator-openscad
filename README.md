@@ -1,261 +1,263 @@
-# Стріла, рукоять і ківш міні-екскаватора — параметрична модель OpenSCAD
+**English** · [Українська](README.uk.md)
 
-Робоче обладнання (стріла + рукоять + важільна система ковша + **ківш 300 мм**) під **уже закуплені** гідроциліндри:
-стріла ГЦ 63.40.500.700 (ШС-30), рукоять ЦС50.25.400.600 (ШС-25), ківш ЦС50.25.300.510 (ШС-25).
-Корпуси плеч — профільна труба популярних розмірів (звичайний сортамент металобаз), підсилення — накладки/щоки/сідла зі сталі S235JR (Ст3).
-Ківш — зварний, з реальних деталей (боковини, обичайка, ніж, зуби, вуха), перевірений на зіткнення з рукояттю, коромислом і тягою на всьому ході циліндра.
+# Mini excavator boom, stick and bucket — a parametric OpenSCAD model
 
-**Швидкий старт (залежності й основні команди): [QUICKSTART.md](QUICKSTART.md).**
+Working equipment (boom + stick + bucket linkage + a **300 mm bucket**) built around **already-purchased** hydraulic cylinders:
+boom ГЦ 63.40.500.700 (ШС-30 spherical bearing), stick ЦС50.25.400.600 (ШС-25), bucket ЦС50.25.300.510 (ШС-25).
+The arms are made of common hollow sections (ordinary stockist sizes); the reinforcements are doublers, cheeks and saddles in S235JR (Ст3) steel.
+The bucket is welded up from real parts (side plates, shell, cutting edge, teeth, ears) and checked for collisions with the stick, the rocker and the link over the full cylinder stroke.
 
-![вид збоку](docs/img/side_default.png)
+**Quick start (dependencies and the core commands): [QUICKSTART.md](QUICKSTART.md).**
 
-## 1. Файли
+![side view](docs/img/side_default.png)
 
-| Файл | Призначення |
+## 1. Files
+
+| File | Purpose |
 |---|---|
-| `scad/excavator_boom.scad` | **Основна модель.** Усі параметри — на початку файлу (групи Customizer). Кути — первинні параметри; діапазони кутів обчислюються з довжин циліндрів і виводяться через `echo()`. |
-| `tools/kinematics.py` | Незалежний розв'язувач тієї ж геометрії: перевірка діапазонів, плечі моментів, зусилля на зубі, робоча зона; `--search` — підбір положень кріплень. |
-| `tools/strength.py` | Статика ланок + опір матеріалів: епюри N/V/M, перевірка труб і накладок, пальців, втулок, швів; порівняння профілів (`--boom 120x80x5 --stick 100x60x5`). |
-| `tools/bucket.py` | **Ківш**: Python-двійник профілю ковша — місткість (врівень / з «шапкою»), маса, кути утримання й висипання, 2D-перевірка зазорів рухомих пар на всьому ході, міцність вух, пальців E/Q і швів. Запуск: `tools/.venv/bin/python tools/bucket.py [--png файл]`. |
-| `docs/01-design-inputs.md` | **Джерело, пишеться вручну.** Вихідні дані: циліндри, ШС, пальці/втулки, наявний сортамент металу, гідравліка, орієнтири класу, норми. |
-| `docs/research/` | Сирі виписки дослідження з посиланнями на джерела. |
-| `docs/img/` | Картинки для цього README; їх оновлює `build_version.sh` з останньої версії. |
-| `versions/VNNN-дата-час/` | **Зібрані версії — усе згенероване живе тільки тут**: `stl/`, `renders/`, `docs/` (`02-kinematics.md`, `03-strength.md`, `04-bom.md`, діапазони, перевірка перетинів), `bom/`, `dxf/`, `drawings/`, `scad/` (знімок моделі та скриптів), `VERSION.md`. Актуальна — тека з найбільшим номером. |
-| `tools/build_version.sh` | **Скрипт збирання версії**: перевірка перетинів → перевірка рухомих пар → STL усіх деталей → рендери → звіти → `VERSION.md`. Номер версії зростає автоматично. |
-| `tools/bom_drawings.sh` | **BOM + креслення**: специфікація (`bom.md`, `bom.csv`), контури всіх пластин у DXF 1:1 для різання, PDF-ескізи з основними розмірами (`drawings/parts.pdf` + PNG-сторінки). Дані беруться з echo моделі та проєкції кожної пластини — окремого списку розмірів немає. Перший запуск створює `tools/.venv` з matplotlib. |
-| `tools/viewer.sh` → `tools/viewer.py`, `tools/viewer/index.html` | **Інтерактивна 3D-сторінка в браузері**: обертання / панорама / масштаб, кути змінюються миттєво, будь-який інший параметр моделі перебудовується через OpenSCAD за ≈ 0.4 с. Див. розділ 2. |
-| `tools/viewer-wasm.sh` → `tools/viewer-wasm/` (`package.json`, Vite) | **Друга версія 3D-сторінки — без бекенду**: OpenSCAD-WASM у веб-воркері рендерить модель прямо в браузері; збирається у статичний сайт `dist/`. Див. розділ 2. |
-| `tools/media/` | Знімки сторінки в headless Chrome (`page_shot.mjs`), колажі (`compose.py`) і повний набір зображень та відео для публікацій (`make_media.sh` → `temp/media/`, не комітиться). |
-| `tools/check_overlaps.sh` | Перевірка, що вузли зварної конструкції прилягають, але не перекриваються (об'єм перетину кожної пари вузлів = 0). |
-| `tools/check_motion.sh` | Перевірка **рухомих** пар у 3D на всьому ході циліндрів: ківш ↔ рукоять/коромисло/тяга/циліндр, тяга ↔ коромисло, корпуси всіх трьох циліндрів ↔ свої кронштейни, рукоять ↔ стріла; довідково — ківш ↔ стріла у складеній позі. |
-| `tools/stl_volume.py` | Об'єм STL (см³), потрібен для перевірки перетинів. |
-| `tools/agent_analytics.py` | Аналітика агентної роботи за журналами Claude Code (токени, хвилини, ролі). |
-| `tools/git-hooks/pre-commit` | Git-хук: перед комітом змін у `scad/` перевіряє перекриття пластин. Увімкнути один раз: `git config core.hooksPath tools/git-hooks`. |
-| `CLAUDE.md` | Правила проєкту для Claude Code (мова, коміти, де що лежить). |
-| `.claude/skills/` | Skills проєкту: `scad-mechanism` (правила моделі й чеклист), `new-assembly` (рецепт нового вузла), `build-version`, `part-drawings`, `browser-verify` (перевірка сторінок у headless Chrome), `media-kit` (матеріали для публікацій), `design-review`, `research-sweep`, `agent-analytics`. Усе локально в репозиторії, у `~/.claude` нічого не ставиться. |
-| `.claude/workflows/` | Збережені багатоагентні workflow: `design-review` (рецензенти + спростування) і `research-sweep` (дослідники + критик). Кожен агент одразу пише результат у `docs/reviews/…` або `docs/research/…`, щоб нічого не губилось при збої ліміту. |
+| `scad/excavator_boom.scad` | **The main model.** All parameters sit at the top of the file (Customizer groups). The angles are the primary parameters; their ranges are derived from the cylinder lengths and printed through `echo()`. |
+| `tools/kinematics.py` | An independent solver for the same geometry: range checks, moment arms, tooth force, work envelope; `--search` fits the mounting positions. |
+| `tools/strength.py` | Member statics plus strength of materials: N/V/M diagrams, checks of the tubes and doublers, pins, bushings and welds; section comparison (`--boom 120x80x5 --stick 100x60x5`). |
+| `tools/bucket.py` | **The bucket**: a Python twin of the bucket profile — capacity (struck / heaped), mass, carry and dump angles, a 2D clearance check of the moving pairs over the full stroke, strength of the ears, of pins E/Q and of the welds. Run it with `tools/.venv/bin/python tools/bucket.py [--png file]`. |
+| `docs/01-design-inputs.md` | **A source document, written by hand.** The inputs: cylinders, spherical bearings, pins and bushings, the steel sizes actually available, hydraulics, class benchmarks, standards. |
+| `docs/research/` | Raw research notes with links to the sources. |
+| `docs/img/` | The images used by this README; `build_version.sh` refreshes them from the latest version. |
+| `versions/VNNN-date-time/` | **Built versions — everything generated lives only here**: `stl/`, `renders/`, `docs/` (`02-kinematics.md`, `03-strength.md`, `04-bom.md`, the angle ranges, the intersection check), `bom/`, `dxf/`, `drawings/`, `scad/` (a snapshot of the model and the scripts), `VERSION.md`. The current one is the folder with the highest number. |
+| `tools/build_version.sh` | **The version build script**: intersection check → moving-pair check → STL of every part → renders → reports → `VERSION.md`. The version number increments automatically. |
+| `tools/bom_drawings.sh` | **BOM + drawings**: the bill of materials (`bom.md`, `bom.csv`), the outlines of every plate as 1:1 DXF for cutting, and PDF sketches with the main dimensions (`drawings/parts.pdf` + PNG pages). The data comes from the model's echo and from a projection of each plate — there is no separate list of dimensions anywhere. The first run creates `tools/.venv` with matplotlib. |
+| `tools/viewer.sh` → `tools/viewer.py`, `tools/viewer/index.html` | **An interactive 3D page in the browser**: orbit / pan / zoom, the angles change instantly, and any other model parameter is rebuilt through OpenSCAD in ≈ 0.4 s. See section 2. |
+| `tools/viewer-wasm.sh` → `tools/viewer-wasm/` (`package.json`, Vite) | **A second version of the 3D page — with no backend**: OpenSCAD-WASM in a web worker renders the model right in the browser; it builds into a static site in `dist/`. See section 2. |
+| `tools/media/` | Screenshots of the page in headless Chrome (`page_shot.mjs`), collages (`compose.py`) and a full set of images and video for publications (`make_media.sh` → `temp/media/`, which is never committed). |
+| `tools/check_overlaps.sh` | Checks that the sub-assemblies of the weldment abut but never overlap (the intersection volume of every pair is 0). |
+| `tools/check_motion.sh` | Checks the **moving** pairs in 3D over the full cylinder stroke: bucket ↔ stick / rocker / link / cylinder, link ↔ rocker, the bodies of all three cylinders ↔ their own brackets, stick ↔ boom; and, for reference, bucket ↔ boom in the folded pose. |
+| `tools/stl_volume.py` | The volume of an STL (cm³), needed for the intersection check. |
+| `tools/agent_analytics.py` | Analytics of the agent work from the Claude Code logs (tokens, minutes, roles). |
+| `tools/git-hooks/pre-commit` | A git hook: before committing changes under `scad/` it checks the plates for overlaps. Enable it once: `git config core.hooksPath tools/git-hooks`. |
+| `CLAUDE.md` | Project rules for Claude Code (language, commits, where everything lives). |
+| `.claude/skills/` | The project skills: `scad-mechanism` (model rules and checklist), `new-assembly` (the recipe for a new sub-assembly), `build-version`, `part-drawings`, `browser-verify` (checking the pages in headless Chrome), `media-kit` (material for publications), `design-review`, `research-sweep`, `agent-analytics`. Everything stays inside the repository; nothing is installed into `~/.claude`. |
+| `.claude/workflows/` | Saved multi-agent workflows: `design-review` (reviewers + refutation) and `research-sweep` (researchers + a critic). Every agent writes its result straight into `docs/reviews/…` or `docs/research/…`, so nothing is lost if a usage limit cuts the run short. |
 
-Перевірка збігу двох незалежних реалізацій (OpenSCAD ↔ Python): діапазони кутів збігаються з точністю 0.1°, гілка важільної системи ковша — 0.000 мм.
+Agreement between the two independent implementations (OpenSCAD ↔ Python): the angle ranges match to within 0.1°, the bucket-linkage branch to 0.000 mm.
 
-## 2. Як користуватися моделлю
+## 2. Using the model
 
-Відкрити `scad/excavator_boom.scad` в OpenSCAD (≥ 2021.01; перевірено на 2026.09). У Customizer (Window → Customizer) перша група:
+Open `scad/excavator_boom.scad` in OpenSCAD (≥ 2021.01; verified on 2026.09). The first group in the Customizer (Window → Customizer):
 
-| Параметр | Значення за замовчуванням | Діапазон (обчислений) | Зміст |
+| Parameter | Default | Range (computed) | Meaning |
 |---|---|---|---|
-| `boom_angle` | 15° | **−38.1° … +58.3°** | кут хорди стріли (вісь A → вісь B) до горизонту, + вгору |
-| `stick_angle` | 100° | **50.7° … 155.6°** | внутрішній кут стріла–рукоять у шарнірі B (складено … розкрито) |
-| `bucket_angle` | 60° | **−17.0° … +138.5°** | кут ковша відносно осі рукояті, + = підкручування |
-| `clamp_to_cylinders` | true | | обмежувати кути можливостями циліндрів (інакше — червоний циліндр + попередження) |
+| `boom_angle` | 15° | **−38.1° … +58.3°** | angle of the boom chord (axis A → axis B) to the horizon, + upwards |
+| `stick_angle` | 100° | **50.7° … 155.6°** | interior boom–stick angle at joint B (folded … extended) |
+| `bucket_angle` | 60° | **−17.0° … +138.5°** | bucket angle relative to the stick axis, + = curling in |
+| `clamp_to_cylinders` | true | | limit the angles to what the cylinders can reach (otherwise: a red cylinder + a warning) |
 
-Консоль (`echo`) показує: діапазони, поточні довжини циліндрів і плечі моментів, координати зуба. Далі йдуть групи: циліндри (зведена довжина, хід, гільза/шток, палець), стріла, рукоять, важільна система ковша, пальці/втулки/пластини, відображення (`show_envelope` — робоча зона точками).
+The console (`echo`) prints the ranges, the current cylinder lengths and moment arms, and the tooth coordinates. The remaining groups are: cylinders (closed length, stroke, barrel/rod, pin), boom, stick, bucket linkage, pins/bushings/plates, and display (`show_envelope` draws the work envelope as points).
 
-Командний рядок:
+From the command line:
 ```
 openscad -o out.png --viewall --autocenter -D boom_angle=-38 -D stick_angle=90 -D bucket_angle=60 scad/excavator_boom.scad
-openscad -o out.echo scad/excavator_boom.scad        # лише echo з діапазонами
+openscad -o out.echo scad/excavator_boom.scad        # just the echo with the ranges
 cd tools && python3 kinematics.py && python3 strength.py --boom 120x80x5 --stick 100x60x5
 ```
 
-### Інтерактивна 3D-сторінка (Step 2.0)
+### The interactive 3D page (Step 2.0)
 
 ```
-tools/viewer.sh                                   # відкриває http://127.0.0.1:8765/ у браузері (Ctrl+C — зупинити)
-python3 tools/viewer.py --export файл.html        # статична сторінка без сервера (є в кожній версії: versions/VNNN-…/viewer.html)
+tools/viewer.sh                                   # opens http://127.0.0.1:8765/ in the browser (Ctrl+C to stop)
+python3 tools/viewer.py --export file.html        # a static page with no server (one ships with every version: versions/VNNN-…/viewer.html)
 ```
 
-- **Миша**: ліва кнопка — обертання, права або Shift — панорама, коліщатко — масштаб до курсора, подвійний клік по деталі — новий центр обертання. Кнопки виглядів (збоку, ізометрія, зверху, спереду, вписати) і перемикач перспектива / ортогонально.
-- **Кути стріли, рукояті, ковша** рухають модель миттєво: позу складає сама сторінка за тими самими формулами, що й функції `pt_*()` моделі, з точок, які модель друкує в `echo(VIEW = …)` (звірено з echo моделі: положення зуба і довжини циліндрів збігаються до 0.1 мм). Межі повзунків — з ходу циліндрів; біля кожного кута видно довжину циліндра і використаний хід. Якщо зняти «обмежувати ходом циліндрів», циліндр поза ходом червоніє. Є готові пози і «цикл копання».
-- **Усі інші параметри** (групи Customizer читаються прямо з `.scad` — окремого списку немає) ідуть на локальний сервер: він запускає OpenSCAD паралельно для 12 деталей у власних системах координат і віддає сітки з кольорами (формат OFF). Змінені параметри підсвічуються; «Копіювати зміни» дає готові рядки для вставки в `.scad`; «Перечитати модель» підхоплює правки файлу. Попередження моделі (`!!!` — мертва точка важелів, недосяжна довжина циліндра) показуються на екрані.
-- Початкові значення можна задати в адресі: `http://127.0.0.1:8765/?boom_L1=1000&bucket_ear=30,125&boom_angle=40&view=iso`.
-- Сервер слухає лише 127.0.0.1; значення з браузера приводяться до типів зі схеми (числа, булеві, переліки), довільний текст в OpenSCAD не потрапляє. three.js завантажується з CDN (jsdelivr) — потрібен інтернет.
+- **Mouse**: left button orbits, right button or Shift pans, the wheel zooms towards the cursor, a double click on a part sets a new orbit centre. There are view buttons (side, isometric, top, front, fit) and a perspective / orthographic toggle.
+- **The boom, stick and bucket angles** move the model instantly: the page assembles the pose itself, using the same formulas as the model's `pt_*()` functions and the points the model prints in `echo(VIEW = …)` (cross-checked against the model's echo: the tooth position and the cylinder lengths agree to within 0.1 mm). The slider limits come from the cylinder strokes; next to each angle you see the cylinder length and the stroke used. Clear "limit to cylinder stroke" and a cylinder beyond its stroke turns red. Ready-made poses and a "dig cycle" are included.
+- **Every other parameter** (the Customizer groups are read straight from the `.scad` — there is no separate list) goes to a local server: it runs OpenSCAD in parallel for 12 parts in their own coordinate frames and returns coloured meshes (OFF format). Changed parameters are highlighted; "Copy changes" gives you lines ready to paste into the `.scad`; "Reload model" picks up edits to the file. Warnings from the model (`!!!` — a dead centre in the linkage, an unreachable cylinder length) are shown on screen.
+- Initial values can be set in the URL: `http://127.0.0.1:8765/?boom_L1=1000&bucket_ear=30,125&boom_angle=40&view=iso`.
+- The server listens on 127.0.0.1 only; values coming from the browser are coerced to the types in the schema (numbers, booleans, enumerations), so arbitrary text never reaches OpenSCAD. three.js is loaded from a CDN (jsdelivr) — an internet connection is required.
 
-### 3D-сторінка без бекенду: OpenSCAD-WASM у браузері (Step 2.1)
+### The 3D page with no backend: OpenSCAD-WASM in the browser (Step 2.1)
 
 ```
-cd tools/viewer-wasm && npm install      # залежності: three, openscad-wasm (OpenSCAD 2025.07 + Manifold, 14 МБ), vite
-npm run dev                              # http://localhost:8766/ — правка scad/excavator_boom.scad одразу перезавантажує сторінку
-npm run build                            # статичний сайт у dist/ (≈15 МБ): класти на будь-який статичний хостинг
-npm run preview                          # переглянути зібраний dist/ локально
-npm test                                 # димовий тест без браузера
-# те саме однією командою з кореня: tools/viewer-wasm.sh [build|preview|test]
+cd tools/viewer-wasm && npm install      # dependencies: three, openscad-wasm (OpenSCAD 2025.07 + Manifold, 14 MB), vite
+npm run dev                              # http://localhost:8766/ — editing scad/excavator_boom.scad reloads the page at once
+npm run build                            # a static site in dist/ (≈15 MB): drop it on any static host
+npm run preview                          # view the built dist/ locally
+npm test                                 # a smoke test with no browser
+# the same in one command from the repository root: tools/viewer-wasm.sh [build|preview|test]
 ```
 
-- Та сама сторінка й те саме керування, що у версії з сервером (вона лишилась: `tools/viewer.sh`), але **OpenSCAD працює у веб-воркері браузера**; Python і встановлений OpenSCAD не потрібні. Модель вшивається у сторінку під час збирання (`?raw`-імпорт), параметри Customizer розбирає JavaScript (`src/schema.js`).
-- Один запуск рушія на зміну параметра: модель у режимі `part="view_all"` кладе всі 12 деталей зі зсувом по Y, сторінка розрізає сітку назад (`src/offmesh.js`). Виміряно у Chrome: перший старт ≈ 5 с (завантаження рушія), **перебудова після зміни параметра ≈ 1.4 с**; кути, як і раніше, миттєві. Для порівняння: версія з сервером перебудовує за ≈ 0.4 с.
-- «Відкрити .scad…» завантажує власний варіант моделі з диска (файл нікуди не надсилається). Початкові значення в адресі працюють так само (`?boom_L1=1000&view=iso`).
-- `dist/` не відкривається подвійним кліком (`file://` не дозволяє модульні воркери) — потрібен будь-який статичний веб-сервер (`npm run preview`, GitHub Pages тощо). `node_modules/` і `dist/` у git не потрапляють.
-- Рушій у браузері старіший (2025.07) за настільний OpenSCAD (2026.09). `npm test` перевіряє, що він будує модель без попереджень, усі деталі непорожні, поза з JavaScript збігається з echo моделі, а блок складання пози однаковий в обох версіях сторінки.
+- The same page and the same controls as the server version (which is still there: `tools/viewer.sh`), except that **OpenSCAD runs in a web worker in the browser**; neither Python nor an installed OpenSCAD is needed. The model is embedded into the page at build time (a `?raw` import) and the Customizer parameters are parsed by JavaScript (`src/schema.js`).
+- One engine run per parameter change: in `part="view_all"` mode the model lays all 12 parts out with an offset along Y and the page cuts the mesh back apart (`src/offmesh.js`). Measured in Chrome: the first start takes ≈ 5 s (loading the engine), a **rebuild after a parameter change ≈ 1.4 s**; the angles remain instant. For comparison, the server version rebuilds in ≈ 0.4 s.
+- **Two languages: English and Ukrainian.** A `UK | EN` switch sits in the panel header; the language comes from `?lang=en` in the URL, then from the browser's storage, then from the browser's own language. Switching only redraws the labels — OpenSCAD is not restarted, and the angles, checkboxes and changed parameters all stay as they were. The group names and the descriptions of all 103 model parameters are translated too: the English texts live in `src/i18n.js` while the Ukrainian ones are read straight from the `.scad` comments, so the model remains the single source of truth. `npm test` verifies that the dictionary has not drifted from the model (every group and every documented parameter has a translation) and that both languages carry the same keys. Warnings printed by the model itself (`!!!`) stay in Ukrainian — they come from `echo()` in the `.scad`. The server page (`tools/viewer.sh`) is Ukrainian only.
+- "Open .scad…" loads your own variant of the model from disk (the file is never uploaded anywhere). Initial values in the URL work the same way (`?boom_L1=1000&view=iso`).
+- `dist/` cannot be opened by double-clicking (`file://` does not allow module workers) — you need any static web server (`npm run preview`, GitHub Pages and so on). `node_modules/` and `dist/` never reach git.
+- The in-browser engine is older (2025.07) than the desktop OpenSCAD (2026.09). `npm test` checks that it builds the model without warnings, that no part comes out empty, that the JavaScript pose matches the model's echo, and that the pose block is identical in both versions of the page.
 
-### 3Dconnexion SpaceMouse у браузері (Step 2.2)
+### A 3Dconnexion SpaceMouse in the browser (Step 2.2)
 
-Обидві сторінки (з сервером і WASM) керуються 3D-мишею без плагінів; блок коду однаковий в обох (`//<spacemouse>`).
+Both pages (server and WASM) can be driven with a 3D mouse without any plugin; the block of code is identical in both (`spacemouse`).
 
-| Браузер | Шлях | Що зробити |
+| Browser | Route | What to do |
 |---|---|---|
-| **Chrome / Edge / Opera** | WebHID — сторінка сама читає звіти миші | «Вигляд» → кнопка **SpaceMouse** → у вікні браузера «…хоче підключитися до HID-пристрою» вибрати мишу (або «3Dconnexion Universal Receiver») → «Підключити». Вікно з'являється лише після кліку — це вимога браузера. Дозвіл видається **окремо на кожну адресу** (`127.0.0.1:8765`, `localhost:8766`, `localhost:8767` — три різні) і діє, доки миша ввімкнена і браузер відкритий; якщо миша повідомляє серійний номер, Chrome пам'ятає дозвіл назавжди і сторінка підхоплює мишу сама (також після повторного вмикання в USB). Якщо ні — після перезапуску браузера кнопку треба натиснути ще раз. Відкликати: значок ліворуч від адреси → «Налаштування сайту» → HID-пристрої. Потрібен захищений контекст: https, `localhost` або `file://` (перевірено: Chrome відкриває WebHID і для статичного `viewer.html` з диска). |
-| **Firefox** | Gamepad API (WebHID у Firefox немає) — миша видна як 6-осьовий «геймпад» | Нічого натискати не треба: **порухайте ковпачок або натисніть кнопку миші**, коли вкладка у фокусі, — статус зміниться на «підключено (Gamepad API)». Перевірити, чи Firefox бачить мишу: `about:support` → або будь-який «gamepad tester». Цей самий шлях працює і в Chrome як запасний. |
-| Safari | — | немає ні WebHID, ні доступу до 3D-миші через Gamepad API |
+| **Chrome / Edge / Opera** | WebHID — the page reads the mouse reports itself | "View" → the **SpaceMouse** button → in the browser dialog ("… wants to connect to a HID device") pick the mouse (or "3Dconnexion Universal Receiver") → "Connect". The dialog only appears after a click — that is a browser requirement. Permission is granted **per origin** (`127.0.0.1:8765`, `localhost:8766`, `localhost:8767` are three different ones) and lasts as long as the mouse is on and the browser is open; if the mouse reports a serial number, Chrome remembers the permission for good and the page picks the mouse up by itself (including after it is plugged back in). If not, the button has to be pressed again after a browser restart. To revoke: the icon to the left of the address → "Site settings" → HID devices. A secure context is required: https, `localhost` or `file://` (verified: Chrome opens WebHID for a static `viewer.html` from disk too). |
+| **Firefox** | The Gamepad API (Firefox has no WebHID) — the mouse appears as a 6-axis "gamepad" | Nothing to press: **nudge the cap or press a mouse button** while the tab has focus and the status changes to "connected (Gamepad API)". To check whether Firefox sees the mouse at all: `about:support`, or any "gamepad tester". The same route also works in Chrome as a fallback. |
+| Safari | — | neither WebHID nor access to a 3D mouse through the Gamepad API |
 
-- **Керування** (режим «об'єкт у руці»): ковпачок праворуч/ліворуч і вгору/вниз — зсув; до себе / від себе — масштаб; скрут — обертання довкола вертикалі; нахил до себе / від себе — підйом камери. Кнопка 1 — «Вписати», кнопка 2 — наступний стандартний вигляд. Повзунок чутливості та три прапорці інверсії (зсув / масштаб / обертання) зберігаються в браузері. Крен (нахил убік) свідомо не використовується: вертикаль моделі лишається вертикаллю.
-- **macOS:** якщо встановлено драйвер 3Dconnexion, `3DconnexionHelper` відкриває мишу монопольно (у `ioreg` клієнт Chrome має `ClientSeized = Yes`), тому кнопка SpaceMouse дає «Failed to open the device». Рішення: `tools/spacemouse-driver.sh off` → натиснути кнопку ще раз → у вікні вибрати саме **свою мишу** (рядки «3Dconnexion Virtual Mouse / Virtual Data» — віртуальні пристрої драйвера, не вони). Повернути драйвер для CAD-програм: `tools/spacemouse-driver.sh on` (після входу в систему він стартує сам). **Автоматично:** `tools/with-spacemouse.sh <команда>` вимикає помічник перед стартом і вмикає його знову, щойно команда завершиться з будь-якої причини (Ctrl+C, закриття термінала, помилка) — `tools/with-spacemouse.sh tools/viewer.sh`, а для WASM-сторінки `npm run dev:sm` / `npm run preview:sm`. Якщо помічник до старту не працював, він і не запускається. Звичайні `npm run dev` / `preview` драйвер не чіпають.
-- **Драйвер 3DxWare** може заважати: на Windows/macOS він сам шле у вікно браузера прокрутку й клавіші (рух «двоїться») або тримає пристрій. Якщо так — у 3Dconnexion Home вимкніть мишу для браузера або закрийте драйвер на час роботи зі сторінкою. Для Firefox на Windows/macOS драйвер зазвичай **треба** закрити, інакше «геймпад» не з'явиться.
-- **Linux**: для Chrome/WebHID потрібне право на `/dev/hidraw*` — правило udev `SUBSYSTEM=="hidraw", ATTRS{idVendor}=="256f", MODE="0660", TAG+="uaccess"`; Firefox бере мишу через `/dev/input/js*` без налаштувань (spacenavd не потрібен і має бути вимкнений, якщо захоплює пристрій).
-- **Що перевірено**: логіка навігації — автоматично в headless Chrome з підставними пристроями обох типів (`tools/viewer-wasm/test/spacemouse.mjs`: звіти 1/2/3, 12-байтний звіт нових моделей, кнопки, Gamepad API). **Зі справжньою мишею не перевірялося** (її не було під час розробки): якщо якась вісь їде не туди — увімкніть відповідну інверсію; якщо миша взагалі не реагує у Chrome — відкрийте `chrome://device-log` і подивіться, чи приходять звіти HID.
-- Офіційний шлях 3Dconnexion (SDK «3DxWare for Web», WebSocket до драйвера — так працює Onshape) тут не використано: він вимагає встановленого драйвера і ліцензійного SDK, зате працює однаково в усіх браузерах. Якщо WebHID/Gamepad не влаштують — це наступний варіант.
+- **Controls** ("object in hand" mode): the cap right/left and up/down pans; pushing and pulling zooms; twisting rotates about the vertical; tilting towards and away from you raises the camera. Button 1 is "Fit", button 2 steps to the next standard view. The sensitivity slider and the three inversion checkboxes (pan / zoom / rotate) are remembered in the browser. Roll (tilting sideways) is deliberately unused: the model's vertical stays vertical.
+- **macOS:** if the 3Dconnexion driver is installed, `3DconnexionHelper` opens the mouse exclusively (in `ioreg` the Chrome client shows `ClientSeized = Yes`), so the SpaceMouse button fails with "Failed to open the device". The fix: `tools/spacemouse-driver.sh off` → press the button again → in the dialog pick **your actual mouse** (the "3Dconnexion Virtual Mouse / Virtual Data" entries are the driver's virtual devices, not it). To restore the driver for CAD applications: `tools/spacemouse-driver.sh on` (it starts by itself after you log in). **Automatically:** `tools/with-spacemouse.sh <command>` releases the helper before the start and restores it as soon as the command ends for any reason (Ctrl+C, closing the terminal, an error) — `tools/with-spacemouse.sh tools/viewer.sh`, and for the WASM page `npm run dev:sm` / `npm run preview:sm`. If the helper was not running to begin with, it is not started either. Plain `npm run dev` / `preview` leave the driver alone.
+- **The 3DxWare driver** can get in the way: on Windows and macOS it sends scrolling and key presses into the browser window itself (movement appears "doubled") or holds the device. If that happens, disable the mouse for the browser in 3Dconnexion Home, or close the driver while you work with the page. For Firefox on Windows/macOS the driver usually **has to** be closed, otherwise the "gamepad" never appears.
+- **Linux**: Chrome/WebHID needs access to `/dev/hidraw*` — a udev rule `SUBSYSTEM=="hidraw", ATTRS{idVendor}=="256f", MODE="0660", TAG+="uaccess"`; Firefox takes the mouse through `/dev/input/js*` with no configuration (spacenavd is not needed and must be off if it grabs the device).
+- **What has been verified**: the navigation logic, automatically, in headless Chrome with mock devices of both kinds (`tools/viewer-wasm/test/spacemouse.mjs`: reports 1/2/3, the 12-byte report of newer models, the buttons, the Gamepad API). **It has never been tried with a real mouse** (there was none during development): if some axis goes the wrong way, turn on the matching inversion; if the mouse does not respond at all in Chrome, open `chrome://device-log` and see whether HID reports arrive.
+- The official 3Dconnexion route (the "3DxWare for Web" SDK, a WebSocket to the driver — the way Onshape works) is not used here: it requires an installed driver and a licensed SDK, but it does work identically in every browser. If WebHID/Gamepad turn out not to be enough, that is the next option.
 
-### Версії, STL і рендери
+### Versions, STL and renders
 
 ```
-tools/build_version.sh "що змінено"            # одна команда: нова версія versions/VNNN-дата-час/ (≈1.5 хв)
-tools/build_version.sh --commit "що змінено"   # те саме + git add -A і коміт "VNNN: що змінено"
-tools/check_overlaps.sh                  # лише перевірка перетинів пластин
-tools/check_motion.sh                    # лише перевірка рухомих пар на зіткнення (≈40 с)
+tools/build_version.sh "what changed"            # one command: a new version in versions/VNNN-date-time/ (≈1.5 min)
+tools/build_version.sh --commit "what changed"   # the same plus git add -A and a commit "VNNN: what changed"
+tools/check_overlaps.sh                  # only the plate intersection check
+tools/check_motion.sh                    # only the moving-pair collision check (≈40 s)
 openscad -o boom_gussets.stl --export-format binstl -D 'part="boom_gussets"' scad/excavator_boom.scad
 ```
 
-Параметр `part` (перша група Customizer) обирає, що показувати/експортувати: `assembly`, зварні вузли `boom`, `stick`, групи деталей
+The `part` parameter (the first Customizer group) selects what is shown or exported: `assembly`, the weldments `boom` and `stick`, the part groups
 `boom_tubes`, `boom_gussets`, `boom_bracket_D`, `boom_bracket_F`, `boom_foot_boss`, `boom_fork_B`, `stick_tube`, `stick_cheeks`, `stick_bracket_H`, `stick_tip`,
-ківш `bucket` і його вузли `bucket_sides`, `bucket_shell`, `bucket_top`, `bucket_edge`, `bucket_ears`, `bucket_wear` (у системі ковша: вісь E = 0, x — до вістря зуба), а також `rocker`, `link`, `post` (схематична колона). Вузли стріли експортуються у системі стріли (вісь A = 0, хорда вздовж +X),
-вузли рукояті — у системі рукояті (вісь B = 0, вісь рукояті вздовж +X); решта — у позі за замовчуванням.
+the `bucket` and its sub-assemblies `bucket_sides`, `bucket_shell`, `bucket_top`, `bucket_edge`, `bucket_ears`, `bucket_wear` (in the bucket frame: axis E = 0, x towards the tooth tip), plus `rocker`, `link` and `post` (a schematic swing column). The boom sub-assemblies are exported in the boom frame (axis A = 0, the chord along +X),
+the stick ones in the stick frame (axis B = 0, the stick axis along +X); everything else comes out in the default pose.
 
-**Правило моделі:** деталі прилягають одна до одної (спільна грань = зварний шов), але не перекриваються: сідла D/H лежать між виступами щік,
-вилки стоять на сідлах, «вежа» F — на верхній накладці перелому, втулки проходять крізь отвори в трубах і щоках, вилка B — врівень зі стінками труби
-(проміжок 80 = пакет рукояті 76 + дві упорні шайби по 2 мм). `part="overlap"` з `ov_a`/`ov_b` показує перетин двох вузлів; скрипт перевіряє всі пари.
+**The model's rule:** parts abut one another (a shared face = a weld) but never overlap: the D/H saddles sit between the protruding cheeks,
+the clevises stand on the saddles, the F "tower" sits on the top doubler of the break, the bushings pass through holes in the tubes and cheeks, and clevis B is flush with the tube walls
+(the 80 gap = a 76 stick pack + two 2 mm thrust washers). `part="overlap"` with `ov_a`/`ov_b` shows the intersection of two sub-assemblies; the script checks every pair.
 
-**Обмеження поточного етапу:**
-- STL зроблено на групу деталей: наприклад, обидві щоки перелому з накладкою йдуть одним файлом. Окремі пластини для різання — у `dxf/` (1:1) та `drawings/parts.pdf` (ескізи), їх генерує `tools/bom_drawings.sh`.
-- На ескізах лише основні розміри: габарит, діаметри отворів і їхні прив'язки. Базовий (найбільший) отвір прив'язано до реальних кромок деталі: база A — найдовша пряма кромка, база B — найближча перпендикулярна кромка (якщо її немає — відстань уздовж A від її кінця). Інші отвори прив'язано до базового вздовж і поперек бази A; окремо позначено отвори, концентричні заокругленню контуру. Фаски, розділки під зварювання, допуски отворів (H8 під пальці, H7 під втулки) і шорсткість не проставлені — отвори під пальці та втулки остаточно розгортати в зборі.
-- Прилягання пластин перевірено лише візуально на рендерах вузлів; числово перевіряються тільки перекриття (`tools/check_overlaps.sh`).
-- Рухомі пари перевіряються у дискретних положеннях (13 кутів ковша, 12 — рукояті, 8 — стріли), не безперервно; поворотна колона схематична і в перевірку не входить.
+**Limits of the current stage:**
+- STL is produced per group of parts: both break cheeks with the doubler, for instance, come out as one file. Individual plates for cutting are in `dxf/` (1:1) and `drawings/parts.pdf` (sketches), generated by `tools/bom_drawings.sh`.
+- The sketches carry only the main dimensions: the overall size, hole diameters and their datums. The base (largest) hole is dimensioned from the real edges of the part: datum A is the longest straight edge, datum B the nearest perpendicular edge (and, where there is none, the distance along A from its end). The other holes are dimensioned from the base hole along and across datum A; holes concentric with a fillet of the outline are marked separately. Chamfers, weld preparation, hole tolerances (H8 for pins, H7 for bushings) and surface finish are not specified — the pin and bushing holes are to be reamed in the assembled state.
+- The fit between plates has only been checked visually on the renders of the sub-assemblies; the only thing checked numerically is overlap (`tools/check_overlaps.sh`).
+- The moving pairs are checked at discrete positions (13 bucket angles, 12 stick, 8 boom), not continuously; the swing column is schematic and is not part of the check.
 
-### BOM і креслення деталей (Step x.5)
+### BOM and part drawings (Step x.5)
 
 ```
 tools/bom_drawings.sh                 # → build/bom/bom.md, bom.csv · build/dxf/*.dxf · build/drawings/parts.pdf
-tools/build_version.sh "опис"         # те саме всередині нової версії versions/VNNN-…/
+tools/build_version.sh "description"  # the same, inside a new version in versions/VNNN-…/
 ```
 
-Варіанти видачі креслень і що обрано: **DXF 1:1** — основний формат для лазерного/плазмового різання (сервіс бере файл як є); **PDF-ескіз** — для гаража: пластини з прив'язками отворів до кромок-баз, труби — розгорткою з 4 боків (верхня/нижня полиці, ліва/права стінки: косі різи, скіс торця, отвори від торця), товщина, кількість, маса; **CSV** — для замовлення металу й обліку. Свідомо не роблено: повні креслення за ЄСКД з допусками (це вже FreeCAD TechDraw / KOMPAS за STEP-моделлю), розкрій листа (nesting — його роблять у сервісі різання за DXF), STEP-експорт (OpenSCAD його не вміє; за потреби — через FreeCAD з CSG).
+The options for issuing drawings, and what was chosen: **DXF 1:1** — the main format for laser and plasma cutting (the shop takes the file as it is); **a PDF sketch** — for the workshop: plates with the holes dimensioned from the datum edges, tubes as a development of all 4 faces (top/bottom flanges, left/right walls: mitre cuts, the end bevel, holes measured from the end), thickness, quantity and mass; **CSV** — for ordering the steel and for record-keeping. Deliberately not done: full drawings to ЕСКД with tolerances (that is FreeCAD TechDraw / KOMPAS territory, working from a STEP model), sheet nesting (the cutting shop does that from the DXF), and STEP export (OpenSCAD cannot do it; if needed, go through FreeCAD with CSG).
 
-![ескіз щоки](docs/img/sketch_cheek.png)
+![cheek sketch](docs/img/sketch_cheek.png)
 
-![стріла](docs/img/part_boom.png)
-![рукоять](docs/img/part_stick.png)
+![boom](docs/img/part_boom.png)
+![stick](docs/img/part_stick.png)
 
-## 3. Обрана геометрія (мм) і чому
+## 3. The chosen geometry (mm) and why
 
-| Елемент | Значення | Обґрунтування |
+| Item | Value | Rationale |
 |---|---|---|
-| Стріла: сегменти L1 / L2, перелом | **900 / 700, 35°** → хорда A–B **1527** | Орієнтир класу 1 т: Bobcat E10 1276, з поправкою на довші ходи наших циліндрів; коротша стріла = менший момент і краща стійкість причіпної машини |
-| Рукоять B–E | **950** | клас 810–880 + запас; крутний момент рукояті 4.0–7.4 кН·м |
-| База циліндра стріли C (від A) | **[150; −300]** на колоні | нижче й попереду осі A (правило для малих машин) |
-| Кронштейн D (шток циліндра стріли) | s = **1050** від A уздовж осі (150 мм за переломом, знизу), виліт 120 від осі труби | дає хід стріли 96° при плечі 220–335 мм; кути передачі ≥13° |
-| База циліндра рукояті F | s = **715** назад від B — «вежа» на вершині перелому, вісь на **158** над віссю труби (98 над полицею) | циліндр зверху стріли, копання поршневою порожниною; корпус Ø60 проходить над переломом із зазором ≈ 20 мм |
-| П'ята рукояті G | **215 назад / 132 назовні** від B | хід рукояті 105° при плечі 151–250 мм |
-| База циліндра ковша H | 246 від B, виліт 120; вилка асиметрична — основа тягнеться назад | уперед плечей немає: там при підкрученому ковші лежить корпус циліндра |
-| Коромисло R / довжини | R: 152 від E, 75 над віссю; коромисло **289**, тяга **327**, вушко ковша Q = **[27; 121]** (|EQ| = 124) | поворот ковша 155.5°; кут передачі на вусі ковша ≥ 36° на обох кінцях ходу; сила в тязі ≤ 2.16 сили циліндра (було 2.64) |
-| Радіус ковша (вісь E → вістря зуба) | 480 | клас 450–500; найдальша точка обичайки 399 — п'ята не треться об вибій |
+| Boom: segments L1 / L2, break | **900 / 700, 35°** → chord A–B **1527** | A 1 t class benchmark: the Bobcat E10 is 1276, corrected for the longer strokes of our cylinders; a shorter boom means a smaller moment and better stability for a towable machine |
+| Stick B–E | **950** | the class runs 810–880, plus a margin; stick torque 4.0–7.4 kN·m |
+| Boom cylinder base C (from A) | **[150; −300]** on the column | below and ahead of axis A (the rule for small machines) |
+| Bracket D (boom cylinder rod) | s = **1050** from A along the axis (150 mm past the break, underneath), 120 offset from the tube axis | gives 96° of boom travel at a 220–335 mm arm; transmission angles ≥13° |
+| Stick cylinder base F | s = **715** back from B — a "tower" on the crest of the break, the axis **158** above the tube axis (98 above the flange) | the cylinder sits on top of the boom and digs on the bore side; the Ø60 body clears the break by ≈ 20 mm |
+| Stick heel G | **215 back / 132 outboard** from B | 105° of stick travel at a 151–250 mm arm |
+| Bucket cylinder base H | 246 from B, 120 offset; the clevis is asymmetric — the base extends backwards | there are no arms ahead: that is where the cylinder body lies when the bucket is curled in |
+| Rocker R / lengths | R: 152 from E, 75 above the axis; rocker **289**, link **327**, bucket ear Q = **[27; 121]** (\|EQ\| = 124) | 155.5° of bucket rotation; the transmission angle at the bucket ear stays ≥ 36° at both ends of the stroke; the link force is ≤ 2.16× the cylinder force (it used to be 2.64) |
+| Bucket radius (axis E → tooth tip) | 480 | the class runs 450–500; the outermost point of the shell is 399, so the heel never rubs the face |
 
-Результати (повний звіт — `docs/02-kinematics.md` у теці останньої версії):
+Results (the full report is `docs/02-kinematics.md` in the latest version folder):
 
-| Показник | Значення |
+| Metric | Value |
 |---|---|
-| Хід стріли / рукояті / ковша | 96.4° / 104.9° / 155.5° |
-| Момент циліндра стріли @160 бар | 11.0–16.6 кН·м (тягове на кінці стріли 7.2–10.9 кН) |
-| Зусилля рукояті на осі ковша @160 бар | 5.0–8.3 кН (клас: 4.3–6.4) |
-| Зусилля ковша на зубі @160 бар | 11.8 кН на початку підкручування → 8.2 (ω = 48°) → 2.3 кН у кінці (клас: 8.3–11.2) |
-| Виліт зуба на рівні землі / глибина / висота (вісь A на 650 над землею) | 2.81 м / 1.72 м / 2.75 м |
+| Boom / stick / bucket travel | 96.4° / 104.9° / 155.5° |
+| Boom cylinder moment @160 bar | 11.0–16.6 kN·m (7.2–10.9 kN of pull at the boom tip) |
+| Stick force at the bucket axis @160 bar | 5.0–8.3 kN (class: 4.3–6.4) |
+| Bucket force at the tooth @160 bar | 11.8 kN at the start of the curl → 8.2 (ω = 48°) → 2.3 kN at the end (class: 8.3–11.2) |
+| Tooth reach at ground level / digging depth / height (axis A 650 above the ground) | 2.81 m / 1.72 m / 2.75 m |
 
-![робоча зона](docs/img/envelope.png)
+![work envelope](docs/img/envelope.png)
 
-## 3а. Ківш (повний звіт — `docs/05-bucket.md` у теці останньої версії)
+## 3a. The bucket (the full report is `docs/05-bucket.md` in the latest version folder)
 
-![ківш](docs/img/part_bucket.png)
+![bucket](docs/img/part_bucket.png)
 
-Зварний ківш 300 мм під машину класу ≈ 1 т. Система ковша: вісь E = 0, x — до вістря зуба, y — зовнішній бік (де вушко тяги Q).
+A welded 300 mm bucket for a machine of roughly the 1 t class. The bucket frame: axis E = 0, x towards the tooth tip, y the outboard side (where the link ear Q is).
 
-| Параметр | Значення | Пояснення |
+| Parameter | Value | Explanation |
 |---|---|---|
-| Місткість | **16.4 л врівень / 21.3 л з «шапкою» 1:1** (ISO 7451) | клас 1 т: 18–25 л; ≈ 38 кг мокрої глини |
-| Маса | **≈ 27 кг** | боковини 5.7, обичайка 6.3, ніж 2.8, зуби 2.7, накладка 3.2, вуха 3.4 |
-| Профіль | верхня полиця 170 → R60 на 45° → спинка 19 → п'ята R120 на 95° → дно 130 + ніж 100 | одна смуга-розгортка **559 × 288 × 5**; довжину спинки модель рахує сама, щоб дно лягло на лінію через вістря зуба |
-| Кут дна до лінії «зуб → E» | 50° | кут різання ≈ 40° до траєкторії зуба; більший кут — глибший ківш |
-| Висота вух (вісь E → накладка) | 76 | торець рукояті описує довкола E радіус 56 → зазор 20; для цього виступ труби за E скорочено до 50 і знято фаски 25×25 |
-| Губа (передня кромка верху) | y = 16 | при повному підкручуванні під губу підходить нижня полиця рукояті: зазор 13 мм, при перебігу +4° — 7 мм |
-| Вуха | 2 × 12 мм, проміжок 82 (пакет рукояті 80 + 2×1), R40 довкола E, R35 довкола Q, основа 162 мм на накладці 8 мм | зовнішні бобишки Ø60×10 на осі E; між вухами на осі Q приварена розпірна втулка Ø45 — пара вух працює як рама |
-| Тяги | зовні вух (проміжок 108), бобишки Ø50×25 на осях J і Q | тиск у парі палець/тяга < 30 МПа; палець Q зафіксований у вухах |
-| Ніж / зуби | смуга 300×100×12, фаска зверху; 3 зуби, виліт 70 | **зносостійка сталь** (Hardox 400/450, 65Г, ніж грейдера); зуби — покупні приварні під ніж 12 мм або з 65Г/30ХГСА. Не Ст3 |
-| Решта | боковини 6, обичайка 5, накладка 8, ребро губи 40×8, 2 смуги зносу 40×6 на п'яті | S235JR зі складу; смуги зносу змінні |
+| Capacity | **16.4 l struck / 21.3 l heaped 1:1** (ISO 7451) | the 1 t class runs 18–25 l; ≈ 38 kg of wet clay |
+| Mass | **≈ 27 kg** | side plates 5.7, shell 6.3, cutting edge 2.8, teeth 2.7, doubler 3.2, ears 3.4 |
+| Profile | top flange 170 → R60 through 45° → back 19 → heel R120 through 95° → floor 130 + cutting edge 100 | one developed strip, **559 × 288 × 5**; the model works out the length of the back itself, so that the floor lands on the line through the tooth tip |
+| Floor angle to the "tooth → E" line | 50° | a cutting angle of ≈ 40° to the tooth path; a larger angle means a deeper bucket |
+| Ear height (axis E → doubler) | 76 | the stick tube end sweeps a radius of 56 about E → a 20 clearance; for that the tube overhang past E was cut back to 50 and 25×25 chamfers were added |
+| Lip (the front edge of the top plate) | y = 16 | at full curl the lower flange of the stick comes under the lip: 13 mm of clearance, and 7 mm at +4° of over-travel |
+| Ears | 2 × 12 mm, 82 gap (an 80 stick pack + 2×1), R40 about E, R35 about Q, a 162 mm base on an 8 mm doubler | outer bosses Ø60×10 on axis E; a Ø45 spacer tube is welded between the ears on axis Q, so the pair of ears works as a frame |
+| Links | outside the ears (108 gap), bosses Ø50×25 on axes J and Q | the pressure in the pin/link pair is < 30 MPa; pin Q is fixed in the ears |
+| Cutting edge / teeth | a 300×100×12 strip, chamfered on top; 3 teeth, 70 reach | **wear-resistant steel** (Hardox 400/450, 65Г, a grader blade); the teeth are bought-in weld-on ones for a 12 mm edge, or made from 65Г/30ХГСА. Not mild steel |
+| The rest | side plates 6, shell 5, doubler 8, lip rib 40×8, two 40×6 wear strips on the heel | S235JR from ordinary stock; the wear strips are replaceable |
 
-Робочі кути. Ківш тримає ґрунт (отвір горизонтальний або нахилений назад) при рукояті від вертикалі до ≈ 45° від горизонту: запас нахилу назад +49° при вертикальній рукояті,
-+4° при 45°; при рукояті, витягнутій положистіше за 45°, повне підкручування вже не вирівнює отвір — так само, як на заводських машинах. Висипання: дно нахилене вниз на 63–123°
-у всьому діапазоні положень рукояті — липка глина зійде.
+Working angles. The bucket holds the load (the opening horizontal or tilted back) with the stick anywhere from vertical to ≈ 45° from the horizon: a back-tilt margin of +49° with the stick vertical,
++4° at 45°; with the stick stretched out flatter than 45°, a full curl no longer levels the opening — exactly as on factory-built machines. Dumping: the floor is tilted down by 63–123°
+across the whole range of stick positions, so sticky clay will come off.
 
-Шари по ширині біля осі E: пакет рукояті (|y| < 40) → вуха ковша і пластини коромисла (41…53; **один шар** — у вигляді збоку вони не перетинаються, мін. зазор 64 мм) → тяги та бобишки вух на осі E (54…64; мін. зазор тяга ↔ бобишка E 11 мм).
+The layers across the width near axis E: the stick pack (\|y\| < 40) → the bucket ears and the rocker plates (41…53; **a single layer** — in side view they never intersect, minimum clearance 64 mm) → the links and the ear bosses on axis E (54…64; minimum clearance between link and boss E is 11 mm).
 
-![зазори на ході ковша](docs/img/bucket_motion_2d.png)
+![clearances over the bucket stroke](docs/img/bucket_motion_2d.png)
 
-Міцність при 250 бар у замкненому циліндрі: вухо на осі Q — зминання 75 МПа (запас 4.7), виривання перемички 42 МПа (3.3); шов вух до накладки 63 МПа (3.5); палець Q Ø25 — згин 177 МПа (3.4);
-палець E Ø30 — згин 221 МПа (2.7); ніж у своїй площині 54 МПа. Бокову силу на зубі (поворот колони з ковшем у ґрунті) взято 3 кН — уточнити на етапі поворотного механізму.
+Strength at 250 bar in a closed cylinder: the ear on axis Q — 75 MPa of bearing (safety factor 4.7), 42 MPa of tear-out through the web (3.3); the weld of the ears to the doubler 63 MPa (3.5); pin Q Ø25 — 177 MPa in bending (3.4);
+pin E Ø30 — 221 MPa in bending (2.7); the cutting edge in its own plane 54 MPa. The side force at the tooth (swinging the column with the bucket in the ground) was taken as 3 kN — to be refined at the swing-mechanism stage.
 
+## 4. Sections, reinforcements, steel (the full report is `docs/03-strength.md` in the latest version folder)
 
-## 4. Профілі, накладки, сталь (повний звіт — `docs/03-strength.md` у теці останньої версії)
+The load cases: breakout with the bucket, pulling in with the stick, lifting and pushing down with the boom across a grid of positions; the force at the tooth follows from the limiting force of the active cylinder (160 bar ×1.25 for dynamics; 200 bar; 250 bar for a closed cylinder, because the Z50 valve has no port reliefs), digging is done by pushing the cylinders (the bore side) while the reacting cylinders hold up to 250 bar; the vertical cases are capped by the stability of the machine (`--fstab`, 15 kN by default — **to be refined once the machine mass is known**; without the cap the boom cylinder delivers up to ≈22 kN at short reach). The allowables are fy/1.5, fy/1.15 and fy/1.0 respectively.
 
-Розрахункові випадки: відрив ковшем, підтягування рукояттю, підйом і притискання стрілою у сітці положень; сила на зубі — за граничним зусиллям активного циліндра (160 бар ×1.25 динаміка; 200 бар; 250 бар для замкненого циліндра, бо Z50 без портових клапанів), копання — штовханням циліндрів (поршнева порожнина), реактивні циліндри тримають до 250 бар; вертикальні випадки обмежені стійкістю машини (`--fstab`, за замовчуванням 15 кН — **уточнити за масою машини**; без обмеження циліндр стріли на близькому вильоті дає до ≈22 кН). Допустимі: fy/1.5, fy/1.15, fy/1.0 відповідно.
+### Tubes (Ст3/S235, fy 235)
 
-### Труби (Ст3/S235, fy 235)
-
-| Плече | Основний варіант | Запас (250 бар, найгірший переріз) | Альтернативи зі звичайного сортаменту |
+| Arm | Main option | Safety factor (250 bar, worst section) | Alternatives from ordinary stock |
 |---|---|---|---|
-| Стріла | **120×80×5** (h=120 у площині згину), ≈1.75 м, 14.6 кг/м | **1.72** (середина 2-го сегм.), 1.97 у зоні перелому з накладками (M до 10.3 кН·м) | 120×80×4 (≈670 грн/м): ≈1.4 — на межі; 100×100×5 (≈793 грн/м): 1.59; 120×120×5 (≈950 грн/м): 2.29 |
-| Рукоять | **100×60×5**, ≈1.10 м, 11.4 кг/м | **1.55** біля бази H, 1.65 за щоками, 1.70 у корені (лише разом зі щоками 8 мм: сама труба в корені — 341 МПа!) | 100×60×4 (≈531 грн/м): ≈1.4 — на межі; 120×60×5: вищий запас |
+| Boom | **120×80×5** (h=120 in the bending plane), ≈1.75 m, 14.6 kg/m | **1.72** (middle of the 2nd segment), 1.97 at the break with the doublers (M up to 10.3 kN·m) | 120×80×4 (≈670 UAH/m): ≈1.4 — marginal; 100×100×5 (≈793 UAH/m): 1.59; 120×120×5 (≈950 UAH/m): 2.29 |
+| Stick | **100×60×5**, ≈1.10 m, 11.4 kg/m | **1.55** near base H, 1.65 behind the cheeks, 1.70 at the root (only together with the 8 mm cheeks: the bare tube at the root sees 341 MPa!) | 100×60×4 (≈531 UAH/m): ≈1.4 — marginal; 120×60×5: a higher margin |
 
-Труба Ст3кп для стріли небажана (просити сертифікат, краще S235JRH/Ст3сп).
+Rimming steel (Ст3кп) is undesirable for the boom — ask for a certificate, and prefer S235JRH / Ст3сп.
 
-### Наварки (S235JR; лист 8/10/12 часто лише «на замовлення», смуга 80×8, 80×10, 100×8, 100×10 — зазвичай у наявності)
+### Weld-on reinforcements (S235JR; 8/10/12 plate is often made to order, while 80×8, 80×10, 100×8 and 100×10 flat bar is usually in stock)
 
-| Вузол | Деталь | Розмір | Товщина | Примітка |
+| Sub-assembly | Part | Size | Thickness | Note |
 |---|---|---|---|---|
-| Перелом K стріли | 2 бокові щоки («бумеранг» уздовж обох сегментів) | ≈ 550 мм по осі (від K: 250 назад, 300 вперед — до вилки D), висота 140 (на 10 мм за полиці) | **8** | охоплюють стик, базу F і вилку D; стик труб — з розділкою, повне проплавлення |
-| Перелом K, зовнішній кут | накладка зверху між щоками | 80 × 300 (по 150 від K) | 8 | закриває вершину стику; на ній стоїть «вежа» F |
-| Вилка D (шток цил. стріли, ШС-30) | 2 пластини вилки | ≈ 220 × 150, отвір Ø30 H8 | **12** (допустимо 10) | проміжок 30 мм (вушко ≈28 + 2), дистанційні шайби до внутрішнього кільця ШС |
-| Вилка D | сідло по ширині труби + бокові стінки | 80 × 260, між нижніми виступами щік перелому (щоки виступають на 10 мм = товщина сідла) | 10 | силу 78 кН на стінки труби передають щоки перелому, до яких приварене сідло |
-| База F (цил. рукояті, ШС-25) | «вежа» біля вершини перелому: 2 пластини на верхній накладці 1-го сегмента (основа від −150 до −12 мм від K; уперед не можна — там корпус циліндра) | ≈ 134 × 159, отвір Ø25 H8 | 12 | проміжок 27 мм; приварити до верхньої накладки перелому і бокових щік |
-| Вісь A | втулка крізь трубу **L=140** (ширша за трубу — бокові навантаження) + 2 круглі накладки + косинки до втулки | труба 66×33 L=140; Ø130 | 10 | палець Ø30 ГАЗ-53, дві втулки по краях 2×45 |
-| Вилка B (кінець стріли) | 2 пластини зовні труби, виступ **120**; торець труби скошений (верх коротший на 160) | ≈ 380 × 140, отвір Ø30 | 12 | врівень зі стінками труби; проміжок = 80 мм (пакет рукояті 76 + упорні шайби 2×2) |
-| Рукоять, п'ята | 2 щоки з боків труби (висота 140 — на 20 мм за полиці, довжина 470) + «рука» п'яти від верхньої полиці до вушка G | ≈ 470 × 140 + рука ≈ 380 × 200, отвори Ø66 під втулку (B) і Ø25.5 (G) | **8** | **несуть момент циліндра рукояті 12.3 кН·м** — без них труба не проходить; втулка B 66×33 L=76 крізь трубу і щоки; на G — приварені розпірні втулки (60−27)/2; товщина 8 — щоб пакет 76 + шайби 2×2 = 80 |
-| База H (цил. ковша) | 2 пластини (асиметричні: основа −78…+28 від осі) + сідло 120 між щоками п'яти | 110 × 92 / 60 × 120 | 12 / 10 | проміжок 27; шов з урахуванням моменту — 0.65 від допустимого |
-| Кінець рукояті | втулки E і R крізь трубу + 2 накладки | 45–66 OD; накладка ≈ 340 × 100 | 10 | E — Ø30 (66×33); R — **Ø30** (сила в тязі до 72 кН), бронзові втулки 2×35 |
+| Boom break K | 2 side cheeks (a "boomerang" along both segments) | ≈ 550 mm along the axis (from K: 250 back, 300 forward — up to clevis D), 140 high (10 mm past the flanges) | **8** | they wrap the joint, base F and clevis D; the tube joint is bevelled for full penetration |
+| Break K, outer corner | a doubler on top, between the cheeks | 80 × 300 (150 either side of K) | 8 | it closes the crest of the joint; the F "tower" stands on it |
+| Clevis D (boom cylinder rod, ШС-30) | 2 clevis plates | ≈ 220 × 150, Ø30 H8 hole | **12** (10 acceptable) | a 30 mm gap (a ≈28 eye + 2), spacer washers up to the inner race of the bearing |
+| Clevis D | a saddle across the tube width + side walls | 80 × 260, between the lower protrusions of the break cheeks (which stand 10 mm proud = the saddle thickness) | 10 | the 78 kN force is carried into the tube walls by the break cheeks, to which the saddle is welded |
+| Base F (stick cylinder, ШС-25) | a "tower" near the crest of the break: 2 plates on the top doubler of the 1st segment (the base runs from −150 to −12 mm from K; it cannot go forward — the cylinder body is there) | ≈ 134 × 159, Ø25 H8 hole | 12 | a 27 mm gap; weld it to the top doubler of the break and to the side cheeks |
+| Axis A | a bushing through the tube, **L=140** (wider than the tube — side loads) + 2 round doublers + gussets to the bushing | 66×33 tube, L=140; Ø130 | 10 | a Ø30 ГАЗ-53 king pin, two bushings of 2×45 at the ends |
+| Clevis B (boom tip) | 2 plates outside the tube, **120** of reach; the tube end is mitred (the top is 160 shorter) | ≈ 380 × 140, Ø30 hole | 12 | flush with the tube walls; the gap is 80 mm (a 76 stick pack + 2×2 thrust washers) |
+| Stick heel | 2 cheeks on the sides of the tube (140 high — 20 mm past the flanges, 470 long) + the heel "arm" from the top flange to ear G | ≈ 470 × 140 + an arm of ≈ 380 × 200, Ø66 hole for the bushing (B) and Ø25.5 (G) | **8** | **they carry the 12.3 kN·m moment of the stick cylinder** — without them the tube does not pass; bushing B 66×33 L=76 goes through the tube and the cheeks; spacer bushings of (60−27)/2 are welded at G; the 8 thickness is what makes the 76 pack + 2×2 washers = 80 |
+| Base H (bucket cylinder) | 2 plates (asymmetric: the base runs −78…+28 from the axis) + a 120 saddle between the heel cheeks | 110 × 92 / 60 × 120 | 12 / 10 | a 27 gap; the weld, with the moment taken into account, is at 0.65 of the allowable |
+| Stick tip | bushings E and R through the tube + 2 doublers | 45–66 OD; the doubler is ≈ 340 × 100 | 10 | E — Ø30 (66×33); R — **Ø30** (the link force reaches 72 kN), bronze bushings of 2×35 |
 
-Пальці: A, B, E, C, D, **R** — **Ø30** (шкворінь ГАЗ-53 / 40Х покращений); F, G, H, J, **Q** — **Ø25** (вушка ШС25; шкворінь Газель 45Х ТВЧ / 40Х). Запаси на згин при 250 бар: A 1.3 (шкворінь, fy≈600 — оцінка) / 1.7 (40Х), решта ≥1.7. Палець J — лише з привареними до коромисла бобишками впритул до вушка циліндра. Тиск у втулках ≤ 27–34 МПа у граничному випадку (сталь ≤ 30, бронза ≤ 40). Шви: кутові двобічні k = 5–6 мм, Э50А / Св-08Г2С, завантажені ≤ 20 %.
+Pins: A, B, E, C, D and **R** are **Ø30** (a ГАЗ-53 king pin / tempered 40Х); F, G, H, J and **Q** are **Ø25** (ШС25 eyes; a Газель king pin, induction-hardened 45Х / 40Х). Bending safety factors at 250 bar: A 1.3 (the king pin, fy≈600 — an estimate) / 1.7 (40Х), the rest ≥1.7. Pin J only works with bosses welded to the rocker right up against the cylinder eye. The bearing pressure in the bushings is ≤ 27–34 MPa in the limiting case (steel ≤ 30, bronze ≤ 40). Welds: double-sided fillets with k = 5–6 mm, Э50А / Св-08Г2С electrodes, loaded to ≤ 20 %.
 
-## 4а. Незалежна перевірка та що змінено після неї
+## 4a. The independent review and what changed after it
 
-Чотири незалежні рецензенти (кінематика, статика, технологічність, код SCAD) дали 30 зауважень — сирі тексти в `docs/research/review_findings.md`. Виправлено:
-зсув усіх пластин у моделі на пів товщини; знак сили копання (зусилля були занижені на ~25 %); відсутній у звіті момент у корені рукояті; колізію п'яти й заднього кінця рукояті з торцем труби стріли (виліт вилки 120, скошений торець, нова форма п'яти); колізію корпусу циліндра рукояті з вершиною перелому (база F піднята і перенесена на вершину); проміжки вилок 27/30 замість 21/23; палець осі ковша 30; вісь коромисла Ø30; бобишка осі A 140 мм; вищі щоки рукояті; початок підкручування ковша у розрахункових випадках.
-Свідомо залишено на наступний етап: внутрішні діафрагми під D/F неможливі в закритій трубі — їх замінюють сідла зі стінками та щоки; фіксація пальців і маслянки; орієнтація портів циліндрів убік (перевірити на реальних циліндрах); важільна система ковша має кут передачі лише ≈22° на початку підкручування (сила в тязі 2.3× сили циліндра) — оптимізувати разом із ковшем.
+Four independent reviewers (kinematics, statics, buildability, SCAD code) raised 30 findings — the raw texts are in `docs/research/review_findings.md`. Fixed:
+every plate in the model shifted by half its thickness; the sign of the digging force (the forces had been ≈25 % too low); a missing root moment for the stick in the report; the collision of the heel and the rear end of the stick with the boom tube end (clevis reach 120, a mitred end, a new heel shape); the collision of the stick cylinder body with the crest of the break (base F raised and moved onto the crest); clevis gaps of 27/30 instead of 21/23; a 30 bucket-axis pin; a Ø30 rocker axis; a 140 mm boss on axis A; taller stick cheeks; the start of the bucket curl in the load cases.
+Deliberately left for the next stage: internal diaphragms under D/F are impossible in a closed tube — saddles with walls and the cheeks take their place; pin retention and grease nipples; orienting the cylinder ports sideways (to be checked on the real cylinders); the bucket linkage has a transmission angle of only ≈22° at the start of the curl (a link force 2.3× the cylinder force) — to be optimised together with the bucket.
 
-**Після етапу ковша (перевірка рухомих пар, `tools/check_motion.sh`)** знайдено і виправлено те, чого статична перевірка перекриттів не бачила: корпус циліндра ковша (Ø60, ширший за проміжок вилки 27) при підкрученому ковші врізався у передні «плечі» вилки H — вилку зроблено асиметричною; корпус циліндра рукояті так само зачіпав передню лапу «вежі» F — основа вежі тепер уся на 1-му сегменті (138 мм, шов 0.57 від допустимого з урахуванням моменту). У моделі циліндрів шийка вушка тепер плоска (завширшки як вушко), а не кругла Ø37/Ø48, яка давала хибні перетини.
+**After the bucket stage (the moving-pair check, `tools/check_motion.sh`)** something the static overlap check could not see was found and fixed: the bucket cylinder body (Ø60, wider than the 27 clevis gap) cut into the front "shoulders" of clevis H when the bucket was curled in — the clevis was made asymmetric; the stick cylinder body likewise caught the front foot of the F "tower" — the tower base now sits entirely on the 1st segment (138 mm, the weld at 0.57 of the allowable with the moment included). In the cylinder model the neck of the eye is now flat (as wide as the eye) rather than a round Ø37/Ø48, which used to produce false intersections.
 
-## 5. Що обов'язково перевірити перед різанням металу
+## 5. What must be checked before cutting metal
 
-1. **Виміряти** зведені міжосьові довжини всіх трьох циліндрів (700 / 600 / 510 — номінал, на сайті «≈») і діаметр отворів вушок циліндра стріли (ШС-30 — висновок за аналогами; якщо там Ø25 — змінити `boom_cyl_pin`, `pin_A`). Підставити у параметри.
-2. **Привід насоса**: з 7 к.с. на НШ-10 без редукції досяжно лише ≈ 60 бар. Потрібне передавальне число ≥ 2.6 (рекомендовано 3: насос ≈1200 об/хв, 11 л/хв, до 180 бар). Уставка клапана Z50 — 160–180 бар.
-3. Z50 не має портових запобіжних клапанів: під зовнішнім навантаженням замкнений циліндр стріли може бачити 250–335 бар. Бажано зовнішній блок перехресних запобіжних + антикавітаційних клапанів (G3/8, 220–250 бар) на лініях циліндра стріли.
-4. Маса й база машини визначають реальні сили (стійкість): оновити `F_STAB` у `strength.py` і перерахувати.
-5. Сертифікат на трубу (Ст3сп/пс або S235JRH, не кп).
-6. **Виміряти на циліндрах відстань від осі пальця до початку корпусу/штока повного діаметра** (у моделі `eye_len` = 45 мм): форма вилки H і вежі F розрахована на те, що ближче 45 мм до осі циліндр не ширший за вушко.
-7. Ківш: якщо реальна розкрита довжина циліндра ковша більша за 810, перевірити зазор губи до рукояті (`tools/bucket.py`, запас зараз +4° → 7 мм); ніж і зуби — лише зносостійка сталь.
+1. **Measure** the closed pin-to-pin length of all three cylinders (700 / 600 / 510 are nominal, and the vendor page says "≈") and the bore of the boom cylinder eyes (ШС-30 is an inference from comparable parts; if it turns out to be Ø25, change `boom_cyl_pin` and `pin_A`). Put the values into the parameters.
+2. **The pump drive**: 7 hp on an НШ-10 with no reduction reaches only ≈ 60 bar. A ratio of ≥ 2.6 is needed (3 is recommended: the pump at ≈1200 rpm, 11 l/min, up to 180 bar). Set the Z50 relief to 160–180 bar.
+3. The Z50 has no port reliefs: under an external load a closed boom cylinder can see 250–335 bar. An external block of cross-over relief + anti-cavitation valves (G3/8, 220–250 bar) on the boom cylinder lines is desirable.
+4. The mass and wheelbase of the machine determine the real forces (stability): update `F_STAB` in `strength.py` and recompute.
+5. A mill certificate for the tube (Ст3сп/пс or S235JRH, not кп).
+6. **Measure, on the cylinders, the distance from the pin axis to where the body/rod reaches full diameter** (`eye_len` = 45 mm in the model): the shape of clevis H and of tower F assumes the cylinder is no wider than the eye within 45 mm of the axis.
+7. The bucket: if the real extended length of the bucket cylinder exceeds 810, re-check the lip-to-stick clearance (`tools/bucket.py`; the margin is currently +4° → 7 mm); the cutting edge and the teeth must be wear-resistant steel only.
 
-## 6. Технологія (коротко)
+## 6. Fabrication notes (briefly)
 
-- Стик двох сегментів стріли — косий зріз під 17.5° на кожній трубі, розділка, повне проплавлення, потім бокові щоки 8 мм і верхня накладка; не варити по радіусах кутів труби (відступ ≥ 5t).
-- Отвори під втулки — кільцевою пилкою через обидві стінки з кондуктором; втулка (труба 66×33 або «на 28») наскрізь, обварити з обох боків по колу, накладки — після; потім розточити/розгорнути в зборі.
-- Вилки під вушка ШС: палець затискає лише внутрішнє кільце через дистанційні шайби (ID = палець, OD 32–34 для ШС25 / 37–39 для ШС30); проміжок вилки = ширина вушка + 2 мм.
-- Кінці всіх накладок — плавні (радіус/скіс), шви навколо, без «хвостів» на стінці труби; маслянки на A, B, E, R.
-- Порядок: сегменти стріли → стик → втулки A/B → щоки → сідла і вилки D/F (по кондуктору з циліндрами у зведеному стані) → рукоять аналогічно → примірка циліндрів → ківш.
+- The joint between the two boom segments is a 17.5° mitre on each tube, bevelled, with full penetration, followed by the 8 mm side cheeks and the top doubler; do not weld across the corner radii of the tube (keep ≥ 5t away).
+- Bushing holes are cut with a hole saw through both walls using a jig; the bushing (a 66×33 tube, or "28 bore") goes right through and is welded all round on both sides, with the doublers added afterwards; then bore or ream it in the assembled state.
+- Clevises for spherical-bearing eyes: the pin clamps only the inner race, through spacer washers (ID = the pin, OD 32–34 for ШС25 / 37–39 for ШС30); the clevis gap is the eye width + 2 mm.
+- The ends of every doubler are eased (a radius or a taper), welded all round, with no "tails" left on the tube wall; grease nipples at A, B, E and R.
+- Sequence: the boom segments → the joint → bushings A/B → the cheeks → the saddles and clevises D/F (on a jig, with the cylinders closed) → the stick in the same way → trial-fit the cylinders → the bucket.
 
-## 7. Наступні етапи
+## 7. Next stages
 
-Поворотна колона з циліндром повороту ЦС50.25.300.510 (вилка A + палець C), шланги, обмежувачі ходу (перевірити на моделі крайні положення: `folded`, `max_reach`).
+A swing column with the ЦС50.25.300.510 swing cylinder (clevis A + pin C), the hoses, and travel stops (check the extreme positions on the model: `folded`, `max_reach`).

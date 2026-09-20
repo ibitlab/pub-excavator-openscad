@@ -1,40 +1,42 @@
-# Швидкий старт
+**English** · [Українська](QUICKSTART.uk.md)
 
-Параметрична модель робочого обладнання причіпного міні-екскаватора — стріла, рукоять, важелі, ківш 300 мм — під уже закуплені гідроциліндри. Одна модель OpenSCAD дає STL, креслення (DXF, PDF), специфікацію, розрахунки та інтерактивну 3D-сторінку. Подробиці — у [README.md](README.md).
+# Quick start
 
-## Що потрібно
+A parametric model of the working equipment of a towable mini excavator — boom, stick, linkage and a **300 mm bucket** — built around already-purchased hydraulic cylinders. One OpenSCAD model produces STL files, drawings (DXF, PDF), a bill of materials, the calculations and an interactive 3D page. Details are in [README.md](README.md).
 
-| Для чого | Залежність |
+## What you need
+
+| For what | Dependency |
 |---|---|
-| Модель, збирання версій, 3D-сторінка з сервером | **OpenSCAD** — нічна збірка з рушієм Manifold (перевірено на 2025.07 і 2026.09; стабільна 2021.01 не підійде), `openscad` у PATH; **Python 3** |
-| PDF-ескізи, звіт ковша | нічого ставити не треба: `tools/.venv` (matplotlib, shapely) створюється сам при першому збиранні |
-| 3D-сторінка без бекенду (WASM) | **Node.js ≥ 20.19** |
-| 3D-миша SpaceMouse (необов'язково) | Chrome / Edge; на macOS драйвер 3Dconnexion на час роботи вимикається — це роблять команди з `:sm` |
+| The model, building versions, the 3D page with a server | **OpenSCAD** — a nightly build with the Manifold engine (verified on 2025.07 and 2026.09; the stable 2021.01 will not do), `openscad` on the PATH; **Python 3** |
+| PDF sketches, the bucket report | nothing to install: `tools/.venv` (matplotlib, shapely) is created on the first build |
+| The 3D page without a backend (WASM) | **Node.js ≥ 20.19** |
+| A SpaceMouse 3D mouse (optional) | Chrome / Edge; on macOS the 3Dconnexion driver is switched off for the session — the `:sm` commands do that for you |
 
-## Основні команди
+## Core commands
 
 ```bash
-# відкрити модель: кути стріли / рукояті / ковша — перші параметри в Customizer
+# open the model: boom / stick / bucket angles are the first parameters in the Customizer
 openscad scad/excavator_boom.scad
 
-# зібрати версію → versions/VNNN-дата-час/ (STL, рендери, звіти, BOM, DXF, PDF, viewer.html); --commit одразу комітить
-tools/build_version.sh --commit "що змінено"
+# build a version → versions/VNNN-date-time/ (STL, renders, reports, BOM, DXF, PDF, viewer.html); --commit also commits it
+tools/build_version.sh --commit "what changed"
 
-# лише перевірки: пластини не перекриваються / рухомі пари не зіткаються на всьому ході циліндрів
+# checks only: plates abut without overlapping / moving pairs never collide over the full cylinder stroke
 tools/check_overlaps.sh
 tools/check_motion.sh
 
-# 3D-сторінка в браузері: кути — миттєво, інші параметри — через OpenSCAD за ≈ 0.4 с
+# the 3D page in a browser: angles are instant, other parameters rebuild through OpenSCAD in ≈ 0.4 s
 tools/viewer.sh
 
-# те саме без бекенду: OpenSCAD-WASM у браузері (перший раз сам зробить npm install)
-tools/viewer-wasm.sh              # dev-сервер;  build → статичний сайт у dist/;  preview;  test
+# the same without a backend: OpenSCAD-WASM in the browser (the first run does npm install itself)
+tools/viewer-wasm.sh              # dev server;  build → a static site in dist/;  preview;  test
 
-# зі SpaceMouse на macOS: драйвер вимикається на час роботи сервера і повертається після виходу
+# with a SpaceMouse on macOS: the driver is released while the server runs and restored on exit
 tools/with-spacemouse.sh tools/viewer.sh
 cd tools/viewer-wasm && npm run preview:sm
 ```
 
-Один раз після клонування: `git config core.hooksPath tools/git-hooks` — перевірка перекриттів перед комітом змін моделі.
+Once after cloning: `git config core.hooksPath tools/git-hooks` — this checks plate overlaps before every commit that touches the model.
 
-Результати останнього збирання — у теці `versions/` з найбільшим номером: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`.
+The results of the last build are in the `versions/` folder with the highest number: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`.
