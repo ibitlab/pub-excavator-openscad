@@ -1,0 +1,14 @@
+# OpenSCAD / python scratch
+*.csg
+__pycache__/
+venv/
+.DS_Store
+tools/.venv/
+build/
+
+# Особисте й локальне — не комітиться ніколи
+# (коментар має бути окремим рядком: git не розуміє коментарів після шаблону)
+# матеріали для публікацій, чернетки, все тимчасове
+temp/
+# локальні дозволи Claude Code
+.claude/settings.local.json

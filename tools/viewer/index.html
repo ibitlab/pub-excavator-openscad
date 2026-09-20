@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Міні-екскаватор — інтерактивна модель</title>
+<style>
+  :root { --bg:#f3f1ec; --panel:#fbfaf7; --ink:#23262b; --mute:#6d7278; --line:#ddd8cd; --acc:#c9731a; --acc2:#2f5d8a; --bad:#c0392b; --ok:#3d7a4a; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 13px/1.4 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--bg); display: flex; overflow: hidden; }
+  #side { width: 370px; min-width: 300px; height: 100%; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line); padding: 14px 14px 40px; }
+  #main { flex: 1; position: relative; min-width: 0; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .2px; }
+  .sub { color: var(--mute); font-size: 11.5px; margin-bottom: 12px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--mute); margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .ang { margin-bottom: 12px; }
+  .ang .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .ang label { font-weight: 600; }
+  .ang input[type=number] { width: 70px; }
+  .ang input[type=range] { width: 100%; margin: 4px 0 2px; accent-color: var(--acc); }
+  .cyl { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; height: 6px; background: #e6e1d6; border-radius: 3px; position: relative; overflow: hidden; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--acc2); border-radius: 3px; }
+  .bar.bad i { background: var(--bad); }
+  input[type=number], select { font: inherit; padding: 3px 5px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=number]:focus { outline: 2px solid #c9731a55; }
+  button { font: inherit; padding: 5px 9px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); cursor: pointer; }
+  button:hover { border-color: var(--acc); }
+  button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .chk { display: inline-flex; align-items: center; gap: 4px; margin: 0 10px 4px 0; white-space: nowrap; }
+  details { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px; background: #fff; }
+  summary { cursor: pointer; padding: 7px 9px; font-weight: 600; list-style-position: inside; }
+  summary .n { color: var(--acc); font-weight: 600; margin-left: 6px; }
+  .p { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 5px 9px; border-top: 1px solid #efebe2; }
+  .p .nm { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+  .p .ds { grid-column: 1 / -1; color: var(--mute); font-size: 11px; }
+  .p .in { display: flex; gap: 4px; align-items: center; }
+  .p .in input[type=number] { width: 74px; }
+  .p.ch .nm { color: var(--acc); font-weight: 700; }
+  .p .rs { border: none; background: none; color: var(--mute); padding: 0 3px; font-size: 14px; visibility: hidden; }
+  .p.ch .rs { visibility: visible; }
+  #status { font-size: 11.5px; color: var(--mute); min-height: 16px; margin: 6px 0; }
+  #status.busy { color: var(--acc); } #status.err { color: var(--bad); }
+  #hud { position: absolute; top: 10px; right: 10px; background: #fbfaf7e6; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 12px; font-variant-numeric: tabular-nums; max-width: 330px; pointer-events: none; }
+  #hud b { font-weight: 600; } #hud .w { color: var(--bad); margin-top: 5px; white-space: normal; }
+  #hud table { border-collapse: collapse; } #hud td { padding: 1px 0 1px 10px; } #hud td:first-child { padding-left: 0; color: var(--mute); }
+  #help { position: absolute; left: 10px; bottom: 8px; color: var(--mute); font-size: 11.5px; pointer-events: none; }
+  .note { background: #fff6e6; border: 1px solid #ecd9b0; border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; }
+  @media (max-width: 760px) { body { flex-direction: column-reverse; } #side { width: 100%; height: 46%; border-right: none; border-top: 1px solid var(--line); } #main { height: 54%; flex: none; } #hud { font-size: 11px; max-width: 60%; } #help { display: none; } }
+</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+</head>
+<body>
+<div id="side">
+  <h1>Міні-екскаватор: стріла · рукоять · ківш</h1>
+  <div class="sub" id="mode">модель <code>scad/excavator_boom.scad</code></div>
+
+  <h2>Кути — миттєво, у браузері</h2>
+  <div id="angles"></div>
+  <div class="row">
+    <label class="chk"><input type="checkbox" id="clamp" checked> обмежувати ходом циліндрів</label>
+  </div>
+  <div class="row" id="poses"></div>
+  <div class="row"><button id="play">▶ цикл копання</button></div>
+
+  <h2>Вигляд</h2>
+  <div class="row" id="views"></div>
+  <div id="toggles"></div>
+  <div id="sm"></div>
+  <div class="row" style="align-items:center;margin-top:4px"><label for="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
+
+  <h2>Параметри моделі — через OpenSCAD</h2>
+  <div id="static-note" class="note" hidden>Це статична сторінка: геометрія зафіксована на момент збирання, працюють лише кути та вигляд. Щоб міняти довжини, труби, кріплення і ківш — запустіть <code>tools/viewer.sh</code>.</div>
+  <div class="row"><button id="reset">Скинути все</button><button id="copy">Копіювати зміни</button><button id="rebuild" title="Перечитати .scad і побудувати заново">↻ Перечитати модель</button></div>
+  <div id="status"></div>
+  <div id="groups"></div>
+</div>
+<div id="main">
+  <canvas id="c"></canvas>
+  <div id="hud"></div>
+  <div id="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка у «Вигляді»</div>
+</div>
+
+<script>window.__STATIC__ = null;</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+//<pose> ------------------------------------------------------------------------------------------
+// Складання пози — ті самі формули, що й функції pt_*() у scad/excavator_boom.scad. Площина XZ, точка = [x, z].
+const RAD = Math.PI / 180;
+const rot2 = (v, a) => [v[0] * Math.cos(a * RAD) - v[1] * Math.sin(a * RAD), v[0] * Math.sin(a * RAD) + v[1] * Math.cos(a * RAD)];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1]], sub = (a, b) => [a[0] - b[0], a[1] - b[1]], mul = (a, k) => [a[0] * k, a[1] * k];
+const norm = a => Math.hypot(a[0], a[1]), ang = v => Math.atan2(v[1], v[0]) / RAD;
+function circX(p0, r0, p1, r1, side) {              // перетин кіл; side=+1 — точка ліворуч від напрямку p0→p1
+  const d = norm(sub(p1, p0)); if (d < 1e-9 || d > r0 + r1 || d < Math.abs(r0 - r1)) return null;
+  const a = (r0 * r0 - r1 * r1 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, r0 * r0 - a * a)), u = mul(sub(p1, p0), 1 / d);
+  return [p0[0] + u[0] * a - u[1] * side * h, p0[1] + u[1] * a + u[0] * side * h];
+}
+function pose(V, th, psi, om) {
+  const B = rot2(V.B_l, th), D = rot2(V.D_l, th), F = rot2(V.F_l, th), C = V.C_w;
+  const sdir = ang(mul(B, -1)) + psi, sp = p => add(B, rot2(p, sdir));
+  const E = sp(V.E_s), G = sp(V.G_s), H = sp(V.H_s), R = sp(V.R_s);
+  const bdir = sdir - om, Q = add(E, rot2(V.ear, bdir)), T = add(E, rot2([V.tip, 0], bdir));
+  const J = circX(R, V.rocker_L, Q, V.link_L, +1);
+  return { A: [0, 0], B, C, D, F, E, G, H, R, Q, J, T, th, sdir, bdir,
+           L: { boom: norm(sub(D, C)), stick: norm(sub(G, F)), bucket: J ? norm(sub(J, H)) : null } };
+}
+//</pose> -----------------------------------------------------------------------------------------
+
+const $ = id => document.getElementById(id);
+const STATIC = window.__STATIC__;
+let schema = [], byName = {}, values = {}, V = null, lastLog = [];
+const ang3 = { boom: 15, stick: 100, bucket: 60 };
+const ANG = [['boom', 'boom_angle', 'Стріла', 'кут хорди A→B до горизонту'], ['stick', 'stick_angle', 'Рукоять', 'внутрішній кут у шарнірі B'], ['bucket', 'bucket_angle', 'Ківш', 'до осі рукояті, + = підкручування']];
+
+// ---------------------------------------------------------------- сцена
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);                       // як в OpenSCAD: X — вперед, Y — вбік, Z — вгору
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf3f1ec);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8478, 1.15));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-1500, -3000, 4000); scene.add(sun);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(2500, 3000, 800); scene.add(fill);
+let camera, controls, ortho = false;
+function makeCamera(isOrtho, pos, target) {
+  const w = canvas.clientWidth || 800, h = canvas.clientHeight || 600;
+  if (isOrtho) { const d = pos.distanceTo(target) * 0.42; camera = new THREE.OrthographicCamera(-d * w / h, d * w / h, d, -d, -20000, 40000); }
+  else camera = new THREE.PerspectiveCamera(32, w / h, 20, 60000);
+  camera.position.copy(pos); camera.up.set(0, 0, 1);
+  if (controls) controls.dispose();
+  controls = new OrbitControls(camera, canvas); controls.target.copy(target);
+  controls.enableDamping = true; controls.dampingFactor = 0.12; controls.screenSpacePanning = true; controls.zoomToCursor = true;
+  controls.update(); ortho = isOrtho;
+}
+makeCamera(false, new THREE.Vector3(1300, -5200, 900), new THREE.Vector3(1300, 0, -100));
+const bodies = {}, world = new THREE.Group(); scene.add(world);
+const pinsGroup = new THREE.Group(); world.add(pinsGroup);
+const ground = new THREE.Group(); world.add(ground);
+const envelope = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xd0402f, size: 5, sizeAttenuation: false })); world.add(envelope);
+const show = { cylinders: true, linkage: true, bucket: true, post: true, ground: true, pins: true, edges: true, envelope: false };
+
+function buildGround(z) {
+  ground.clear();
+  const pl = new THREE.Mesh(new THREE.PlaneGeometry(9000, 6000), new THREE.MeshBasicMaterial({ color: 0x8a6a45, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+  pl.position.set(1500, 0, -z); ground.add(pl);
+  const grid = new THREE.GridHelper(9000, 18, 0x9a8a70, 0xc9bfae); grid.rotation.x = Math.PI / 2; grid.position.set(1500, 0, -z + 1); ground.add(grid);
+}
+function setMeshes(parts) {
+  for (const k in bodies) { world.remove(bodies[k]); bodies[k].traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); delete bodies[k]; }
+  for (const [name, m] of Object.entries(parts)) {
+    const g = new THREE.Group(); g.name = name;
+    const pos = new THREE.Float32BufferAttribute(m.pos, 3);
+    for (const grp of m.groups) {
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', pos); geo.setIndex(grp.idx);
+      const flat = geo.toNonIndexed(); flat.computeVertexNormals(); geo.dispose();
+      const c = new THREE.Color(grp.color[0] / 255, grp.color[1] / 255, grp.color[2] / 255);
+      const mesh = new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color: c, roughness: 0.62, metalness: 0.12, side: THREE.DoubleSide }));
+      mesh.userData.base = c.clone(); g.add(mesh);
+      const ed = new THREE.LineSegments(new THREE.EdgesGeometry(flat, 28), new THREE.LineBasicMaterial({ color: 0x2b2b2b, transparent: true, opacity: 0.35 }));
+      ed.userData.edge = true; g.add(ed);
+    }
+    bodies[name] = g; world.add(g);
+  }
+  applyShow();
+}
+function setPins() {
+  pinsGroup.clear(); if (!V) return;
+  const mat = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.35, metalness: 0.6 });
+  for (const [k, d, len] of V.pins) { const m = new THREE.Mesh(new THREE.CylinderGeometry(d / 2, d / 2, len, 24), mat); m.name = k; pinsGroup.add(m); }   // вісь циліндра three.js — уздовж Y, як і пальці
+}
+const place = (o, p, a) => { if (!o) return; o.position.set(p[0], 0, p[1]); o.rotation.set(0, -a * RAD, 0); };
+
+// ---------------------------------------------------------------- поза
+function limits(key) { const l = V && V['lim_' + key]; return l && l[0] != null && l[1] != null ? l : null; }
+function effAngles() {
+  const out = {};
+  for (const [key, pname] of ANG) {
+    const l = limits(key); let v = ang3[key];
+    if ($('clamp').checked && l) v = Math.min(l[1], Math.max(l[0], v));
+    out[key] = v;
+  }
+  return out;
+}
+function updatePose() {
+  if (!V) return;
+  const a = effAngles(), P = pose(V, a.boom, a.stick, a.bucket);
+  place(bodies.post, [0, 0], 0); place(bodies.boom, [0, 0], P.th);
+  place(bodies.v_stick, P.B, P.sdir); place(bodies.bucket, P.E, P.bdir);
+  const cyl = (key, p1, p2) => { const ok = !!p2; for (const s of ['body', 'rod']) { const o = bodies[`v_cyl_${key}_${s}`]; if (o) o.visible = ok && show.cylinders; }
+    if (ok) { const an = ang(sub(p2, p1)); place(bodies[`v_cyl_${key}_body`], p1, an); place(bodies[`v_cyl_${key}_rod`], p2, an); } };
+  cyl('boom', P.C, P.D); cyl('stick', P.F, P.G); cyl('bucket', P.H, P.J);
+  if (bodies.v_rocker) bodies.v_rocker.visible = !!P.J && show.linkage;
+  if (bodies.v_link) bodies.v_link.visible = !!P.J && show.linkage;
+  if (P.J) { place(bodies.v_rocker, P.R, ang(sub(P.J, P.R))); place(bodies.v_link, P.J, ang(sub(P.Q, P.J))); }
+  for (const m of pinsGroup.children) { const p = P[m.name]; m.visible = !!p && show.pins; if (p) m.position.set(p[0], 0, p[1]); }
+  // циліндр поза ходом → червоний корпус
+  const warn = [];
+  for (const [key, , title] of ANG) {
+    const [closed, stroke] = V['cyl_' + key], L = P.L[key], bad = L == null || L < closed - 0.5 || L > closed + stroke + 0.5;
+    const body = bodies[`v_cyl_${key}_body`]; if (body) body.traverse(o => { if (o.isMesh) o.material.color.copy(bad ? new THREE.Color(0xd23c2c) : o.userData.base); });
+    const el = $('cyl_' + key); if (el) { const f = L == null ? 0 : (L - closed) / stroke;
+      el.querySelector('.bar').classList.toggle('bad', bad); el.querySelector('i').style.width = Math.max(0, Math.min(1, f)) * 100 + '%';
+      el.querySelector('span').textContent = L == null ? 'важелі не збираються' : `циліндр ${L.toFixed(0)} мм · хід ${(L - closed).toFixed(0)} / ${stroke}`; }
+    if (bad) warn.push(`${title}: циліндр поза ходом${L == null ? '' : ` (${L.toFixed(0)} мм при ${closed}…${closed + stroke})`}`);
+    const inp = $('num_' + key), sl = $('sl_' + key); if (document.activeElement !== inp) inp.value = (+a[key].toFixed(1)); sl.value = a[key];
+  }
+  const gz = -groundZ(), T = P.T;
+  $('hud').innerHTML = `<table>
+    <tr><td>зуб: виліт від осі A</td><td><b>${T[0].toFixed(0)}</b> мм</td></tr>
+    <tr><td>зуб: ${T[1] - gz >= 0 ? 'над землею' : 'нижче землі'}</td><td><b>${Math.abs(T[1] - gz).toFixed(0)}</b> мм</td></tr>
+    <tr><td>вісь ковша E: ${P.E[1] - gz >= 0 ? 'над землею' : 'нижче землі'}</td><td>${Math.abs(P.E[1] - gz).toFixed(0)} мм</td></tr>
+    <tr><td>нахил отвору ковша</td><td>${tiltText(P.bdir)}</td></tr></table>` +
+    [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))].map(w => `<div class="w">⚠ ${w}</div>`).join('');
+}
+function tiltText(bdir) {                                    // отвір дивиться у бік −ŷ ковша; горизонтальний, коли вісь ковша дивиться на 180°
+  let t = ((bdir - 180) % 360 + 540) % 360 - 180;            // −: нахил назад (тримає), +: вперед (висипає)
+  const a = Math.abs(t).toFixed(0);
+  return Math.abs(t) < 3 ? 'горизонтально — тримає ґрунт' : t < 0 ? (t > -90 ? `зубами вгору на ${a}° — тримає ґрунт` : `перекинутий назад (${a}°)`) : (t < 60 ? `зубами вниз на ${a}° — копання` : `зубами вниз на ${a}° — висипання`);
+}
+const groundZ = () => values.ground_below_A ?? (V ? V.ground : 650);
+function updateEnvelope() {
+  const pts = []; const lb = limits('boom'), ls = limits('stick'), lk = limits('bucket');
+  if (V && lb && ls && lk && show.envelope) for (let i = 0; i <= 24; i++) for (let j = 0; j <= 24; j++) for (const o of [lk[0], lk[1]]) {
+    const P = pose(V, lb[0] + (lb[1] - lb[0]) * i / 24, ls[0] + (ls[1] - ls[0]) * j / 24, o); pts.push(P.T[0], 0, P.T[1]); }
+  envelope.geometry.dispose(); envelope.geometry = new THREE.BufferGeometry(); envelope.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+}
+function applyShow() {
+  if (bodies.post) bodies.post.visible = show.post; if (bodies.bucket) bodies.bucket.visible = show.bucket;
+  ground.visible = show.ground; envelope.visible = show.envelope;
+  for (const k in bodies) bodies[k].traverse(o => { if (o.userData.edge) o.visible = show.edges; });
+  updateEnvelope(); updatePose();
+}
+
+// ---------------------------------------------------------------- керування: кути, пози, вигляд
+function buildAngleUI() {
+  $('angles').innerHTML = '';
+  for (const [key, pname, title, hint] of ANG) {
+    const d = document.createElement('div'); d.className = 'ang';
+    d.innerHTML = `<div class="top"><label for="sl_${key}" title="${hint}">${title} <span style="color:var(--mute);font-weight:400">· ${hint}</span></label><span><input type="number" id="num_${key}" step="1"> °</span></div>
+      <input type="range" id="sl_${key}" step="0.1"><div class="cyl" id="cyl_${key}"><div class="bar"><i></i></div><span></span></div>`;
+    $('angles').appendChild(d);
+    const set = v => { if (!isFinite(v)) return; ang3[key] = v; stopPlay(); updatePose(); };
+    d.querySelector('input[type=range]').addEventListener('input', e => set(+e.target.value));
+    d.querySelector('input[type=number]').addEventListener('input', e => set(+e.target.value));
+  }
+}
+function updateAngleRanges() {
+  for (const [key, pname] of ANG) {
+    const p = byName[pname] || {}, l = limits(key), clamp = $('clamp').checked && l;
+    const lo = clamp ? l[0] : (p.min ?? -90), hi = clamp ? l[1] : (p.max ?? 180), sl = $('sl_' + key);
+    sl.min = lo; sl.max = hi; $('num_' + key).min = Math.floor(lo); $('num_' + key).max = Math.ceil(hi);
+    sl.title = `${lo.toFixed(1)}° … ${hi.toFixed(1)}°`;
+  }
+}
+const POSES = { 'Робоча': [15, 100, 60], 'Транспорт': [58, 51, 139], 'Макс. виліт': [-5, 156, -17], 'Глибоке копання': [-38, 90, 60], 'Макс. висота': [58, 156, 0], 'Висипання': [45, 140, -17] };
+for (const [name, a] of Object.entries(POSES)) { const b = document.createElement('button'); b.textContent = name; b.onclick = () => { stopPlay(); glide(a); }; $('poses').appendChild(b); }
+let anim = null;
+function glide(to, ms = 600, then) {
+  const from = [ang3.boom, ang3.stick, ang3.bucket], t0 = performance.now(); anim = { cancel: false };
+  const me = anim, step = t => { if (me.cancel) return; const k = Math.min(1, (t - t0) / ms), e = k * k * (3 - 2 * k);
+    ang3.boom = from[0] + (to[0] - from[0]) * e; ang3.stick = from[1] + (to[1] - from[1]) * e; ang3.bucket = from[2] + (to[2] - from[2]) * e; updatePose();
+    if (k < 1) requestAnimationFrame(step); else if (then) then(); }; requestAnimationFrame(step);
+}
+const CYCLE = [[12, 145, 0, 900], [-22, 142, 5, 1100], [-26, 95, 45, 1500], [-22, 78, 125, 1000], [38, 80, 135, 1400], [42, 140, 120, 1100], [42, 142, -17, 900], [12, 145, 0, 1000]];
+let playing = false;
+function playFrom(i) { if (!playing) return; const k = CYCLE[i % CYCLE.length]; glide(k.slice(0, 3), k[3], () => playFrom(i + 1)); }
+function stopPlay() { playing = false; if (anim) anim.cancel = true; $('play').classList.remove('on'); $('play').textContent = '▶ цикл копання'; }
+$('play').onclick = () => { if (playing) return stopPlay(); playing = true; $('play').classList.add('on'); $('play').textContent = '■ зупинити'; playFrom(0); };
+$('clamp').onchange = () => { updateAngleRanges(); updatePose(); };
+
+function sceneBox() { const b = new THREE.Box3(); for (const k in bodies) if (bodies[k].visible) b.expandByObject(bodies[k]); return b.isEmpty() ? new THREE.Box3(new THREE.Vector3(-300, -300, -900), new THREE.Vector3(3000, 300, 1500)) : b; }
+function setView(dir, isOrtho = ortho) {
+  const b = sceneBox(), c = b.getCenter(new THREE.Vector3()), r = b.getSize(new THREE.Vector3()).length() * 0.5;
+  const d = dir ? new THREE.Vector3(...dir).normalize() : camera.position.clone().sub(controls.target).normalize();
+  makeCamera(isOrtho, c.clone().addScaledVector(d, r * 3.4), c); resize();
+}
+const VIEWS = { 'Збоку': [0, -1, 0], 'Ізометрія': [0.55, -1, 0.45], 'Ззаду-збоку': [-0.8, -1, 0.35], 'Зверху': [0, -0.001, 1], 'Спереду': [1, 0, 0.05], 'Вписати': null };
+for (const [name, d] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = name; b.onclick = () => setView(d); $('views').appendChild(b); }
+{ const b = document.createElement('button'); b.textContent = 'Ортогонально'; b.onclick = () => { setView(null, !ortho); b.classList.toggle('on', ortho); }; $('views').appendChild(b); }
+const TOG = { cylinders: 'циліндри', linkage: 'коромисло і тяга', bucket: 'ківш', post: 'колона', pins: 'пальці', ground: 'земля', edges: 'ребра', envelope: 'робоча зона (траєкторії зуба)' };
+for (const [k, t] of Object.entries(TOG)) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${t}`;
+  l.querySelector('input').onchange = e => { show[k] = e.target.checked; applyShow(); }; $('toggles').appendChild(l); }
+canvas.addEventListener('dblclick', e => {                   // подвійний клік — новий центр обертання на поверхні моделі
+  const r = canvas.getBoundingClientRect(), ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const hit = ray.intersectObjects(Object.values(bodies), true).find(h => h.object.isMesh && h.object.visible); if (hit) { controls.target.copy(hit.point); controls.update(); }
+});
+
+// ---------------------------------------------------------------- параметри моделі (OpenSCAD)
+const changed = () => { const o = {}; for (const g of schema) for (const p of g.params) if (!p.client && JSON.stringify(values[p.name]) !== JSON.stringify(p.value)) o[p.name] = values[p.name]; return o; };
+function buildParamUI() {
+  const root = $('groups'); root.innerHTML = '';
+  for (const g of schema) {
+    const ps = g.params.filter(p => !p.client); if (!ps.length) continue;
+    const det = document.createElement('details'); det.innerHTML = `<summary>${g.name}<span class="n"></span></summary>`; root.appendChild(det);
+    for (const p of ps) {
+      const row = document.createElement('div'); row.className = 'p'; row.id = 'p_' + p.name;
+      const vec = Array.isArray(p.value), vals = vec ? p.value : [p.value], cur = values[p.name], curs = vec ? cur : [cur]; let inputs = '';
+      if (typeof p.value === 'boolean') inputs = `<input type="checkbox" ${cur ? 'checked' : ''}>`;
+      else if (p.options) inputs = `<select>${p.options.map(o => `<option ${o === cur ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+      else inputs = vals.map((v, i) => `<input type="number" value="${curs[i]}" step="${p.step ?? (Math.abs(v) < 20 && !Number.isInteger(v) ? 0.5 : (Math.abs(v) >= 200 ? 5 : 1))}" ${p.min != null ? `min="${p.min}" max="${p.max}"` : ''}>`).join('');
+      row.innerHTML = `<span class="nm" title="${(p.desc || '').replace(/"/g, '&quot;')}">${p.name}</span><span class="in">${inputs}<button class="rs" title="повернути ${JSON.stringify(p.value)}">↺</button></span>${p.desc ? `<span class="ds">${p.desc}</span>` : ''}`;
+      det.appendChild(row);
+      const els = [...row.querySelectorAll('input,select')];
+      const read = () => { let v; if (typeof p.value === 'boolean') v = els[0].checked; else if (p.options) v = els[0].value; else { const n = els.map(e => +e.value); if (n.some(x => !isFinite(x) || e_empty(els))) return; v = vec ? n : n[0]; }
+        values[p.name] = v; mark(); schedule(); };
+      els.forEach(e => e.addEventListener('input', read));
+      row.querySelector('.rs').onclick = () => { values[p.name] = p.value; if (typeof p.value === 'boolean') els[0].checked = p.value; else if (p.options) els[0].value = p.value; else els.forEach((e, i) => e.value = vals[i]); mark(); schedule(); };
+      if (STATIC) els.forEach(e => e.disabled = true);
+    }
+  }
+  mark();
+}
+const e_empty = els => els.some(e => e.value === '');
+function mark() {
+  const ch = changed();
+  for (const det of $('groups').children) { let n = 0; for (const row of det.querySelectorAll('.p')) { const on = row.id.slice(2) in ch; row.classList.toggle('ch', on); n += on; } det.querySelector('.n').textContent = n ? `змінено: ${n}` : ''; }
+}
+let timer = null, inflight = false, again = false;
+function schedule() { if (STATIC) return; clearTimeout(timer); timer = setTimeout(rebuild, 220); }
+async function rebuild(fresh = false) {
+  if (inflight) { again = true; return; } inflight = true; status('OpenSCAD будує…', 'busy');
+  try {
+    const t0 = performance.now(), r = await fetch('/api/build', { method: 'POST', body: JSON.stringify({ params: changed(), fresh }) }), d = await r.json();
+    if (d.error) status('Помилка: ' + d.error, 'err'); else { applyBuild(d); status(`OpenSCAD: ${d.cached ? 'з кешу' : (d.ms / 1000).toFixed(2) + ' с'} · разом ${((performance.now() - t0) / 1000).toFixed(2)} с · змінено параметрів: ${Object.keys(changed()).length}`); }
+  } catch (e) { status('Сервер недоступний — запустіть tools/viewer.sh (' + e.message + ')', 'err'); }
+  inflight = false; if (again) { again = false; rebuild(); }
+}
+function status(t, cls = '') { const s = $('status'); s.textContent = t; s.className = cls; }
+function applyBuild(d) {
+  lastLog = (d.log || []).filter(l => !/ПОТОЧНЕ|ЗУБ КОВША|поза межами циліндра|Циліндр між/.test(l));
+  if (d.view) V = d.view; setMeshes(d.parts || {}); setPins(); buildGround(groundZ()); updateAngleRanges(); updateEnvelope(); updatePose();
+}
+$('reset').onclick = () => { for (const g of schema) for (const p of g.params) values[p.name] = p.value; buildParamUI(); buildGround(groundZ()); schedule(); updatePose(); };
+$('copy').onclick = async () => { const ch = changed(), txt = Object.keys(ch).length ? Object.entries(ch).map(([k, v]) => `${k} = ${JSON.stringify(v)};`).join('\n') : '// змін немає';
+  try { await navigator.clipboard.writeText(txt); status('Скопійовано рядки для вставки в .scad:\n' + txt.replace(/\n/g, '  ')); } catch { prompt('Рядки для .scad:', txt); } };
+$('rebuild').onclick = async () => { if (STATIC) return; await loadSchema(); rebuild(true); };
+
+async function loadSchema() {
+  schema = STATIC ? STATIC.schema : await (await fetch('/api/schema')).json();
+  byName = {}; const old = values; values = {};
+  for (const g of schema) for (const p of g.params) { byName[p.name] = p; values[p.name] = (p.name in old && JSON.stringify(old[p.name]).length && typeof old[p.name] === typeof p.value) ? old[p.name] : p.value; }
+  // ?назва=значення в адресі: початкові значення параметрів (вектор — через кому), напр. ?boom_L1=1000&bucket_ear=30,125&boom_angle=40&view=iso
+  for (const [k, raw] of new URLSearchParams(location.search)) { const p = byName[k]; if (!p) continue;
+    const v = typeof p.value === 'boolean' ? raw === 'true' || raw === '1' : Array.isArray(p.value) ? raw.split(',').map(Number) : p.options ? raw : Number(raw);
+    if (Array.isArray(v) ? v.length === p.value.length && v.every(isFinite) : (typeof v !== 'number' || isFinite(v))) values[k] = v; }
+  buildParamUI(); $('gz').value = values.ground_below_A;
+}
+$('gz').addEventListener('input', e => { if (e.target.value !== '' && isFinite(+e.target.value)) { values.ground_below_A = +e.target.value; buildGround(groundZ()); updatePose(); } });
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false);
+  if (camera.isPerspectiveCamera) camera.aspect = w / h; else { const d = camera.top; camera.left = -d * w / h; camera.right = d * w / h; }
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+//<spacemouse> ------------------------------------------------------------------------------------
+// 3Dconnexion SpaceMouse (6 ступенів вільності). Два шляхи, обидва без драйверних плагінів:
+//  * WebHID — Chrome / Edge / Opera: кнопка «SpaceMouse» → дозвіл на пристрій (сторінка має бути на https або localhost);
+//  * Gamepad API — Firefox (і Chrome як запасний шлях): миша видна як 6-осьовий «геймпад»; з'являється після першого руху ковпачка.
+// Система миші права: X — праворуч, Y — до себе, Z — вниз; сирі значення ≈ ±350. Режим «об'єкт у руці»: модель рухається за ковпачком.
+const SM = { t: [0, 0, 0], r: [0, 0, 0], src: null, hids: [], btn: 0, last: 0, view: 0, cfg: { speed: 1, invPan: false, invZoom: false, invRot: false } };
+try { Object.assign(SM.cfg, JSON.parse(localStorage.getItem('spacemouse') || '{}')); } catch (e) { /* сховище недоступне — лишаються типові */ }
+const smSave = () => { try { localStorage.setItem('spacemouse', JSON.stringify(SM.cfg)); } catch (e) { /* не критично */ } };
+$('sm').innerHTML = `<div class="row" style="align-items:center;margin-top:6px"><button id="sm_btn" title="3Dconnexion SpaceMouse / SpaceNavigator">SpaceMouse</button><span id="sm_st" style="color:var(--mute);font-size:11.5px;flex:1;min-width:150px"></span></div>
+  <div class="row" style="align-items:center"><label>чутливість <input type="range" id="sm_speed" min="0.2" max="3" step="0.1" style="width:80px;vertical-align:middle;accent-color:var(--acc)"></label>
+  <label class="chk"><input type="checkbox" id="sm_ip"> інв. зсув</label><label class="chk"><input type="checkbox" id="sm_iz"> інв. масштаб</label><label class="chk"><input type="checkbox" id="sm_ir"> інв. оберт.</label></div>
+  <div id="sm_dbg" style="font:11px ui-monospace,Menlo,monospace;color:var(--mute);min-height:14px"></div>`;
+$('sm_speed').value = SM.cfg.speed; $('sm_ip').checked = SM.cfg.invPan; $('sm_iz').checked = SM.cfg.invZoom; $('sm_ir').checked = SM.cfg.invRot;
+$('sm_speed').oninput = e => { SM.cfg.speed = +e.target.value; smSave(); };
+for (const [id, key] of [['sm_ip', 'invPan'], ['sm_iz', 'invZoom'], ['sm_ir', 'invRot']]) $(id).onchange = e => { SM.cfg[key] = e.target.checked; smSave(); };
+function smStatus(msg) {
+  $('sm_st').textContent = msg || (SM.src === 'hid' ? `підключено (WebHID): ${SM.hids[0]?.productName || 'SpaceMouse'}` : SM.src === 'pad' ? `підключено (Gamepad API): ${SM.padId}`
+    : 'hid' in navigator ? 'натисніть кнопку і виберіть мишу у вікні браузера' : 'тут немає WebHID — порухайте ковпачок, миша підхопиться через Gamepad API');
+  $('sm_btn').classList.toggle('on', !!SM.src);
+}
+function smButtons(bits) {                                   // кнопка 1 — вписати модель, кнопка 2 — наступний стандартний вигляд
+  const down = bits & ~SM.btn; SM.btn = bits;
+  if (down & 1) setView(null);
+  if (down & 2) { const names = ['Збоку', 'Ізометрія', 'Зверху', 'Спереду']; SM.view = (SM.view + 1) % names.length; setView(VIEWS[names[SM.view]]); }
+}
+function smReport(e) {                                       // звіт 1 — зсув (у нових моделях одразу і оберт, 12 байт), 2 — оберт, 3 — кнопки
+  const d = e.data, n = d.byteLength, v = k => d.getInt16(k, true) / 350;
+  if (e.reportId === 1 && n >= 6) { SM.t = [v(0), v(2), v(4)]; if (n >= 12) SM.r = [v(6), v(8), v(10)]; }
+  else if (e.reportId === 2 && n >= 6) SM.r = [v(0), v(2), v(4)];
+  else if (e.reportId === 3 && n >= 1) smButtons(d.getUint8(0) | (n > 1 ? d.getUint8(1) << 8 : 0));
+  SM.last = performance.now(); SM.dbg = `звіт ${e.reportId}·${n} байт`; SM.cnt = (SM.cnt || 0) + 1;
+}
+async function smOpen(dev) {
+  if (!dev.opened) await dev.open();
+  dev.addEventListener('inputreport', smReport); if (!SM.hids.includes(dev)) SM.hids.push(dev); SM.src = 'hid'; smStatus();
+}
+const SM_FILTERS = [{ vendorId: 0x256f }, { vendorId: 0x046d, usagePage: 0x01, usage: 0x08 }];   // 3Dconnexion; старі Logitech/3Dconnexion: «multi-axis controller»
+$('sm_btn').onclick = async () => {
+  if (!('hid' in navigator)) return smStatus();
+  try { const devs = await navigator.hid.requestDevice({ filters: SM_FILTERS }); if (!devs.length) return smStatus('пристрій не вибрано'); for (const d of devs) await smOpen(d); }
+  catch (e) { smStatus('не вдалося відкрити: ' + e.message + ' — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз'); }
+};
+if ('hid' in navigator) {
+  navigator.hid.getDevices().then(ds => ds.filter(d => d.vendorId === 0x256f || d.vendorId === 0x046d).forEach(d => smOpen(d).catch(() => {})));   // уже дозволені пристрої — без запиту
+  navigator.hid.addEventListener('connect', e => { if (e.device.vendorId === 0x256f || e.device.vendorId === 0x046d) smOpen(e.device).catch(() => {}); });   // мишу з чинним дозволом знову ввімкнули в USB
+  navigator.hid.addEventListener('disconnect', e => { SM.hids = SM.hids.filter(d => d !== e.device); if (!SM.hids.length && SM.src === 'hid') { SM.src = null; SM.t = [0, 0, 0]; SM.r = [0, 0, 0]; smStatus(); } });
+}
+function smGamepad() {
+  if (SM.src === 'hid' || !navigator.getGamepads) return;
+  const g = [...navigator.getGamepads()].find(p => p && p.axes.length >= 6 && /3dconnexion|space ?(mouse|navigator|pilot|explorer|ball)|256f/i.test(p.id));
+  if (!g) { if (SM.src === 'pad') { SM.src = null; SM.t = [0, 0, 0]; SM.r = [0, 0, 0]; smStatus(); } return; }
+  SM.t = [g.axes[0], g.axes[1], g.axes[2]]; SM.r = [g.axes[3], g.axes[4], g.axes[5]]; SM.last = performance.now();
+  smButtons(g.buttons.reduce((b, x, i) => b | (x.pressed ? 1 << i : 0), 0));
+  if (SM.src !== 'pad') { SM.src = 'pad'; SM.padId = g.id.slice(0, 40); smStatus(); }
+}
+function smTick(dt) {                                         // викликається кожен кадр перед controls.update()
+  smGamepad();
+  if (!SM.src || performance.now() - SM.last > 400) return;
+  const dz = x => Math.abs(x) < 0.04 ? 0 : Math.max(-1, Math.min(1, x)), [tx, ty, tz] = SM.t.map(dz), [rx, , rz] = SM.r.map(dz);
+  if (!(tx || ty || tz || rx || rz)) return;
+  const c = SM.cfg, k = c.speed * dt, sp = c.invPan ? -1 : 1, sz = c.invZoom ? -1 : 1, sr = c.invRot ? -1 : 1;
+  const off = camera.position.clone().sub(controls.target); let r = off.length();
+  let th = Math.atan2(off.y, off.x), ph = Math.acos(Math.max(-1, Math.min(1, off.z / r)));
+  th += sr * rz * 1.8 * k;                                   // скрут ковпачка за годинниковою → модель крутиться за годинниковою (камера — проти)
+  ph = Math.max(0.02, Math.min(Math.PI - 0.02, ph - sr * rx * 1.4 * k));   // нахил до себе → бачимо модель більше згори
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+  const span = camera.isPerspectiveCamera ? r * 0.9 : (camera.top - camera.bottom) / camera.zoom;
+  controls.target.addScaledVector(right, -sp * tx * span * k).addScaledVector(up, sp * tz * span * k);   // ковпачок праворуч/вниз → модель праворуч/вниз
+  if (camera.isPerspectiveCamera) r = Math.max(50, Math.min(40000, r * Math.exp(-sz * ty * 1.6 * k)));  // до себе → ближче
+  else { camera.zoom = Math.max(0.05, Math.min(50, camera.zoom * Math.exp(sz * ty * 1.6 * k))); camera.updateProjectionMatrix(); }
+  camera.position.copy(controls.target).add(new THREE.Vector3(r * Math.sin(ph) * Math.cos(th), r * Math.sin(ph) * Math.sin(th), r * Math.cos(ph)));
+  camera.lookAt(controls.target);
+}
+setInterval(() => {                                           // діагностика: чи взагалі приходять дані з миші та які
+  const f = a => a.map(x => (x >= 0 ? '+' : '') + x.toFixed(2)).join(' ');
+  $('sm_dbg').textContent = !SM.src ? '' : performance.now() - SM.last > 1500 ? (SM.src === 'hid' ? `даних немає (звітів: ${SM.cnt || 0}) — порухайте ковпачок; якщо так і лишиться, пристрій тримає драйвер 3DxWare` : '')
+    : `${SM.src === 'hid' ? SM.dbg : 'gamepad'} · зсув ${f(SM.t)} · оберт ${f(SM.r)}`;
+}, 200);
+smStatus(); window.__SM__ = SM; window.__CAM__ = () => ({ p: camera.position.toArray(), t: controls.target.toArray(), zoom: camera.zoom });   // для тестів
+//</spacemouse> -----------------------------------------------------------------------------------
+let tPrev = performance.now();
+(function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+
+(async function init() {
+  buildAngleUI(); resize();
+  try {
+    await loadSchema();
+    ang3.boom = values.boom_angle; ang3.stick = values.stick_angle; ang3.bucket = values.bucket_angle;
+    if (STATIC) { $('static-note').hidden = false; $('mode').innerHTML = `статична сторінка · зібрано ${STATIC.made}`; ['reset', 'copy', 'rebuild'].forEach(i => $(i).disabled = true); applyBuild(STATIC.build); }
+    else await rebuild();
+    const q = new URLSearchParams(location.search).get('view'), QV = { side: 'Збоку', iso: 'Ізометрія', back: 'Ззаду-збоку', top: 'Зверху', front: 'Спереду' };
+    setView(VIEWS[QV[q] || 'Збоку']); window.__READY__ = true;
+  } catch (e) { status('Не вдалося завантажити модель: ' + e.message, 'err'); }
+})();
+</script>
+</body>
+</html>

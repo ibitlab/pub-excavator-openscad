@@ -1,0 +1,24 @@
+{
+  "name": "excavator-viewer-wasm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Інтерактивний 3D-перегляд моделі міні-екскаватора повністю в браузері: OpenSCAD-WASM у веб-воркері + three.js, без бекенду",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open",
+    "dev:sm": "../with-spacemouse.sh vite --open",
+    "build": "vite build",
+    "preview": "vite preview --open",
+    "preview:sm": "../with-spacemouse.sh vite preview --open",
+    "test": "node test/smoke.mjs",
+    "test:spacemouse": "node test/spacemouse.mjs"
+  },
+  "dependencies": {
+    "openscad-wasm": "0.0.4",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0"
+  },
+  "license": "GPL-2.0"
+}

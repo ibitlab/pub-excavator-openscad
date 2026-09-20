@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Перед комітом змін моделі перевірити, що пластини прилягають, а не перекриваються (≈4 с).
+# Увімкнути один раз після клонування: git config core.hooksPath tools/git-hooks
+git diff --cached --name-only | grep -q '^scad/' || exit 0
+command -v openscad >/dev/null || { echo "pre-commit: openscad не знайдено — перевірку перетинів пропущено"; exit 0; }
+out=$("$(git rev-parse --show-toplevel)/tools/check_overlaps.sh") || { echo "$out" | grep -v '^ok'; echo "pre-commit: коміт зупинено (обійти: git commit --no-verify)"; exit 1; }
