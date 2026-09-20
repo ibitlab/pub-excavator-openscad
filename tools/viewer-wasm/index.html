@@ -18,6 +18,8 @@
   .hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
   .lang { display: flex; gap: 3px; flex: none; }
   .lang button { padding: 2px 7px; font-size: 11px; line-height: 1.5; letter-spacing: .4px; }
+  .lic { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--mute); font-size: 11px; line-height: 1.5; }
+  .lic a { color: var(--acc2); }
   h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--mute); margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
   .ang { margin-bottom: 12px; }
   .ang .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -83,6 +85,7 @@
   <div class="row"><button id="reset" data-i18n="reset">Скинути все</button><button id="copy" data-i18n="copy">Копіювати зміни</button><button id="rebuild" data-i18n="open" data-i18n-title="open.title">Відкрити .scad…</button><input type="file" id="file" accept=".scad" hidden></div>
   <div id="status"></div>
   <div id="groups"></div>
+  <div class="lic" id="lic" data-i18n-html="lic"></div>
 </div>
 <div id="main">
   <canvas id="c"></canvas>

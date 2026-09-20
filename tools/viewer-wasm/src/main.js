@@ -404,6 +404,7 @@ function applyStatic() {                                      // статичн�
   document.documentElement.lang = getLang();
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
+  for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = t(el.dataset.i18nHtml);   // рядки з посиланнями
   setMode();
   if (playing) $('play').textContent = t('stop');
 }
