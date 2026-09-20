@@ -9,7 +9,7 @@ bom_drawings.py — специфікація (BOM), DXF 1:1 та PDF-ескіз�
 Вихід (у теці --out): bom/bom.md, bom/bom.csv, dxf/<деталь>.dxf, drawings/parts.pdf
 Запуск: tools/bom_drawings.sh [--out ТЕКА]
 """
-import subprocess, json, re, os, sys, math, argparse, csv, tempfile, datetime
+import subprocess, json, re, os, sys, math, argparse, csv, tempfile, datetime, textwrap
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCAD = os.path.join(ROOT, 'scad', 'excavator_boom.scad')
@@ -170,10 +170,22 @@ def make_pdf(path, bom, flats, tubes, version):
     def dim_v(ax, x, y0, y1, text):
         ax.annotate('', (x, y0), (x, y1), arrowprops=dict(arrowstyle='<->', lw=0.8, color='tab:blue'))
         ax.text(x, (y0 + y1) / 2, text + ' ', ha='right', va='center', fontsize=9, color='tab:blue', rotation=90)
-    def text_page(pdf, title, lines):
-        fig = plt.figure(figsize=A4); fig.text(0.06, 0.93, title, fontsize=15, weight='bold')
-        fig.text(0.06, 0.88, '\n'.join(lines), fontsize=8.5, family='DejaVu Sans Mono', va='top')
-        fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version}', fontsize=8, color='0.35'); save(pdf, fig, 'bom')
+    # Специфікація росте з моделлю, тому аркуш не фіксований: довгі рядки переносяться, список ділиться на сторінки.
+    # Ширину підібрано за відбитком: у рядках є «→», «—», «×», яких немає у моноширинному шрифті, і підставлені
+    # з пропорційного вони ширші за знакомісце, тому 140+ знаків вилазять за аркуш. 120 тримається із запасом.
+    def text_page(pdf, title, lines, per_page=44, width=120):
+        wrapped = []
+        for ln in lines:
+            if len(ln) <= width: wrapped.append(ln); continue
+            pad = ' ' * (len(ln) - len(ln.lstrip()) + 2)          # продовження — з відступом під колонку опису
+            wrapped += textwrap.wrap(ln, width, subsequent_indent=pad) or ['']
+        pages = [wrapped[i:i + per_page] for i in range(0, len(wrapped), per_page)] or [[]]
+        for n, chunk in enumerate(pages, 1):
+            fig = plt.figure(figsize=A4)
+            fig.text(0.06, 0.93, title if len(pages) == 1 else f'{title} ({n}/{len(pages)})', fontsize=15, weight='bold')
+            fig.text(0.06, 0.88, '\n'.join(chunk), fontsize=8.5, family='DejaVu Sans Mono', va='top')
+            fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version}', fontsize=8, color='0.35')
+            save(pdf, fig, 'bom' if len(pages) == 1 else f'bom{n}')
 
     with PdfPages(path) as pdf:
         # --- 1. зведена специфікація

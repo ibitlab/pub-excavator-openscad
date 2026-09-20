@@ -36,7 +36,8 @@ render folded 58 51 133
 render max_reach -5 155 -16
 render dig_deep -38 90 60
 render max_height 58 155 0
-openscad -o "$DIR/renders/iso_default.png" --imgsize=1600,1100 --camera=2500,-3500,1800,900,0,-100 --projection=p --colorscheme=Tomorrow -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
+# --viewall --autocenter обов'язкові: з фіксованою камерою кадр обрізав ківш і колону при зміні геометрії
+openscad -o "$DIR/renders/iso_default.png" --imgsize=1600,1100 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
 openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true "$SCAD" >/dev/null 2>&1
 for p in boom stick bucket; do
   openscad -o "$DIR/renders/part_$p.png" --imgsize=1600,1000 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
@@ -48,7 +49,9 @@ for f in "$DIR/docs/02-kinematics.md" "$DIR/docs/03-strength.md"; do   # поз�
   printf '> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$(basename "$DIR")" | cat - "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 done
 openscad -o "$DIR/docs/ranges.echo" "$SCAD" >/dev/null 2>&1
-cp docs/01-design-inputs.md "$DIR/docs/"
+# Вихідні дані пишуться вручну і можуть бути відсутні (їх немає у публічній копії) — не зупиняти через це збирання
+if [ -f docs/01-design-inputs.md ]; then cp docs/01-design-inputs.md "$DIR/docs/"
+else echo "  docs/01-design-inputs.md немає — пропущено (документ пишеться вручну)"; fi
 [ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
 tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
 (cd tools && .venv/bin/python bucket.py --png "../$DIR/renders/bucket_motion_2d.png" > "../$DIR/docs/05-bucket.md") || echo "!!! bucket.py: є зіткнення у 2D-перевірці — див. docs/05-bucket.md"
