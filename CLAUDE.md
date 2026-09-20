@@ -18,4 +18,4 @@
 - **zsh**: змінна з пробілами не розбивається на слова (`set -- $v`, `for x in $list` з однією змінною) — розбирай через `${v%% *}` / `${v#* }` або передавай аргументи окремо.
 - **Матеріали для публікацій, чернетки, будь-що особисте** — лише в `temp/` (виключено в `.gitignore`), не комітити.
 
-Skills проєкту: `scad-mechanism`, `new-assembly`, `build-version`, `part-drawings`, `browser-verify`, `media-kit`, `design-review`, `research-sweep`, `agent-analytics`.
+Skills проєкту: `scad-mechanism`, `new-assembly`, `build-version`, `part-drawings`, `browser-verify`, `media-kit`, `publish`, `design-review`, `research-sweep`, `agent-analytics`.

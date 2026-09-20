@@ -36,6 +36,7 @@ description: Правила й чеклист для роботи з парам�
 
 1. `openscad -o /tmp/m.echo scad/excavator_boom.scad` — без WARNING; діапазони осмислені.
 2. Звірка з `tools/kinematics.py` (див. вище), якщо чіпав кріплення.
+2a. Додав параметр або групу Customizer — додай англійський опис у `PARAMS_EN`/`GROUPS_EN` (`tools/viewer-wasm/src/i18n.js`), інакше `npm test` у `tools/viewer-wasm/` покаже, чого бракує.
 3. `tools/check_overlaps.sh` (зварні вузли прилягають, але не перекриваються) і `tools/check_motion.sh` (рухомі пари на всьому ході циліндрів). Якщо чіпав ківш або важелі — ще `tools/.venv/bin/python tools/bucket.py` (зазори у 2D з числами, місткість, міцність вух).
 4. Рендери крайніх положень (складено, максимальний виліт, максимальна глибина) — подивитись очима на колізії.
 5. Якщо змінились сили чи перерізи — `python3 tools/strength.py --boom … --stick …` і перевірити найменший запас.
