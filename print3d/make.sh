@@ -13,7 +13,7 @@ mkdir -p "$OUT"
 
 echo "== звіт параметрів друку"
 openscad -o /tmp/print_report.echo -D 'part="none"' -D 'pp="none"' "$SCAD" 2>/dev/null
-grep -E '^ECHO: "(=== друк|---|WARNING)' /tmp/print_report.echo | sed 's/^ECHO: "/  /; s/"$//'
+sed -n '/=== друк/,$p' /tmp/print_report.echo | sed 's/^ECHO: \"/  /; s/\"$//'
 
 echo
 echo "== рендер"

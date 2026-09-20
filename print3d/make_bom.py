@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Складає print3d/BOM.md з опису набору (parts.tsv) і РЕАЛЬНИХ вимірів надрукованих STL.
+"""Складає BOM.md з опису набору (parts.tsv) і РЕАЛЬНИХ вимірів надрукованих STL.
 
 Нічого не вписується руками: габарити, об'єм, площа контакту зі столом і полиці в
 повітрі беруться з check_print.py, тож BOM не може розійтися з файлами.
 
-usage: make_bom.py parts.tsv check.json report.echo
+Спільний для print3d/ і print3d-parts/: беруться ЧОТИРИ ОСТАННІ колонки TSV
+(файл, к-сть, група, опис), тож зайві колонки спереду (як `own` у print3d-parts)
+не заважають.
+
+usage: make_bom.py parts.tsv check.json report.echo ["Заголовок"]
 """
 import json
 import re
@@ -23,27 +27,31 @@ def main():
         line = line.rstrip("\n")
         if not line or line.startswith("#"):
             continue
-        pp, file, qty, group, desc = line.split("\t")
+        file, qty, group, desc = line.split("\t")[-4:]
         name = f"{file}_x{qty}.stl"
         rows.append((group, name, int(qty), desc, checks.get(name, {})))
 
     scale = "?"
     for l in open(echo, encoding="utf-8"):
-        m = re.search(r"=== друк 1:(\d+), сопло ([\d.]+)", l)
+        m = re.search(r"=== друк[^\"]*?1:(\d+), сопло ([\d.]+)", l)
         if m:
             scale, nozzle = m.group(1), m.group(2)
 
     total_v = sum(r[4].get(VOL, 0) * r[2] for r in rows)
     total_n = sum(r[2] for r in rows)
 
-    print(f"# Специфікація друкованого набору 1:{scale}")
+    title = sys.argv[4] if len(sys.argv) > 4 else "Специфікація друкованого набору"
+    print(f"# {title} 1:{scale}")
     print()
-    print("> Згенеровано `print3d/make.sh` з **виміряних** STL — руками тут нічого не вписано.")
+    print("> Згенеровано `make.sh` з **виміряних** STL — руками тут нічого не вписано.")
     print("> Модель-джерело: `scad/excavator_boom.scad`, версія геометрії `V001-2026-09-20-0505`.")
     print(">")
-    print("> **УВАГА:** це масштабна модель для показу й перевірки кінематики, згенерована штучним")
-    print("> інтелектом. Вона не є ні проєктною документацією, ні іграшкою, ні тренажером.")
-    print("> Дрібні деталі (пальці Ø3–4 мм) — не для дітей. Див. `SAFETY.md`.")
+    # найменша деталь набору — за найбільшим габаритом, а не за товщиною
+    small = min((max(r[4]["габарит"]) for r in rows if r[4].get("габарит")), default=0)
+    print("> **УВАГА:** це масштабна модель, згенерована штучним інтелектом. Вона не є ні")
+    print("> проєктною документацією, ні іграшкою, ні тренажером: метал не різаний, машину")
+    print(f"> не збудовано й не випробувано. У наборі є деталі від {small:.0f} мм — не для дітей.")
+    print("> Див. `SAFETY.md`.")
     print()
     print(f"**Усього:** {total_n} друкованих деталей, {len(rows)} різних файлів, "
           f"{total_v:.1f} см³ суцільного об'єму (≈ {total_v * PLA:.0f} г PLA при 100 % заповненні; "
