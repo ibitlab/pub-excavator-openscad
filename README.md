@@ -13,6 +13,8 @@
 > **The author and any contributors accept no liability whatsoever** for the consequences of using this material: for harm to life or health, injury, death, damage to property, direct or indirect losses, or for errors in the calculations, drawings or descriptions. The material is provided "as is", without warranty of any kind, express or implied, including any warranty of fitness for a particular purpose.
 >
 > **Whatever you do with this material, you do at your own risk and on your own responsibility.** Before cutting metal, have the calculations and drawings checked by a qualified mechanical engineer, have the welding done by a certified welder and the hydraulics by a specialist. Follow your local safety regulations. The machine is not certified and is not intended for sale, for commercial use, or for use on public roads.
+>
+> 👉 **The specific unfinished points and hazards of this particular design are in [SAFETY.md](SAFETY.md). Read it before you cut anything.**
 
 Working equipment (boom + stick + bucket linkage + a **300 mm bucket**) built around **already-purchased** hydraulic cylinders:
 boom ГЦ 63.40.500.700 (ШС-30 spherical bearing), stick ЦС50.25.400.600 (ШС-25), bucket ЦС50.25.300.510 (ШС-25).

@@ -156,13 +156,15 @@ def make_pdf(path, bom, flats, tubes, version):
     from matplotlib.patches import Polygon, Circle
     P = dict(bom['BOM_PARAMS'])
     A4 = (11.69, 8.27)
+    # Аркуші й DXF фізично йдуть у цех різання окремо від репозиторію — застереження має бути на них самих.
+    WARN = 'УВАГА: згенеровано ШІ, інженером не перевірено, машину не випробувано — використання на власний ризик; див. SAFETY.md'
     png_dir = os.path.join(os.path.dirname(path), 'png'); os.makedirs(png_dir, exist_ok=True); cnt = [0]
     def save(pdf, fig, name):
         cnt[0] += 1; pdf.savefig(fig); fig.savefig(os.path.join(png_dir, f'{cnt[0]:02d}_{name}.png'), dpi=90); plt.close(fig)
     def page(title, sub=''):
         fig = plt.figure(figsize=A4); ax = fig.add_axes([0.06, 0.10, 0.88, 0.66]); ax.set_aspect('equal'); ax.axis('off')
         fig.text(0.06, 0.93, title, fontsize=15, weight='bold'); fig.text(0.06, 0.895, sub, fontsize=10)
-        fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі, розміри в мм; для різання пластин — DXF 1:1', fontsize=8, color='0.35')
+        fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі, розміри в мм; для різання пластин — DXF 1:1\n{WARN}', fontsize=8, color='0.35')
         return fig, ax
     def dim_h(ax, x0, x1, y, text, off=0):
         ax.annotate('', (x0, y), (x1, y), arrowprops=dict(arrowstyle='<->', lw=0.8, color='tab:blue'))
@@ -184,7 +186,7 @@ def make_pdf(path, bom, flats, tubes, version):
             fig = plt.figure(figsize=A4)
             fig.text(0.06, 0.93, title if len(pages) == 1 else f'{title} ({n}/{len(pages)})', fontsize=15, weight='bold')
             fig.text(0.06, 0.88, '\n'.join(chunk), fontsize=8.5, family='DejaVu Sans Mono', va='top')
-            fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version}', fontsize=8, color='0.35')
+            fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version}\n{WARN}', fontsize=8, color='0.35')
             save(pdf, fig, 'bom' if len(pages) == 1 else f'bom{n}')
 
     with PdfPages(path) as pdf:
@@ -211,7 +213,7 @@ def make_pdf(path, bom, flats, tubes, version):
             fig.text(0.06, 0.93, f"{tb['key']} — труба {tb['h']:g}×{tb['w']:g}×{tb['t']:g}, заготовка {tb['L']:g} мм: розгортка з 4 боків", fontsize=15, weight='bold')
             fig.text(0.06, 0.895, tb['note'], fontsize=9.5)
             fig.text(0.06, 0.872, f'{TUBE_MAT}. База розмірів по довжині — крайній задній торець труби (x = 0), однакова для всіх чотирьох стінок.\nСірі числа — відступ початку/кінця стінки від бази та від протилежного торця; отвори — ланцюжком від бази і від нижньої кромки своєї стінки.', fontsize=8.5, color='0.25', va='top')
-            fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі між аркушами, розміри в мм', fontsize=8, color='0.35')
+            fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі між аркушами, розміри в мм\n{WARN}', fontsize=8, color='0.35')
             # один спільний масштаб на аркуш: k мм/дюйм — за довжиною АБО за сумарною висотою стінок + місце під підписи
             X1 = tb['X1']; W_in, H_in, S_in, L_in = 0.86 * A4[0], 0.70 * A4[1], 0.66, 0.55
             k = max(X1 / (W_in - L_in - 0.35), sum(nom[hk] for _, _, hk in FACES) / (H_in - S_in * len(FACES)))
@@ -329,7 +331,10 @@ def main():
             tubes.append(dict(key=key, h=h, w=w, t=th, L=ln, note=note, faces=faces, X1=max(f['x1'] for f in faces.values())))
             print(f"  труба {key:<10} стінки: " + ', '.join(f"{k} {v['x0']:.0f}…{v['x1']:.0f}" for k, v in faces.items()))
     # --- Markdown + CSV
-    rows = []; md = [f'# Специфікація (BOM) — {version}', '', 'Згенеровано `tools/bom_drawings.sh` з моделі `scad/excavator_boom.scad`. Розміри в мм, маса — за ρ = 7.85 г/см³.', '']
+    rows = []; md = [f'# Специфікація (BOM) — {version}', '', '> **УВАГА:** цю специфікацію, як і всю модель, згенеровано штучним інтелектом. Кваліфікований інженер її не перевіряв, '
+     'машину за цією моделлю не збудовано й не випробувано. Використання — на власний ризик і відповідальність; '
+     'відомі недоробки конструкції — у `SAFETY.md`.', '',
+     'Згенеровано `tools/bom_drawings.sh` з моделі `scad/excavator_boom.scad`. Розміри в мм, маса — за ρ = 7.85 г/см³.', '']
     md += ['## 1. Профільна труба (' + TUBE_MAT + ')', '', '| Деталь | Профіль | Довжина заготовки | кг/м | Маса, кг | Обробка |', '|---|---|---|---|---|---|']
     tot_tube = 0; need = {}
     for k, h, w, t, ln, note in bom['BOM_TUBES']:
@@ -373,7 +378,9 @@ def main():
            f'| {tot_tube:.1f} кг | {tot_plate:.1f} кг | {tot_wear:.1f} кг | {tot_round:.1f} кг | {tot_pin:.1f} кг | **{tot_tube + tot_plate + tot_wear + tot_round + tot_pin:.1f} кг** |', '']
     open(os.path.join(out, 'bom', 'bom.md'), 'w', encoding='utf-8').write('\n'.join(md))
     with open(os.path.join(out, 'bom', 'bom.csv'), 'w', newline='', encoding='utf-8') as fcsv:
-        w = csv.writer(fcsv); w.writerow(['тип', 'деталь', 'к-сть', 'розмір1', 'розмір2', 'розмір3', 'отвори', 'маса_кг', 'примітка']); w.writerows(rows)
+        w = csv.writer(fcsv)
+        w.writerow([f'# {version}: згенеровано ШІ, інженером не перевірено, машину не випробувано — на власний ризик; див. SAFETY.md'])
+        w.writerow(['тип', 'деталь', 'к-сть', 'розмір1', 'розмір2', 'розмір3', 'отвори', 'маса_кг', 'примітка']); w.writerows(rows)
     make_pdf(os.path.join(out, 'drawings', 'parts.pdf'), bom, flats, tubes, version)
     if problems:
         print('!!! ЕСКІЗИ: підозрілі контури — перевір проєкцію в моделі (tube_face_2d / flat):\n  ' + '\n  '.join(problems)); sys.exit(1)

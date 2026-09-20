@@ -7,6 +7,9 @@ cd "$(dirname "$0")/.."
 COMMIT=0; DESC=""
 for a in "$@"; do case "$a" in --commit) COMMIT=1 ;; -h|--help) sed -n '2,4p' "$0"; exit 0 ;; *) DESC="$a" ;; esac; done
 SCAD=scad/excavator_boom.scad
+# Звіти й VERSION.md читають окремо від README — застереження має бути в кожному з них.
+WARN='> **УВАГА:** згенеровано штучним інтелектом. Кваліфікований інженер не перевіряв, машину за цією моделлю не збудовано й не випробувано.
+> Використання — на власний ризик і відповідальність; відомі недоробки конструкції — у `SAFETY.md`.'
 GIT_BASE="$(git rev-parse --short HEAD) ($(git log -1 --pretty=%s))"
 [ -n "$(git status --porcelain)" ] && GIT_BASE="$GIT_BASE + незакомічені зміни робочого дерева"
 mkdir -p versions
@@ -46,7 +49,7 @@ done
 # 4. Звіти і знімок моделі — пишуться ЛИШЕ у теку версії (у корені репозиторію згенерованих копій немає)
 (cd tools && python3 kinematics.py > "../$DIR/docs/02-kinematics.md" && python3 strength.py --boom 120x80x5 --stick 100x60x5 > "../$DIR/docs/03-strength.md")
 for f in "$DIR/docs/02-kinematics.md" "$DIR/docs/03-strength.md"; do   # позначка "згенеровано" з номером версії
-  printf '> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$(basename "$DIR")" | cat - "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+  printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 done
 openscad -o "$DIR/docs/ranges.echo" "$SCAD" >/dev/null 2>&1
 # Вихідні дані пишуться вручну і можуть бути відсутні (їх немає у публічній копії) — не зупиняти через це збирання
@@ -55,7 +58,7 @@ else echo "  docs/01-design-inputs.md немає — пропущено (док�
 [ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
 tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
 (cd tools && .venv/bin/python bucket.py --png "../$DIR/renders/bucket_motion_2d.png" > "../$DIR/docs/05-bucket.md") || echo "!!! bucket.py: є зіткнення у 2D-перевірці — див. docs/05-bucket.md"
-printf '> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$(basename "$DIR")" | cat - "$DIR/docs/05-bucket.md" > "$DIR/docs/05-bucket.md.tmp" && mv "$DIR/docs/05-bucket.md.tmp" "$DIR/docs/05-bucket.md"
+printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$DIR/docs/05-bucket.md" > "$DIR/docs/05-bucket.md.tmp" && mv "$DIR/docs/05-bucket.md.tmp" "$DIR/docs/05-bucket.md"
 cp "$SCAD" "$DIR/scad/"; cp tools/kinematics.py tools/strength.py tools/bucket.py "$DIR/scad/"
 
 # 4а. BOM, DXF 1:1 і PDF-ескізи деталей
@@ -77,7 +80,7 @@ cp "$DIR"/drawings/png/*_cheek.png docs/img/sketch_cheek.png
 
 # 5. Опис версії
 {
-  echo "# $(basename "$DIR")"; echo
+  echo "# $(basename "$DIR")"; echo; echo "$WARN"; echo
   echo "- Дата: $(date '+%Y-%m-%d %H:%M')"; echo "- Git (база на момент збирання): $GIT_BASE"
   [ -n "$DESC" ] && echo "- Зміни: $DESC"; echo
   echo "## Діапазони (echo моделі)"; echo '```'; sed 's/^ECHO: //' "$DIR/docs/ranges.echo"; echo '```'; echo
