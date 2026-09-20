@@ -58,8 +58,11 @@ else echo "  docs/01-design-inputs.md немає — пропущено (док�
 [ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
 tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
 (cd tools && .venv/bin/python bucket.py --png "../$DIR/renders/bucket_motion_2d.png" > "../$DIR/docs/05-bucket.md") || echo "!!! bucket.py: є зіткнення у 2D-перевірці — див. docs/05-bucket.md"
+# Креслення робочої зони з розмірами (A…J) — обома мовами, як і README
+tools/.venv/bin/python tools/work_range.py --out "$DIR/renders/work-range.png" | tail -1
+tools/.venv/bin/python tools/work_range.py --lang en --out "$DIR/renders/work-range.en.png" >/dev/null
 printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$DIR/docs/05-bucket.md" > "$DIR/docs/05-bucket.md.tmp" && mv "$DIR/docs/05-bucket.md.tmp" "$DIR/docs/05-bucket.md"
-cp "$SCAD" "$DIR/scad/"; cp tools/kinematics.py tools/strength.py tools/bucket.py "$DIR/scad/"
+cp "$SCAD" "$DIR/scad/"; cp tools/kinematics.py tools/strength.py tools/bucket.py tools/work_range.py "$DIR/scad/"
 
 # 4а. BOM, DXF 1:1 і PDF-ескізи деталей
 ./tools/bom_drawings.sh --out "$DIR" --version "$(basename "$DIR")" | tail -1
@@ -76,6 +79,7 @@ fi
 # 4б. Картинки для README (єдине згенероване, що лежить поза versions/)
 mkdir -p docs/img
 cp "$DIR/renders/side_default.png" "$DIR/renders/envelope.png" "$DIR/renders/part_boom.png" "$DIR/renders/part_stick.png" "$DIR/renders/part_bucket.png" "$DIR/renders/bucket_motion_2d.png" docs/img/
+cp "$DIR/renders/work-range.png" "$DIR/renders/work-range.en.png" docs/img/
 cp "$DIR"/drawings/png/*_cheek.png docs/img/sketch_cheek.png
 
 # 5. Опис версії

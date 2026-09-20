@@ -349,22 +349,26 @@ def frange(a, b, n):
 
 def envelope(g):
     th_min, th_max = boom_range(g); ps_min, ps_max = stick_range(g)
+    _, om_min, om_max, _ = bucket_range(g)
     if th_min is None or th_max is None: th_min, th_max = -20.0, 60.0
     if ps_min is None or ps_max is None: ps_min, ps_max = 50.0, 160.0
+    if om_min is None or om_max is None: om_min, om_max = -20.0, 140.0
     ground = -g['A_height']
     max_reach_ground = -1e9; max_depth = 1e9; max_height = -1e9; max_reach = -1e9
-    for t in frange(th_min, th_max, 41):
+    for t in frange(th_min, th_max, 61):
         bp = boom_points(g, t)
-        for s in frange(ps_min, ps_max, 41):
+        for s in frange(ps_min, ps_max, 61):
             sp = stick_points(g, bp, s)
-            E = sp['E']
-            # зуб ковша: розглядаємо ківш "по осі рукояті" і "вертикально вниз" (умовно)
-            for tipdir in (sp['us'], (0, -1)):
-                T = add(E, mul(tipdir, g['tip']))
+            # Ківш обходиться на ВСЬОМУ ходу свого циліндра. Два умовні напрямки
+            # ("по осі рукояті" і "прямовисно вниз") занижували виліт і висоту:
+            # глибина від них не залежить, а от вістря вище за все саме при
+            # розкритому ковші, якого серед тих двох напрямків не було.
+            for o in frange(om_min, om_max, 31):
+                T = add(sp['E'], rot((g['tip'], 0), sp['a_s'] - o))
                 max_reach = max(max_reach, T[0])
                 max_depth = min(max_depth, T[1])
                 max_height = max(max_height, T[1])
-                if abs(T[1] - ground) < 60: max_reach_ground = max(max_reach_ground, T[0])
+                if abs(T[1] - ground) < 25: max_reach_ground = max(max_reach_ground, T[0])
     return {
         'макс. виліт зуба (будь-яка висота)': max_reach,
         'виліт зуба на рівні землі': max_reach_ground,

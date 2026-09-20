@@ -31,6 +31,7 @@ The bucket is welded up from real parts (side plates, shell, cutting edge, teeth
 |---|---|
 | `scad/excavator_boom.scad` | **The main model.** All parameters sit at the top of the file (Customizer groups). The angles are the primary parameters; their ranges are derived from the cylinder lengths and printed through `echo()`. |
 | `tools/kinematics.py` | An independent solver for the same geometry: range checks, moment arms, tooth force, work envelope; `--search` fits the mounting positions. |
+| `tools/work_range.py` | **Working-range drawing** with dimensions A…J (the way excavator catalogues show them): the outline is swept over the full stroke of all three cylinders, the bucket silhouette comes from `tools/bucket.py`. Both languages: `--lang uk\|en`. |
 | `tools/strength.py` | Member statics plus strength of materials: N/V/M diagrams, checks of the tubes and doublers, pins, bushings and welds; section comparison (`--boom 120x80x5 --stick 100x60x5`). |
 | `tools/bucket.py` | **The bucket**: a Python twin of the bucket profile — capacity (struck / heaped), mass, carry and dump angles, a 2D clearance check of the moving pairs over the full stroke, strength of the ears, of pins E/Q and of the welds. Run it with `tools/.venv/bin/python tools/bucket.py [--png file]`. |
 | `docs/01-design-inputs.md` | **A source document, written by hand.** The inputs: cylinders, spherical bearings, pins and bushings, the steel sizes actually available, hydraulics, class benchmarks, standards. |
@@ -183,9 +184,15 @@ Results (the full report is `docs/02-kinematics.md` in the latest version folder
 | Boom cylinder moment @160 bar | 11.0–16.6 kN·m (7.2–10.9 kN of pull at the boom tip) |
 | Stick force at the bucket axis @160 bar | 5.0–8.3 kN (class: 4.3–6.4) |
 | Bucket force at the tooth @160 bar | 11.8 kN at the start of the curl → 8.2 (ω = 48°) → 2.3 kN at the end (class: 8.3–11.2) |
-| Tooth reach at ground level / digging depth / height (axis A 650 above the ground) | 2.81 m / 1.72 m / 2.75 m |
+| Tooth reach at ground level / digging depth / height (axis A 650 above the ground) | 2.83 m / 1.72 m / 2.85 m |
 
-![work envelope](docs/img/envelope.png)
+![work envelope](docs/img/work-range.en.png)
+
+The working-range drawing with all dimensions (A…J) is built by `tools/work_range.py`
+from the same kinematics — no number is typed in by hand. The height of pin A above
+the ground (650 mm) is the `ground_below_A` parameter, i.e. an assumption about the
+trailer frame rather than a computed result. Radii are measured from pin A: the model
+has no slew centre yet, so its offset adds to every horizontal dimension.
 
 ## 3a. The bucket (the full report is `docs/05-bucket.md` in the latest version folder)
 
