@@ -18,4 +18,6 @@
 - **zsh**: змінна з пробілами не розбивається на слова (`set -- $v`, `for x in $list` з однією змінною) — розбирай через `${v%% *}` / `${v#* }` або передавай аргументи окремо.
 - **Матеріали для публікацій, чернетки, будь-що особисте** — лише в `temp/` (виключено в `.gitignore`), не комітити.
 
-Skills проєкту: `scad-mechanism`, `new-assembly`, `build-version`, `part-drawings`, `browser-verify`, `media-kit`, `publish`, `design-review`, `research-sweep`, `agent-analytics`.
+- **Друкований набір** — `print3d/` (масштабна збірна модель 1:7 для FDM). Генерується `print3d/make.sh` із замороженої версії; `print3d/print_parts.scad` підключає модель як бібліотеку з `part="none"` і **не змінює її жодним рядком**. Нова деталь у моделі — рядок у `print3d/parts.tsv`.
+
+Skills проєкту: `scad-mechanism`, `new-assembly`, `build-version`, `part-drawings`, `browser-verify`, `media-kit`, `print-kit`, `publish`, `design-review`, `research-sweep`, `agent-analytics`.
