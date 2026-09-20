@@ -1,0 +1,306 @@
+// Дві мови сторінки: українська (типова) та англійська.
+// Порядок вибору: ?lang= в адресі → localStorage → мова браузера → 'uk'.
+// Правило: якщо англійського рядка немає, показуємо український — порожнього підпису не буває ніколи.
+// Назви й описи параметрів беруться з самої моделі (українською); тут лежить лише їхній англійський двійник,
+// тому scad/excavator_boom.scad лишається єдиним джерелом правди. npm test стежить, щоб словник не розійшовся з моделлю.
+
+export const LANGS = ['uk', 'en'];
+let lang = 'uk';
+
+export const getLang = () => lang;
+export function setLang(l) { lang = LANGS.includes(l) ? l : 'uk'; try { localStorage.setItem('lang', lang); } catch (e) { /* сховище недоступне */ } return lang; }
+export function initLang(search = '') {
+  const q = new URLSearchParams(search).get('lang');
+  if (LANGS.includes(q)) return setLang(q);
+  let saved = null; try { saved = localStorage.getItem('lang'); } catch (e) { /* приватне вікно */ }
+  if (LANGS.includes(saved)) { lang = saved; return lang; }
+  lang = (navigator.language || 'uk').toLowerCase().startsWith('uk') ? 'uk' : 'en';
+  return lang;
+}
+
+// t('ключ', {змінна: значення}) — підстановка у {дужках}
+export function t(key, vars) {
+  const s = (UI[lang] && UI[lang][key]) ?? UI.uk[key] ?? key;
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
+}
+// Опис параметра і назва групи: українською — те, що написано в моделі; англійською — зі словника нижче.
+export const tp = p => (lang === 'en' && PARAMS_EN[p.name]) || p.desc || '';
+export const tg = name => (lang === 'en' && GROUPS_EN[name]) || name;
+
+export const UI = {
+  uk: {
+    'title': 'Міні-екскаватор — модель у браузері (OpenSCAD-WASM)',
+    'h1': 'Міні-екскаватор: стріла · рукоять · ківш',
+    'mode': 'модель <code>{file}</code> · OpenSCAD-WASM у браузері, без сервера',
+    'mode.file': 'модель <code>{file}</code> (відкрито з диска) · OpenSCAD-WASM у браузері',
+    'lang.title': 'Мова сторінки / Page language',
+
+    'h2.angles': 'Кути — миттєво, у браузері',
+    'h2.view': 'Вигляд',
+    'h2.params': 'Параметри моделі — OpenSCAD-WASM у браузері',
+
+    'clamp': 'обмежувати ходом циліндрів',
+    'play': '▶ цикл копання',
+    'stop': '■ зупинити',
+    'gz': 'вісь A над землею, мм',
+    'reset': 'Скинути все',
+    'copy': 'Копіювати зміни',
+    'open': 'Відкрити .scad…',
+    'open.title': 'Відкрити власний варіант файлу .scad з диска (нікуди не надсилається)',
+    'help': 'ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка у «Вигляді»',
+
+    'ang.boom': 'Стріла',
+    'ang.boom.hint': 'кут хорди A→B до горизонту',
+    'ang.stick': 'Рукоять',
+    'ang.stick.hint': 'внутрішній кут у шарнірі B',
+    'ang.bucket': 'Ківш',
+    'ang.bucket.hint': 'до осі рукояті, + = підкручування',
+    'cyl.state': 'циліндр {L} мм · хід {used} / {stroke}',
+    'cyl.nolink': 'важелі не збираються',
+    'cyl.out': '{part}: циліндр поза ходом',
+    'cyl.out.range': '{part}: циліндр поза ходом ({L} мм при {lo}…{hi})',
+
+    'pose.work': 'Робоча',
+    'pose.transport': 'Транспорт',
+    'pose.reach': 'Макс. виліт',
+    'pose.deep': 'Глибоке копання',
+    'pose.high': 'Макс. висота',
+    'pose.dump': 'Висипання',
+
+    'view.side': 'Збоку',
+    'view.iso': 'Ізометрія',
+    'view.back': 'Ззаду-збоку',
+    'view.top': 'Зверху',
+    'view.front': 'Спереду',
+    'view.fit': 'Вписати',
+    'view.ortho': 'Ортогонально',
+
+    'tog.cylinders': 'циліндри',
+    'tog.linkage': 'коромисло і тяга',
+    'tog.bucket': 'ківш',
+    'tog.post': 'колона',
+    'tog.pins': 'пальці',
+    'tog.ground': 'земля',
+    'tog.edges': 'ребра',
+    'tog.envelope': 'робоча зона (траєкторії зуба)',
+
+    'hud.reach': 'зуб: виліт від осі A',
+    'hud.tooth': 'зуб: {where}',
+    'hud.axisE': 'вісь ковша E: {where}',
+    'hud.above': 'над землею',
+    'hud.below': 'нижче землі',
+    'hud.tilt': 'нахил отвору ковша',
+    'hud.mm': 'мм',
+    'tilt.level': 'горизонтально — тримає ґрунт',
+    'tilt.up': 'зубами вгору на {a}° — тримає ґрунт',
+    'tilt.over': 'перекинутий назад ({a}°)',
+    'tilt.dig': 'зубами вниз на {a}° — копання',
+    'tilt.dump': 'зубами вниз на {a}° — висипання',
+
+    'st.engine': 'Завантажую рушій OpenSCAD-WASM (≈14 МБ, один раз)…',
+    'st.build': 'OpenSCAD-WASM будує…',
+    'st.done': 'OpenSCAD-WASM: {ms} с · разом {total} с · змінено параметрів: {n}',
+    'st.err': 'Помилка: {msg}',
+    'st.worker': 'воркер OpenSCAD упав',
+    'st.load': 'Не вдалося завантажити модель: {msg}',
+    'st.copied': 'Скопійовано рядки для вставки в .scad:',
+    'st.nochange': '// змін немає',
+    'st.prompt': 'Рядки для .scad:',
+    'p.changed': 'змінено: {n}',
+    'p.restore': 'повернути {v}',
+
+    'sm.btn.title': '3Dconnexion SpaceMouse / SpaceNavigator',
+    'sm.speed': 'чутливість',
+    'sm.invPan': 'інв. зсув',
+    'sm.invZoom': 'інв. масштаб',
+    'sm.invRot': 'інв. оберт.',
+    'sm.hid': 'підключено (WebHID): {name}',
+    'sm.pad': 'підключено (Gamepad API): {name}',
+    'sm.press': 'натисніть кнопку і виберіть мишу у вікні браузера',
+    'sm.nohid': 'тут немає WebHID — порухайте ковпачок, миша підхопиться через Gamepad API',
+    'sm.nodev': 'пристрій не вибрано',
+    'sm.failed': 'не вдалося відкрити: {msg} — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз',
+    'sm.nodata': 'даних немає (звітів: {n}) — порухайте ковпачок; якщо так і лишиться, пристрій тримає драйвер 3DxWare',
+    'sm.report': 'звіт {id}·{n} байт',
+    'sm.dbg': '{src} · зсув {t} · оберт {r}',
+  },
+  en: {
+    'title': 'Mini excavator — model in the browser (OpenSCAD-WASM)',
+    'h1': 'Mini excavator: boom · stick · bucket',
+    'mode': 'model <code>{file}</code> · OpenSCAD-WASM in the browser, no server',
+    'mode.file': 'model <code>{file}</code> (opened from disk) · OpenSCAD-WASM in the browser',
+    'lang.title': 'Мова сторінки / Page language',
+
+    'h2.angles': 'Angles — instant, in the browser',
+    'h2.view': 'View',
+    'h2.params': 'Model parameters — OpenSCAD-WASM in the browser',
+
+    'clamp': 'limit to cylinder stroke',
+    'play': '▶ dig cycle',
+    'stop': '■ stop',
+    'gz': 'axis A above ground, mm',
+    'reset': 'Reset all',
+    'copy': 'Copy changes',
+    'open': 'Open .scad…',
+    'open.title': 'Open your own .scad file from disk (it is never uploaded anywhere)',
+    'help': 'left button — orbit · right / Shift — pan · wheel — zoom · double click — set orbit centre · SpaceMouse — button under “View”',
+
+    'ang.boom': 'Boom',
+    'ang.boom.hint': 'chord A→B angle to the horizon',
+    'ang.stick': 'Stick',
+    'ang.stick.hint': 'interior angle at joint B',
+    'ang.bucket': 'Bucket',
+    'ang.bucket.hint': 'relative to the stick axis, + = curling in',
+    'cyl.state': 'cylinder {L} mm · stroke {used} / {stroke}',
+    'cyl.nolink': 'linkage does not close',
+    'cyl.out': '{part}: cylinder out of stroke',
+    'cyl.out.range': '{part}: cylinder out of stroke ({L} mm, range {lo}…{hi})',
+
+    'pose.work': 'Working',
+    'pose.transport': 'Transport',
+    'pose.reach': 'Max reach',
+    'pose.deep': 'Deep dig',
+    'pose.high': 'Max height',
+    'pose.dump': 'Dumping',
+
+    'view.side': 'Side',
+    'view.iso': 'Isometric',
+    'view.back': 'Rear-side',
+    'view.top': 'Top',
+    'view.front': 'Front',
+    'view.fit': 'Fit',
+    'view.ortho': 'Orthographic',
+
+    'tog.cylinders': 'cylinders',
+    'tog.linkage': 'rocker and link',
+    'tog.bucket': 'bucket',
+    'tog.post': 'post',
+    'tog.pins': 'pins',
+    'tog.ground': 'ground',
+    'tog.edges': 'edges',
+    'tog.envelope': 'work envelope (tooth paths)',
+
+    'hud.reach': 'tooth: reach from axis A',
+    'hud.tooth': 'tooth: {where}',
+    'hud.axisE': 'bucket axis E: {where}',
+    'hud.above': 'above ground',
+    'hud.below': 'below ground',
+    'hud.tilt': 'bucket opening tilt',
+    'hud.mm': 'mm',
+    'tilt.level': 'level — holds the load',
+    'tilt.up': 'teeth up {a}° — holds the load',
+    'tilt.over': 'rolled back ({a}°)',
+    'tilt.dig': 'teeth down {a}° — digging',
+    'tilt.dump': 'teeth down {a}° — dumping',
+
+    'st.engine': 'Loading the OpenSCAD-WASM engine (≈14 MB, once)…',
+    'st.build': 'OpenSCAD-WASM is building…',
+    'st.done': 'OpenSCAD-WASM: {ms} s · total {total} s · changed parameters: {n}',
+    'st.err': 'Error: {msg}',
+    'st.worker': 'the OpenSCAD worker crashed',
+    'st.load': 'Could not load the model: {msg}',
+    'st.copied': 'Copied the lines to paste into .scad:',
+    'st.nochange': '// no changes',
+    'st.prompt': 'Lines for .scad:',
+    'p.changed': 'changed: {n}',
+    'p.restore': 'restore {v}',
+
+    'sm.btn.title': '3Dconnexion SpaceMouse / SpaceNavigator',
+    'sm.speed': 'sensitivity',
+    'sm.invPan': 'inv. pan',
+    'sm.invZoom': 'inv. zoom',
+    'sm.invRot': 'inv. rotate',
+    'sm.hid': 'connected (WebHID): {name}',
+    'sm.pad': 'connected (Gamepad API): {name}',
+    'sm.press': 'press the button and pick the mouse in the browser dialog',
+    'sm.nohid': 'no WebHID here — nudge the cap and the mouse will be picked up via the Gamepad API',
+    'sm.nodev': 'no device selected',
+    'sm.failed': 'could not open: {msg} — the 3Dconnexion driver holds the device exclusively. macOS: tools/spacemouse-driver.sh off (or quit 3DconnexionHelper), Windows: exit 3DxWare; Linux: permissions on /dev/hidraw*. Then press the button again',
+    'sm.nodata': 'no data (reports: {n}) — nudge the cap; if nothing changes, the 3DxWare driver holds the device',
+    'sm.report': 'report {id}·{n} bytes',
+    'sm.dbg': '{src} · pan {t} · rotate {r}',
+  },
+};
+
+// Назви груп Customizer — ключ = рядок у моделі, як його читає readSchema()
+export const GROUPS_EN = {
+  '1. Кути (первинні параметри)': '1. Angles (primary parameters)',
+  '2. Закуплені гідроциліндри': '2. Purchased hydraulic cylinders',
+  '3. Стріла': '3. Boom',
+  '4. Рукоять': '4. Stick',
+  '5. Важільна система ковша': '5. Bucket linkage',
+  '5б. Ківш (система ковша: E = 0, x — до вістря зуба, y — зовнішній бік, де вушко Q)':
+    '5b. Bucket (bucket frame: E = 0, x — towards the tooth tip, y — outboard side, where ear Q is)',
+  '6. Пальці, втулки, пластини': '6. Pins, bushings, plates',
+  '7. Відображення': '7. Display',
+};
+
+// Англійські описи параметрів. Ключ = ім'я параметра в моделі.
+// Параметри без коментаря в моделі (продовження вектора: *_w, *_t тощо) сюди не потрапляють — їм нічого показувати.
+export const PARAMS_EN = {
+  boom_angle: 'Boom chord angle (axis A → axis B) to the horizon, ° (+ up). Limited by the boom cylinder.',
+  stick_angle: 'Interior boom–stick angle at joint B (between B→A and B→E), °. ~55° folded … ~158° extended.',
+  bucket_angle: 'Bucket angle relative to the stick axis, °. 0 = bucket axis continues the stick; + = curling in (closing).',
+  clamp_to_cylinders: 'Limit the angles to what the cylinders can reach (true) or show them as entered (false, with a warning)',
+
+  boom_cyl_closed: '--- Boom cylinder ГЦ 63.40.500.700 (spherical bearing ШС-30): pin-to-pin length when closed, mm',
+  boom_cyl_pin: 'bore of the ШС-30 spherical bearing',
+  stick_cyl_closed: '--- Stick cylinder ГЦ ЦС50.25.400.600 (spherical bearing ШС-25)',
+  bucket_cyl_closed: '--- Bucket cylinder ГЦ ЦС50.25.300.510 (spherical bearing ШС-25). The vendor page says ≈500 — MEASURE the real one!',
+
+  boom_L1: 'Length of the 1st segment (axis A → break point K), mm',
+  boom_L2: 'Length of the 2nd segment (K → axis B), mm',
+  boom_bend: 'Break angle between the segments, ° (0 = straight boom)',
+  boom_tube_h: 'Boom hollow section: height (in the bending plane), width, wall',
+  boom_cyl_base: 'Boom cylinder base C on the swing post relative to A: [forward, up]',
+  boom_cyl_sD: 'Bracket D (boom cylinder rod): distance from A along the boom axis (the polyline A→K→B; > L1 → on the 2nd segment)',
+  boom_cyl_bracket: 'Drop of axis D below the lower flange of the tube (from the tube axis = h/2 + drop)',
+  boom_foot_boss_len: 'Length of the axis A boss (wider than the tube: it takes the side loads; two bushings at the ends)',
+  boom_foot_ext: 'Overhang of the 1st segment tube behind axis A (to fit the bushing)',
+  boom_fork_reach: 'Reach of the boom fork past axis B (the lower edge of the 2nd segment tube end stops short of B by this much; must exceed the swing radius of the stick rear corner ≈ 80 mm)',
+  boom_nose_cut: 'Mitre on the boom tube end: the upper flange is cut back by this much more (room for the stick heel when extending)',
+
+  stick_L: 'Stick length: axis B → bucket axis E, mm',
+  stick_cyl_sF: 'Stick cylinder base F on the upper flange of the boom: distance back from B along the boom axis (> L2 → on the 1st segment)',
+  stick_cyl_bracket: 'Height of axis F above the upper flange of the boom (a tall bracket on top of the break: the cylinder body must clear the break)',
+  stick_heel_x: 'Stick heel G (stick cylinder rod): back from B along the stick axis / towards the outboard side',
+  stick_tip_ext: 'Overhang of the stick tube past axis E (short: the tube end rotates inside the bucket ears)',
+  stick_tip_chamfer: 'Chamfer on the corners of the stick tube end near axis E (tube and doublers) — reduces the radius the end sweeps around E',
+  stick_rear_ext: 'Overhang of the stick tube behind axis B (small, so the rear corner does not catch the boom tube end)',
+
+  bucket_cyl_sH: 'Bucket cylinder base H: forward from B along the stick / height above the upper flange',
+  rocker_rx: 'Rocker axis R: back from E along the stick / height above the upper flange',
+  rocker_L: 'Length of the rocker R→J and of the link J→Q',
+  bucket_ear: 'Bucket ear Q in the bucket frame (origin E, x — towards the tooth, y — outboard side)',
+
+  bucket_tip: 'Digging radius: axis E → tooth tip',
+  bucket_width: 'Outside width of the bucket (across the side plates)',
+  bucket_side_t: 'Thicknesses: side plates / shell (top–back–heel–floor as one strip) / doubler under the ears',
+  bucket_top_x: 'Distance from axis E to the outer face of the doubler under the ears (= ear height). Must exceed the radius the stick tube end sweeps around E (≈ 56 mm), plus clearance',
+  bucket_lip_y: 'Front edge of the top plate (the “lip”) along y: at full curl the lower flange of the stick comes under it',
+  bucket_top_len: 'Length of the straight top flange (under the ears)',
+  bucket_back_r: 'Top → back transition: outer radius and angle',
+  bucket_heel_r: 'Outer radius of the heel (back → floor)',
+  bucket_floor_angle: 'Angle between the line “tooth tip → E” and the floor (larger angle → deeper bucket, smaller cutting angle)',
+  bucket_edge_w: 'Cutting edge: strip width × thickness. Wear-resistant steel (Hardox 400/450, 65Г, a grader blade), NOT mild steel',
+  bucket_tooth_out: 'Teeth: reach past the edge, overall length, width, count',
+  bucket_ear_t: 'Bucket ears: thickness, radii around axes E and Q',
+  bucket_boss_E_od: 'Outer bosses of the ears on axis E (pin E is fixed in the ears and turns in the stick bushing)',
+  bucket_lip_rib: 'Lip rib: strip [width, thickness] per rib under the front edge of the top plate',
+  bucket_wear: 'Wear strips on the heel: [width, thickness], count',
+
+  pin_A: 'boom axis on the post (ГАЗ-53 king pin Ø30)',
+  pin_B: 'boom–stick',
+  pin_E: 'stick–bucket (boss 66×33, as on A and B)',
+  pin_R: 'rocker axis (the link force reaches 2.3× the bucket cylinder force)',
+  pin_JQ: 'link',
+  bush_od_main: 'Outside diameter of the main joint bushings (stock tube 66×33 → OD 66; for 28 mm — OD 45)',
+  plate_boss: 'Plate thicknesses: doublers near the bushings / clevises under the cylinders / doublers at the break',
+  plate_cheek: 'Cheeks of the stick heel: 8 mm, so that the stick pack (60 + 2×8 = 76) + 2 washers of 2 mm = 80 = the boom fork gap',
+  clevis_gap_25: 'Clevis gap for a cylinder eye = eye width + 2 mm (the ЦС50 eye is ≈ 25, the ЦС63 one ≈ 28 — MEASURE). The pin clamps the inner race of the spherical bearing (20 / 22 mm) through spacer washers.',
+  link_boss_od: 'Link bosses on axes J and Q (welded outside the link plates): pin bearing length 10 + 25 = 35 mm per side → pressure < 30 MPa',
+  cyl_eye_w_25: 'Width of the cylinder eyes (for the drawing only)',
+
+  show_envelope: 'Show the work envelope (cutting edge points over a grid of angles)',
+  ground_below_A: 'Height of axis A above the ground, mm',
+};

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import scadDefault from '../../../scad/excavator_boom.scad?raw';      // модель вшивається у сторінку; у dev правка .scad перезавантажує сторінку
 import { readSchema, scadLiteral } from './schema.js';
+import { LANGS, initLang, setLang, getLang, t, tp, tg } from './i18n.js';
 
 // Друга версія перегляду: БЕЗ бекенду. OpenSCAD працює у веб-воркері (WASM), сторінка — звичайна статика.
 // Усе інше (сцена, поза, керування) — те саме, що в tools/viewer/index.html; блок складання пози (позначений тегами pose нижче) має лишатися однаковим в обох — це перевіряє npm test.
@@ -32,7 +33,7 @@ const $ = id => document.getElementById(id);
 let scadSource = scadDefault, scadName = 'scad/excavator_boom.scad';
 let schema = [], byName = {}, values = {}, V = null, lastLog = [];
 const ang3 = { boom: 15, stick: 100, bucket: 60 };
-const ANG = [['boom', 'boom_angle', 'Стріла', 'кут хорди A→B до горизонту'], ['stick', 'stick_angle', 'Рукоять', 'внутрішній кут у шарнірі B'], ['bucket', 'bucket_angle', 'Ківш', 'до осі рукояті, + = підкручування']];
+const ANG = [['boom', 'boom_angle'], ['stick', 'stick_angle'], ['bucket', 'bucket_angle']];   // підписи — t('ang.<key>')
 
 // ---------------------------------------------------------------- сцена
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);                       // як в OpenSCAD: X — вперед, Y — вбік, Z — вгору
@@ -117,27 +118,31 @@ function updatePose() {
   for (const m of pinsGroup.children) { const p = P[m.name]; m.visible = !!p && show.pins; if (p) m.position.set(p[0], 0, p[1]); }
   // циліндр поза ходом → червоний корпус
   const warn = [];
-  for (const [key, , title] of ANG) {
+  for (const [key] of ANG) {
+    const title = t('ang.' + key);
     const [closed, stroke] = V['cyl_' + key], L = P.L[key], bad = L == null || L < closed - 0.5 || L > closed + stroke + 0.5;
     const body = bodies[`v_cyl_${key}_body`]; if (body) body.traverse(o => { if (o.isMesh) o.material.color.copy(bad ? new THREE.Color(0xd23c2c) : o.userData.base); });
     const el = $('cyl_' + key); if (el) { const f = L == null ? 0 : (L - closed) / stroke;
       el.querySelector('.bar').classList.toggle('bad', bad); el.querySelector('i').style.width = Math.max(0, Math.min(1, f)) * 100 + '%';
-      el.querySelector('span').textContent = L == null ? 'важелі не збираються' : `циліндр ${L.toFixed(0)} мм · хід ${(L - closed).toFixed(0)} / ${stroke}`; }
-    if (bad) warn.push(`${title}: циліндр поза ходом${L == null ? '' : ` (${L.toFixed(0)} мм при ${closed}…${closed + stroke})`}`);
+      el.querySelector('span').textContent = L == null ? t('cyl.nolink') : t('cyl.state', { L: L.toFixed(0), used: (L - closed).toFixed(0), stroke }); }
+    if (bad) warn.push(L == null ? t('cyl.out', { part: title })
+      : t('cyl.out.range', { part: title, L: L.toFixed(0), lo: closed, hi: closed + stroke }));
     const inp = $('num_' + key), sl = $('sl_' + key); if (document.activeElement !== inp) inp.value = (+a[key].toFixed(1)); sl.value = a[key];
   }
-  const gz = -groundZ(), T = P.T;
+  const gz = -groundZ(), T = P.T, mm = t('hud.mm');
+  const where = z => t(z >= 0 ? 'hud.above' : 'hud.below');
   $('hud').innerHTML = `<table>
-    <tr><td>зуб: виліт від осі A</td><td><b>${T[0].toFixed(0)}</b> мм</td></tr>
-    <tr><td>зуб: ${T[1] - gz >= 0 ? 'над землею' : 'нижче землі'}</td><td><b>${Math.abs(T[1] - gz).toFixed(0)}</b> мм</td></tr>
-    <tr><td>вісь ковша E: ${P.E[1] - gz >= 0 ? 'над землею' : 'нижче землі'}</td><td>${Math.abs(P.E[1] - gz).toFixed(0)} мм</td></tr>
-    <tr><td>нахил отвору ковша</td><td>${tiltText(P.bdir)}</td></tr></table>` +
+    <tr><td>${t('hud.reach')}</td><td><b>${T[0].toFixed(0)}</b> ${mm}</td></tr>
+    <tr><td>${t('hud.tooth', { where: where(T[1] - gz) })}</td><td><b>${Math.abs(T[1] - gz).toFixed(0)}</b> ${mm}</td></tr>
+    <tr><td>${t('hud.axisE', { where: where(P.E[1] - gz) })}</td><td>${Math.abs(P.E[1] - gz).toFixed(0)} ${mm}</td></tr>
+    <tr><td>${t('hud.tilt')}</td><td>${tiltText(P.bdir)}</td></tr></table>` +
     [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))].map(w => `<div class="w">⚠ ${w}</div>`).join('');
 }
 function tiltText(bdir) {                                    // отвір дивиться у бік −ŷ ковша; горизонтальний, коли вісь ковша дивиться на 180°
-  let t = ((bdir - 180) % 360 + 540) % 360 - 180;            // −: нахил назад (тримає), +: вперед (висипає)
-  const a = Math.abs(t).toFixed(0);
-  return Math.abs(t) < 3 ? 'горизонтально — тримає ґрунт' : t < 0 ? (t > -90 ? `зубами вгору на ${a}° — тримає ґрунт` : `перекинутий назад (${a}°)`) : (t < 60 ? `зубами вниз на ${a}° — копання` : `зубами вниз на ${a}° — висипання`);
+  let tilt = ((bdir - 180) % 360 + 540) % 360 - 180;         // −: нахил назад (тримає), +: вперед (висипає)
+  const a = Math.abs(tilt).toFixed(0);
+  return Math.abs(tilt) < 3 ? t('tilt.level') : tilt < 0 ? (tilt > -90 ? t('tilt.up', { a }) : t('tilt.over', { a }))
+    : (tilt < 60 ? t('tilt.dig', { a }) : t('tilt.dump', { a }));
 }
 const groundZ = () => values.ground_below_A ?? (V ? V.ground : 650);
 function updateEnvelope() {
@@ -156,7 +161,8 @@ function applyShow() {
 // ---------------------------------------------------------------- керування: кути, пози, вигляд
 function buildAngleUI() {
   $('angles').innerHTML = '';
-  for (const [key, pname, title, hint] of ANG) {
+  for (const [key] of ANG) {
+    const title = t('ang.' + key), hint = t('ang.' + key + '.hint');
     const d = document.createElement('div'); d.className = 'ang';
     d.innerHTML = `<div class="top"><label for="sl_${key}" title="${hint}">${title} <span style="color:var(--mute);font-weight:400">· ${hint}</span></label><span><input type="number" id="num_${key}" step="1"> °</span></div>
       <input type="range" id="sl_${key}" step="0.1"><div class="cyl" id="cyl_${key}"><div class="bar"><i></i></div><span></span></div>`;
@@ -167,15 +173,19 @@ function buildAngleUI() {
   }
 }
 function updateAngleRanges() {
-  for (const [key, pname] of ANG) {
+  for (const [key, pname] of ANG) {                          // pname — ім'я параметра в моделі (межі повзунка, коли обмеження вимкнене)
     const p = byName[pname] || {}, l = limits(key), clamp = $('clamp').checked && l;
     const lo = clamp ? l[0] : (p.min ?? -90), hi = clamp ? l[1] : (p.max ?? 180), sl = $('sl_' + key);
     sl.min = lo; sl.max = hi; $('num_' + key).min = Math.floor(lo); $('num_' + key).max = Math.ceil(hi);
     sl.title = `${lo.toFixed(1)}° … ${hi.toFixed(1)}°`;
   }
 }
-const POSES = { 'Робоча': [15, 100, 60], 'Транспорт': [58, 51, 139], 'Макс. виліт': [-5, 156, -17], 'Глибоке копання': [-38, 90, 60], 'Макс. висота': [58, 156, 0], 'Висипання': [45, 140, -17] };
-for (const [name, a] of Object.entries(POSES)) { const b = document.createElement('button'); b.textContent = name; b.onclick = () => { stopPlay(); glide(a); }; $('poses').appendChild(b); }
+// Ключі поз і виглядів — стабільні id (не підписи): на них зав'язані ?view= в адресі та цикл кнопки SpaceMouse.
+const POSES = { work: [15, 100, 60], transport: [58, 51, 139], reach: [-5, 156, -17], deep: [-38, 90, 60], high: [58, 156, 0], dump: [45, 140, -17] };
+function buildPoseUI() {
+  $('poses').innerHTML = '';
+  for (const [id, a] of Object.entries(POSES)) { const b = document.createElement('button'); b.textContent = t('pose.' + id); b.onclick = () => { stopPlay(); glide(a); }; $('poses').appendChild(b); }
+}
 let anim = null;
 function glide(to, ms = 600, then) {
   const from = [ang3.boom, ang3.stick, ang3.bucket], t0 = performance.now(); anim = { cancel: false };
@@ -186,8 +196,8 @@ function glide(to, ms = 600, then) {
 const CYCLE = [[12, 145, 0, 900], [-22, 142, 5, 1100], [-26, 95, 45, 1500], [-22, 78, 125, 1000], [38, 80, 135, 1400], [42, 140, 120, 1100], [42, 142, -17, 900], [12, 145, 0, 1000]];
 let playing = false;
 function playFrom(i) { if (!playing) return; const k = CYCLE[i % CYCLE.length]; glide(k.slice(0, 3), k[3], () => playFrom(i + 1)); }
-function stopPlay() { playing = false; if (anim) anim.cancel = true; $('play').classList.remove('on'); $('play').textContent = '▶ цикл копання'; }
-$('play').onclick = () => { if (playing) return stopPlay(); playing = true; $('play').classList.add('on'); $('play').textContent = '■ зупинити'; playFrom(0); };
+function stopPlay() { playing = false; if (anim) anim.cancel = true; $('play').classList.remove('on'); $('play').textContent = t('play'); }
+$('play').onclick = () => { if (playing) return stopPlay(); playing = true; $('play').classList.add('on'); $('play').textContent = t('stop'); playFrom(0); };
 $('clamp').onchange = () => { updateAngleRanges(); updatePose(); };
 
 function sceneBox() { const b = new THREE.Box3(); for (const k in bodies) if (bodies[k].visible) b.expandByObject(bodies[k]); return b.isEmpty() ? new THREE.Box3(new THREE.Vector3(-300, -300, -900), new THREE.Vector3(3000, 300, 1500)) : b; }
@@ -196,12 +206,19 @@ function setView(dir, isOrtho = ortho) {
   const d = dir ? new THREE.Vector3(...dir).normalize() : camera.position.clone().sub(controls.target).normalize();
   makeCamera(isOrtho, c.clone().addScaledVector(d, r * 3.4), c); resize();
 }
-const VIEWS = { 'Збоку': [0, -1, 0], 'Ізометрія': [0.55, -1, 0.45], 'Ззаду-збоку': [-0.8, -1, 0.35], 'Зверху': [0, -0.001, 1], 'Спереду': [1, 0, 0.05], 'Вписати': null };
-for (const [name, d] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = name; b.onclick = () => setView(d); $('views').appendChild(b); }
-{ const b = document.createElement('button'); b.textContent = 'Ортогонально'; b.onclick = () => { setView(null, !ortho); b.classList.toggle('on', ortho); }; $('views').appendChild(b); }
-const TOG = { cylinders: 'циліндри', linkage: 'коромисло і тяга', bucket: 'ківш', post: 'колона', pins: 'пальці', ground: 'земля', edges: 'ребра', envelope: 'робоча зона (траєкторії зуба)' };
-for (const [k, t] of Object.entries(TOG)) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${t}`;
-  l.querySelector('input').onchange = e => { show[k] = e.target.checked; applyShow(); }; $('toggles').appendChild(l); }
+const VIEWS = { side: [0, -1, 0], iso: [0.55, -1, 0.45], back: [-0.8, -1, 0.35], top: [0, -0.001, 1], front: [1, 0, 0.05], fit: null };
+function buildViewUI() {
+  $('views').innerHTML = '';
+  for (const [id, d] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = t('view.' + id); b.onclick = () => setView(d); $('views').appendChild(b); }
+  const b = document.createElement('button'); b.textContent = t('view.ortho'); b.classList.toggle('on', ortho);
+  b.onclick = () => { setView(null, !ortho); b.classList.toggle('on', ortho); }; $('views').appendChild(b);
+}
+const TOG = ['cylinders', 'linkage', 'bucket', 'post', 'pins', 'ground', 'edges', 'envelope'];
+function buildToggleUI() {
+  $('toggles').innerHTML = '';
+  for (const k of TOG) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${t('tog.' + k)}`;
+    l.querySelector('input').onchange = e => { show[k] = e.target.checked; applyShow(); }; $('toggles').appendChild(l); }
+}
 canvas.addEventListener('dblclick', e => {                   // подвійний клік — новий центр обертання на поверхні моделі
   const r = canvas.getBoundingClientRect(), ray = new THREE.Raycaster();
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
@@ -211,17 +228,21 @@ canvas.addEventListener('dblclick', e => {                   // подвійни
 // ---------------------------------------------------------------- параметри моделі (OpenSCAD)
 const changed = () => { const o = {}; for (const g of schema) for (const p of g.params) if (!p.client && JSON.stringify(values[p.name]) !== JSON.stringify(p.value)) o[p.name] = values[p.name]; return o; };
 function buildParamUI() {
-  const root = $('groups'); root.innerHTML = '';
+  const root = $('groups');
+  const open = new Set([...root.children].filter(d => d.open).map(d => d.dataset.g));   // розгорнуті групи переживають зміну мови
+  root.innerHTML = '';
   for (const g of schema) {
     const ps = g.params.filter(p => !p.client); if (!ps.length) continue;
-    const det = document.createElement('details'); det.innerHTML = `<summary>${g.name}<span class="n"></span></summary>`; root.appendChild(det);
+    const det = document.createElement('details'); det.dataset.g = g.name; det.open = open.has(g.name);
+    det.innerHTML = `<summary>${tg(g.name)}<span class="n"></span></summary>`; root.appendChild(det);
     for (const p of ps) {
       const row = document.createElement('div'); row.className = 'p'; row.id = 'p_' + p.name;
       const vec = Array.isArray(p.value), vals = vec ? p.value : [p.value], cur = values[p.name], curs = vec ? cur : [cur]; let inputs = '';
       if (typeof p.value === 'boolean') inputs = `<input type="checkbox" ${cur ? 'checked' : ''}>`;
       else if (p.options) inputs = `<select>${p.options.map(o => `<option ${o === cur ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
       else inputs = vals.map((v, i) => `<input type="number" value="${curs[i]}" step="${p.step ?? (Math.abs(v) < 20 && !Number.isInteger(v) ? 0.5 : (Math.abs(v) >= 200 ? 5 : 1))}" ${p.min != null ? `min="${p.min}" max="${p.max}"` : ''}>`).join('');
-      row.innerHTML = `<span class="nm" title="${(p.desc || '').replace(/"/g, '&quot;')}">${p.name}</span><span class="in">${inputs}<button class="rs" title="повернути ${JSON.stringify(p.value)}">↺</button></span>${p.desc ? `<span class="ds">${p.desc}</span>` : ''}`;
+      const ds = tp(p);
+      row.innerHTML = `<span class="nm" title="${ds.replace(/"/g, '&quot;')}">${p.name}</span><span class="in">${inputs}<button class="rs" title="${t('p.restore', { v: JSON.stringify(p.value) })}">↺</button></span>${ds ? `<span class="ds">${ds}</span>` : ''}`;
       det.appendChild(row);
       const els = [...row.querySelectorAll('input,select')];
       const read = () => { let v; if (typeof p.value === 'boolean') v = els[0].checked; else if (p.options) v = els[0].value; else { const n = els.map(e => +e.value); if (n.some(x => !isFinite(x) || e_empty(els))) return; v = vec ? n : n[0]; }
@@ -235,7 +256,7 @@ function buildParamUI() {
 const e_empty = els => els.some(e => e.value === '');
 function mark() {
   const ch = changed();
-  for (const det of $('groups').children) { let n = 0; for (const row of det.querySelectorAll('.p')) { const on = row.id.slice(2) in ch; row.classList.toggle('ch', on); n += on; } det.querySelector('.n').textContent = n ? `змінено: ${n}` : ''; }
+  for (const det of $('groups').children) { let n = 0; for (const row of det.querySelectorAll('.p')) { const on = row.id.slice(2) in ch; row.classList.toggle('ch', on); n += on; } det.querySelector('.n').textContent = n ? t('p.changed', { n }) : ''; }
 }
 let timer = null, inflight = false, again = false, worker = null, jobId = 0, engineReady = false;
 function schedule() { clearTimeout(timer); timer = setTimeout(rebuild, 300); }
@@ -245,32 +266,35 @@ function runOpenSCAD(defs) {                                  // один зап
   return new Promise((resolve, reject) => {
     const done = e => { if (e.data.id !== id) return; worker.removeEventListener('message', done); resolve(e.data); };
     worker.addEventListener('message', done);
-    worker.onerror = e => { worker.terminate(); worker = null; reject(new Error(e.message || 'воркер OpenSCAD упав')); };
+    worker.onerror = e => { worker.terminate(); worker = null; reject(new Error(e.message || t('st.worker'))); };
     worker.postMessage({ id, source: scadSource, defs });
   });
 }
 async function rebuild() {
   if (inflight) { again = true; return; } inflight = true;
-  status(engineReady ? 'OpenSCAD-WASM будує…' : 'Завантажую рушій OpenSCAD-WASM (≈14 МБ, один раз)…', 'busy');
+  status(engineReady ? 'st.build' : 'st.engine', {}, 'busy');
   try {
     const ch = changed(), defs = Object.keys(ch).sort().map(k => `${k}=${scadLiteral(byName[k], ch[k])}`);
     const t0 = performance.now(), d = await runOpenSCAD(defs);
-    if (d.error) { status('Помилка: ' + d.error, 'err'); lastLog = d.log || []; }
-    else { engineReady = true; applyBuild(d); status(`OpenSCAD-WASM: ${(d.ms / 1000).toFixed(2)} с · разом ${((performance.now() - t0) / 1000).toFixed(2)} с · змінено параметрів: ${Object.keys(ch).length}`); }
-  } catch (e) { status('Помилка: ' + e.message, 'err'); }
+    if (d.error) { status('st.err', { msg: d.error }, 'err'); lastLog = d.log || []; }
+    else { engineReady = true; applyBuild(d); status('st.done', { ms: (d.ms / 1000).toFixed(2), total: ((performance.now() - t0) / 1000).toFixed(2), n: Object.keys(ch).length }); }
+  } catch (e) { status('st.err', { msg: e.message }, 'err'); }
   inflight = false; if (again) { again = false; rebuild(); }
 }
-function status(t, cls = '') { const s = $('status'); s.textContent = t; s.className = cls; }
+let lastStatus = null;                                        // останній рядок стану — щоб перемалювати його новою мовою
+function status(key, vars = {}, cls = '') { lastStatus = { key, vars, cls }; const s = $('status'); s.textContent = t(key, vars); s.className = cls; }
 function applyBuild(d) {
   lastLog = (d.log || []).filter(l => !/ПОТОЧНЕ|ЗУБ КОВША|поза межами циліндра|Циліндр між/.test(l));
   if (d.view) V = d.view; setMeshes(d.parts || {}); setPins(); buildGround(groundZ()); updateAngleRanges(); updateEnvelope(); updatePose();
 }
 $('reset').onclick = () => { for (const g of schema) for (const p of g.params) values[p.name] = p.value; buildParamUI(); buildGround(groundZ()); schedule(); updatePose(); };
-$('copy').onclick = async () => { const ch = changed(), txt = Object.keys(ch).length ? Object.entries(ch).map(([k, v]) => `${k} = ${JSON.stringify(v)};`).join('\n') : '// змін немає';
-  try { await navigator.clipboard.writeText(txt); status('Скопійовано рядки для вставки в .scad:\n' + txt.replace(/\n/g, '  ')); } catch { prompt('Рядки для .scad:', txt); } };
+$('copy').onclick = async () => { const ch = changed(), txt = Object.keys(ch).length ? Object.entries(ch).map(([k, v]) => `${k} = ${JSON.stringify(v)};`).join('\n') : t('st.nochange');
+  try { await navigator.clipboard.writeText(txt); status('st.copied'); $('status').textContent += ' ' + txt.replace(/\n/g, '  '); } catch { prompt(t('st.prompt'), txt); } };
 $('rebuild').onclick = () => $('file').click();
-$('file').onchange = async e => { const f = e.target.files[0]; if (!f) return; scadSource = await f.text(); scadName = f.name; values = {};
-  $('mode').innerHTML = `модель <code>${scadName}</code> (відкрито з диска) · OpenSCAD-WASM у браузері`; await loadSchema(); rebuild(); };
+let fromDisk = false;
+const setMode = () => { $('mode').innerHTML = t(fromDisk ? 'mode.file' : 'mode', { file: scadName }); };
+$('file').onchange = async e => { const f = e.target.files[0]; if (!f) return; scadSource = await f.text(); scadName = f.name; values = {}; fromDisk = true;
+  setMode(); await loadSchema(); rebuild(); };
 
 async function loadSchema() {
   schema = readSchema(scadSource);
@@ -297,40 +321,43 @@ window.addEventListener('resize', resize);
 const SM = { t: [0, 0, 0], r: [0, 0, 0], src: null, hids: [], btn: 0, last: 0, view: 0, cfg: { speed: 1, invPan: false, invZoom: false, invRot: false } };
 try { Object.assign(SM.cfg, JSON.parse(localStorage.getItem('spacemouse') || '{}')); } catch (e) { /* сховище недоступне — лишаються типові */ }
 const smSave = () => { try { localStorage.setItem('spacemouse', JSON.stringify(SM.cfg)); } catch (e) { /* не критично */ } };
-$('sm').innerHTML = `<div class="row" style="align-items:center;margin-top:6px"><button id="sm_btn" title="3Dconnexion SpaceMouse / SpaceNavigator">SpaceMouse</button><span id="sm_st" style="color:var(--mute);font-size:11.5px;flex:1;min-width:150px"></span></div>
-  <div class="row" style="align-items:center"><label>чутливість <input type="range" id="sm_speed" min="0.2" max="3" step="0.1" style="width:80px;vertical-align:middle;accent-color:var(--acc)"></label>
-  <label class="chk"><input type="checkbox" id="sm_ip"> інв. зсув</label><label class="chk"><input type="checkbox" id="sm_iz"> інв. масштаб</label><label class="chk"><input type="checkbox" id="sm_ir"> інв. оберт.</label></div>
+function smUI() {                                            // підписи через t() — сторінка може бути будь-якою мовою
+  $('sm').innerHTML = `<div class="row" style="align-items:center;margin-top:6px"><button id="sm_btn" title="${t('sm.btn.title')}">SpaceMouse</button><span id="sm_st" style="color:var(--mute);font-size:11.5px;flex:1;min-width:150px"></span></div>
+  <div class="row" style="align-items:center"><label>${t('sm.speed')} <input type="range" id="sm_speed" min="0.2" max="3" step="0.1" style="width:80px;vertical-align:middle;accent-color:var(--acc)"></label>
+  <label class="chk"><input type="checkbox" id="sm_ip"> ${t('sm.invPan')}</label><label class="chk"><input type="checkbox" id="sm_iz"> ${t('sm.invZoom')}</label><label class="chk"><input type="checkbox" id="sm_ir"> ${t('sm.invRot')}</label></div>
   <div id="sm_dbg" style="font:11px ui-monospace,Menlo,monospace;color:var(--mute);min-height:14px"></div>`;
-$('sm_speed').value = SM.cfg.speed; $('sm_ip').checked = SM.cfg.invPan; $('sm_iz').checked = SM.cfg.invZoom; $('sm_ir').checked = SM.cfg.invRot;
-$('sm_speed').oninput = e => { SM.cfg.speed = +e.target.value; smSave(); };
-for (const [id, key] of [['sm_ip', 'invPan'], ['sm_iz', 'invZoom'], ['sm_ir', 'invRot']]) $(id).onchange = e => { SM.cfg[key] = e.target.checked; smSave(); };
+  $('sm_speed').value = SM.cfg.speed; $('sm_ip').checked = SM.cfg.invPan; $('sm_iz').checked = SM.cfg.invZoom; $('sm_ir').checked = SM.cfg.invRot;
+  $('sm_speed').oninput = e => { SM.cfg.speed = +e.target.value; smSave(); };
+  for (const [id, key] of [['sm_ip', 'invPan'], ['sm_iz', 'invZoom'], ['sm_ir', 'invRot']]) $(id).onchange = e => { SM.cfg[key] = e.target.checked; smSave(); };
+  $('sm_btn').onclick = smAsk; smStatus();
+}
 function smStatus(msg) {
-  $('sm_st').textContent = msg || (SM.src === 'hid' ? `підключено (WebHID): ${SM.hids[0]?.productName || 'SpaceMouse'}` : SM.src === 'pad' ? `підключено (Gamepad API): ${SM.padId}`
-    : 'hid' in navigator ? 'натисніть кнопку і виберіть мишу у вікні браузера' : 'тут немає WebHID — порухайте ковпачок, миша підхопиться через Gamepad API');
+  $('sm_st').textContent = msg || (SM.src === 'hid' ? t('sm.hid', { name: SM.hids[0]?.productName || 'SpaceMouse' }) : SM.src === 'pad' ? t('sm.pad', { name: SM.padId })
+    : 'hid' in navigator ? t('sm.press') : t('sm.nohid'));
   $('sm_btn').classList.toggle('on', !!SM.src);
 }
 function smButtons(bits) {                                   // кнопка 1 — вписати модель, кнопка 2 — наступний стандартний вигляд
   const down = bits & ~SM.btn; SM.btn = bits;
   if (down & 1) setView(null);
-  if (down & 2) { const names = ['Збоку', 'Ізометрія', 'Зверху', 'Спереду']; SM.view = (SM.view + 1) % names.length; setView(VIEWS[names[SM.view]]); }
+  if (down & 2) { const ids = ['side', 'iso', 'top', 'front']; SM.view = (SM.view + 1) % ids.length; setView(VIEWS[ids[SM.view]]); }
 }
 function smReport(e) {                                       // звіт 1 — зсув (у нових моделях одразу і оберт, 12 байт), 2 — оберт, 3 — кнопки
   const d = e.data, n = d.byteLength, v = k => d.getInt16(k, true) / 350;
   if (e.reportId === 1 && n >= 6) { SM.t = [v(0), v(2), v(4)]; if (n >= 12) SM.r = [v(6), v(8), v(10)]; }
   else if (e.reportId === 2 && n >= 6) SM.r = [v(0), v(2), v(4)];
   else if (e.reportId === 3 && n >= 1) smButtons(d.getUint8(0) | (n > 1 ? d.getUint8(1) << 8 : 0));
-  SM.last = performance.now(); SM.dbg = `звіт ${e.reportId}·${n} байт`; SM.cnt = (SM.cnt || 0) + 1;
+  SM.last = performance.now(); SM.dbg = t('sm.report', { id: e.reportId, n }); SM.cnt = (SM.cnt || 0) + 1;
 }
 async function smOpen(dev) {
   if (!dev.opened) await dev.open();
   dev.addEventListener('inputreport', smReport); if (!SM.hids.includes(dev)) SM.hids.push(dev); SM.src = 'hid'; smStatus();
 }
 const SM_FILTERS = [{ vendorId: 0x256f }, { vendorId: 0x046d, usagePage: 0x01, usage: 0x08 }];   // 3Dconnexion; старі Logitech/3Dconnexion: «multi-axis controller»
-$('sm_btn').onclick = async () => {
+async function smAsk() {
   if (!('hid' in navigator)) return smStatus();
-  try { const devs = await navigator.hid.requestDevice({ filters: SM_FILTERS }); if (!devs.length) return smStatus('пристрій не вибрано'); for (const d of devs) await smOpen(d); }
-  catch (e) { smStatus('не вдалося відкрити: ' + e.message + ' — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз'); }
-};
+  try { const devs = await navigator.hid.requestDevice({ filters: SM_FILTERS }); if (!devs.length) return smStatus(t('sm.nodev')); for (const d of devs) await smOpen(d); }
+  catch (e) { smStatus(t('sm.failed', { msg: e.message })); }
+}
 if ('hid' in navigator) {
   navigator.hid.getDevices().then(ds => ds.filter(d => d.vendorId === 0x256f || d.vendorId === 0x046d).forEach(d => smOpen(d).catch(() => {})));   // уже дозволені пристрої — без запиту
   navigator.hid.addEventListener('connect', e => { if (e.device.vendorId === 0x256f || e.device.vendorId === 0x046d) smOpen(e.device).catch(() => {}); });   // мишу з чинним дозволом знову ввімкнули в USB
@@ -364,21 +391,48 @@ function smTick(dt) {                                         // виклика�
 }
 setInterval(() => {                                           // діагностика: чи взагалі приходять дані з миші та які
   const f = a => a.map(x => (x >= 0 ? '+' : '') + x.toFixed(2)).join(' ');
-  $('sm_dbg').textContent = !SM.src ? '' : performance.now() - SM.last > 1500 ? (SM.src === 'hid' ? `даних немає (звітів: ${SM.cnt || 0}) — порухайте ковпачок; якщо так і лишиться, пристрій тримає драйвер 3DxWare` : '')
-    : `${SM.src === 'hid' ? SM.dbg : 'gamepad'} · зсув ${f(SM.t)} · оберт ${f(SM.r)}`;
+  $('sm_dbg').textContent = !SM.src ? '' : performance.now() - SM.last > 1500 ? (SM.src === 'hid' ? t('sm.nodata', { n: SM.cnt || 0 }) : '')
+    : t('sm.dbg', { src: SM.src === 'hid' ? SM.dbg : 'gamepad', t: f(SM.t), r: f(SM.r) });
 }, 200);
-smStatus(); window.__SM__ = SM; window.__CAM__ = () => ({ p: camera.position.toArray(), t: controls.target.toArray(), zoom: camera.zoom });   // для тестів
+smUI(); window.__SM__ = SM; window.__CAM__ = () => ({ p: camera.position.toArray(), t: controls.target.toArray(), zoom: camera.zoom });   // для тестів
 //</spacemouse> -----------------------------------------------------------------------------------
 let tPrev = performance.now();
 (function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
 
+// ---------------------------------------------------------------- мова сторінки
+function applyStatic() {                                      // статичні підписи index.html: data-i18n / data-i18n-title
+  document.documentElement.lang = getLang();
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
+  setMode();
+  if (playing) $('play').textContent = t('stop');
+}
+function buildLangUI() {
+  $('lang').innerHTML = '';
+  for (const l of LANGS) {
+    const b = document.createElement('button'); b.textContent = l.toUpperCase(); b.classList.toggle('on', l === getLang());
+    b.onclick = () => { if (l !== getLang()) { setLang(l); renderAll(); } };
+    $('lang').appendChild(b);
+  }
+}
+// Зміна мови лише перемальовує підписи: OpenSCAD не перезапускається, кути, галочки й змінені параметри лишаються.
+function renderAll() {
+  buildLangUI(); applyStatic(); buildAngleUI(); buildPoseUI(); buildViewUI(); buildToggleUI(); smUI();
+  if (schema.length) buildParamUI();
+  if (lastStatus) status(lastStatus.key, lastStatus.vars, lastStatus.cls);
+  updateAngleRanges(); updatePose();
+  const u = new URL(location.href);                           // якщо мова прийшла з адреси — тримаємо її актуальною для «поділитися»
+  if (u.searchParams.has('lang')) { u.searchParams.set('lang', getLang()); history.replaceState(null, '', u); }
+}
+
 (async function init() {
-  buildAngleUI(); resize();
+  initLang(location.search);
+  renderAll(); resize();
   try {
     await loadSchema();
     ang3.boom = values.boom_angle; ang3.stick = values.stick_angle; ang3.bucket = values.bucket_angle;
     await rebuild();
-    const q = new URLSearchParams(location.search).get('view'), QV = { side: 'Збоку', iso: 'Ізометрія', back: 'Ззаду-збоку', top: 'Зверху', front: 'Спереду' };
-    setView(VIEWS[QV[q] || 'Збоку']); window.__READY__ = true;
-  } catch (e) { status('Не вдалося завантажити модель: ' + e.message, 'err'); }
+    const q = new URLSearchParams(location.search).get('view');
+    setView(q && q in VIEWS ? VIEWS[q] : VIEWS.side); window.__READY__ = true;
+  } catch (e) { status('st.load', { msg: e.message }, 'err'); }
 })();

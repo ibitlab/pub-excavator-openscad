@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Міні-екскаватор — модель у браузері (OpenSCAD-WASM)</title>
+<title data-i18n="title">Міні-екскаватор — модель у браузері (OpenSCAD-WASM)</title>
 <style>
   :root { --bg:#f3f1ec; --panel:#fbfaf7; --ink:#23262b; --mute:#6d7278; --line:#ddd8cd; --acc:#c9731a; --acc2:#2f5d8a; --bad:#c0392b; --ok:#3d7a4a; }
   * { box-sizing: border-box; }
@@ -15,6 +15,9 @@
   canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .2px; }
   .sub { color: var(--mute); font-size: 11.5px; margin-bottom: 12px; }
+  .hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .lang { display: flex; gap: 3px; flex: none; }
+  .lang button { padding: 2px 7px; font-size: 11px; line-height: 1.5; letter-spacing: .4px; }
   h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--mute); margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
   .ang { margin-bottom: 12px; }
   .ang .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -55,32 +58,35 @@
 </head>
 <body>
 <div id="side">
-  <h1>Міні-екскаватор: стріла · рукоять · ківш</h1>
-  <div class="sub" id="mode">модель <code>scad/excavator_boom.scad</code> · OpenSCAD-WASM у браузері, без сервера</div>
+  <div class="hdr">
+    <h1 data-i18n="h1">Міні-екскаватор: стріла · рукоять · ківш</h1>
+    <div class="lang" id="lang" data-i18n-title="lang.title"></div>
+  </div>
+  <div class="sub" id="mode"></div>
 
-  <h2>Кути — миттєво, у браузері</h2>
+  <h2 data-i18n="h2.angles">Кути — миттєво, у браузері</h2>
   <div id="angles"></div>
   <div class="row">
-    <label class="chk"><input type="checkbox" id="clamp" checked> обмежувати ходом циліндрів</label>
+    <label class="chk"><input type="checkbox" id="clamp" checked> <span data-i18n="clamp">обмежувати ходом циліндрів</span></label>
   </div>
   <div class="row" id="poses"></div>
-  <div class="row"><button id="play">▶ цикл копання</button></div>
+  <div class="row"><button id="play" data-i18n="play">▶ цикл копання</button></div>
 
-  <h2>Вигляд</h2>
+  <h2 data-i18n="h2.view">Вигляд</h2>
   <div class="row" id="views"></div>
   <div id="toggles"></div>
   <div id="sm"></div>
-  <div class="row" style="align-items:center;margin-top:4px"><label for="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
+  <div class="row" style="align-items:center;margin-top:4px"><label for="gz" data-i18n="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
 
-  <h2>Параметри моделі — OpenSCAD-WASM у браузері</h2>
-  <div class="row"><button id="reset">Скинути все</button><button id="copy">Копіювати зміни</button><button id="rebuild" title="Відкрити власний варіант файлу .scad з диска (нікуди не надсилається)">Відкрити .scad…</button><input type="file" id="file" accept=".scad" hidden></div>
+  <h2 data-i18n="h2.params">Параметри моделі — OpenSCAD-WASM у браузері</h2>
+  <div class="row"><button id="reset" data-i18n="reset">Скинути все</button><button id="copy" data-i18n="copy">Копіювати зміни</button><button id="rebuild" data-i18n="open" data-i18n-title="open.title">Відкрити .scad…</button><input type="file" id="file" accept=".scad" hidden></div>
   <div id="status"></div>
   <div id="groups"></div>
 </div>
 <div id="main">
   <canvas id="c"></canvas>
   <div id="hud"></div>
-  <div id="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка у «Вигляді»</div>
+  <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка у «Вигляді»</div>
 </div>
 
 <script type="module" src="./src/main.js"></script>

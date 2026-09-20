@@ -280,11 +280,13 @@ function setView(dir, isOrtho = ortho) {
   const d = dir ? new THREE.Vector3(...dir).normalize() : camera.position.clone().sub(controls.target).normalize();
   makeCamera(isOrtho, c.clone().addScaledVector(d, r * 3.4), c); resize();
 }
-const VIEWS = { 'Збоку': [0, -1, 0], 'Ізометрія': [0.55, -1, 0.45], 'Ззаду-збоку': [-0.8, -1, 0.35], 'Зверху': [0, -0.001, 1], 'Спереду': [1, 0, 0.05], 'Вписати': null };
-for (const [name, d] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = name; b.onclick = () => setView(d); $('views').appendChild(b); }
+// Ключі виглядів — стабільні id (не підписи): на них зав'язані ?view= в адресі та цикл кнопки SpaceMouse.
+const VIEWS = { side: [0, -1, 0], iso: [0.55, -1, 0.45], back: [-0.8, -1, 0.35], top: [0, -0.001, 1], front: [1, 0, 0.05], fit: null };
+const VIEW_LABEL = { side: 'Збоку', iso: 'Ізометрія', back: 'Ззаду-збоку', top: 'Зверху', front: 'Спереду', fit: 'Вписати' };
+for (const [id, d] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = VIEW_LABEL[id]; b.onclick = () => setView(d); $('views').appendChild(b); }
 { const b = document.createElement('button'); b.textContent = 'Ортогонально'; b.onclick = () => { setView(null, !ortho); b.classList.toggle('on', ortho); }; $('views').appendChild(b); }
 const TOG = { cylinders: 'циліндри', linkage: 'коромисло і тяга', bucket: 'ківш', post: 'колона', pins: 'пальці', ground: 'земля', edges: 'ребра', envelope: 'робоча зона (траєкторії зуба)' };
-for (const [k, t] of Object.entries(TOG)) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${t}`;
+for (const [k, label] of Object.entries(TOG)) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${label}`;
   l.querySelector('input').onchange = e => { show[k] = e.target.checked; applyShow(); }; $('toggles').appendChild(l); }
 canvas.addEventListener('dblclick', e => {                   // подвійний клік — новий центр обертання на поверхні моделі
   const r = canvas.getBoundingClientRect(), ray = new THREE.Raycaster();
@@ -359,6 +361,21 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
+// Заглушка перекладу: блок spacemouse нижче спільний з tools/viewer-wasm/src/main.js і має лишатися
+// байт-у-байт однаковим (це перевіряє npm test), тому текст у ньому береться через t().
+// Ця сторінка україномовна, тож словник тут один; двомовна версія — tools/viewer-wasm/src/i18n.js.
+const SM_UK = {
+  'sm.btn.title': '3Dconnexion SpaceMouse / SpaceNavigator',
+  'sm.speed': 'чутливість', 'sm.invPan': 'інв. зсув', 'sm.invZoom': 'інв. масштаб', 'sm.invRot': 'інв. оберт.',
+  'sm.hid': 'підключено (WebHID): {name}', 'sm.pad': 'підключено (Gamepad API): {name}',
+  'sm.press': 'натисніть кнопку і виберіть мишу у вікні браузера',
+  'sm.nohid': 'тут немає WebHID — порухайте ковпачок, миша підхопиться через Gamepad API',
+  'sm.nodev': 'пристрій не вибрано',
+  'sm.failed': 'не вдалося відкрити: {msg} — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз',
+  'sm.nodata': 'даних немає (звітів: {n}) — порухайте ковпачок; якщо так і лишиться, пристрій тримає драйвер 3DxWare',
+  'sm.report': 'звіт {id}·{n} байт', 'sm.dbg': '{src} · зсув {t} · оберт {r}',
+};
+const t = (key, vars) => { const s = SM_UK[key] ?? key; return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s; };
 //<spacemouse> ------------------------------------------------------------------------------------
 // 3Dconnexion SpaceMouse (6 ступенів вільності). Два шляхи, обидва без драйверних плагінів:
 //  * WebHID — Chrome / Edge / Opera: кнопка «SpaceMouse» → дозвіл на пристрій (сторінка має бути на https або localhost);
@@ -367,40 +384,43 @@ window.addEventListener('resize', resize);
 const SM = { t: [0, 0, 0], r: [0, 0, 0], src: null, hids: [], btn: 0, last: 0, view: 0, cfg: { speed: 1, invPan: false, invZoom: false, invRot: false } };
 try { Object.assign(SM.cfg, JSON.parse(localStorage.getItem('spacemouse') || '{}')); } catch (e) { /* сховище недоступне — лишаються типові */ }
 const smSave = () => { try { localStorage.setItem('spacemouse', JSON.stringify(SM.cfg)); } catch (e) { /* не критично */ } };
-$('sm').innerHTML = `<div class="row" style="align-items:center;margin-top:6px"><button id="sm_btn" title="3Dconnexion SpaceMouse / SpaceNavigator">SpaceMouse</button><span id="sm_st" style="color:var(--mute);font-size:11.5px;flex:1;min-width:150px"></span></div>
-  <div class="row" style="align-items:center"><label>чутливість <input type="range" id="sm_speed" min="0.2" max="3" step="0.1" style="width:80px;vertical-align:middle;accent-color:var(--acc)"></label>
-  <label class="chk"><input type="checkbox" id="sm_ip"> інв. зсув</label><label class="chk"><input type="checkbox" id="sm_iz"> інв. масштаб</label><label class="chk"><input type="checkbox" id="sm_ir"> інв. оберт.</label></div>
+function smUI() {                                            // підписи через t() — сторінка може бути будь-якою мовою
+  $('sm').innerHTML = `<div class="row" style="align-items:center;margin-top:6px"><button id="sm_btn" title="${t('sm.btn.title')}">SpaceMouse</button><span id="sm_st" style="color:var(--mute);font-size:11.5px;flex:1;min-width:150px"></span></div>
+  <div class="row" style="align-items:center"><label>${t('sm.speed')} <input type="range" id="sm_speed" min="0.2" max="3" step="0.1" style="width:80px;vertical-align:middle;accent-color:var(--acc)"></label>
+  <label class="chk"><input type="checkbox" id="sm_ip"> ${t('sm.invPan')}</label><label class="chk"><input type="checkbox" id="sm_iz"> ${t('sm.invZoom')}</label><label class="chk"><input type="checkbox" id="sm_ir"> ${t('sm.invRot')}</label></div>
   <div id="sm_dbg" style="font:11px ui-monospace,Menlo,monospace;color:var(--mute);min-height:14px"></div>`;
-$('sm_speed').value = SM.cfg.speed; $('sm_ip').checked = SM.cfg.invPan; $('sm_iz').checked = SM.cfg.invZoom; $('sm_ir').checked = SM.cfg.invRot;
-$('sm_speed').oninput = e => { SM.cfg.speed = +e.target.value; smSave(); };
-for (const [id, key] of [['sm_ip', 'invPan'], ['sm_iz', 'invZoom'], ['sm_ir', 'invRot']]) $(id).onchange = e => { SM.cfg[key] = e.target.checked; smSave(); };
+  $('sm_speed').value = SM.cfg.speed; $('sm_ip').checked = SM.cfg.invPan; $('sm_iz').checked = SM.cfg.invZoom; $('sm_ir').checked = SM.cfg.invRot;
+  $('sm_speed').oninput = e => { SM.cfg.speed = +e.target.value; smSave(); };
+  for (const [id, key] of [['sm_ip', 'invPan'], ['sm_iz', 'invZoom'], ['sm_ir', 'invRot']]) $(id).onchange = e => { SM.cfg[key] = e.target.checked; smSave(); };
+  $('sm_btn').onclick = smAsk; smStatus();
+}
 function smStatus(msg) {
-  $('sm_st').textContent = msg || (SM.src === 'hid' ? `підключено (WebHID): ${SM.hids[0]?.productName || 'SpaceMouse'}` : SM.src === 'pad' ? `підключено (Gamepad API): ${SM.padId}`
-    : 'hid' in navigator ? 'натисніть кнопку і виберіть мишу у вікні браузера' : 'тут немає WebHID — порухайте ковпачок, миша підхопиться через Gamepad API');
+  $('sm_st').textContent = msg || (SM.src === 'hid' ? t('sm.hid', { name: SM.hids[0]?.productName || 'SpaceMouse' }) : SM.src === 'pad' ? t('sm.pad', { name: SM.padId })
+    : 'hid' in navigator ? t('sm.press') : t('sm.nohid'));
   $('sm_btn').classList.toggle('on', !!SM.src);
 }
 function smButtons(bits) {                                   // кнопка 1 — вписати модель, кнопка 2 — наступний стандартний вигляд
   const down = bits & ~SM.btn; SM.btn = bits;
   if (down & 1) setView(null);
-  if (down & 2) { const names = ['Збоку', 'Ізометрія', 'Зверху', 'Спереду']; SM.view = (SM.view + 1) % names.length; setView(VIEWS[names[SM.view]]); }
+  if (down & 2) { const ids = ['side', 'iso', 'top', 'front']; SM.view = (SM.view + 1) % ids.length; setView(VIEWS[ids[SM.view]]); }
 }
 function smReport(e) {                                       // звіт 1 — зсув (у нових моделях одразу і оберт, 12 байт), 2 — оберт, 3 — кнопки
   const d = e.data, n = d.byteLength, v = k => d.getInt16(k, true) / 350;
   if (e.reportId === 1 && n >= 6) { SM.t = [v(0), v(2), v(4)]; if (n >= 12) SM.r = [v(6), v(8), v(10)]; }
   else if (e.reportId === 2 && n >= 6) SM.r = [v(0), v(2), v(4)];
   else if (e.reportId === 3 && n >= 1) smButtons(d.getUint8(0) | (n > 1 ? d.getUint8(1) << 8 : 0));
-  SM.last = performance.now(); SM.dbg = `звіт ${e.reportId}·${n} байт`; SM.cnt = (SM.cnt || 0) + 1;
+  SM.last = performance.now(); SM.dbg = t('sm.report', { id: e.reportId, n }); SM.cnt = (SM.cnt || 0) + 1;
 }
 async function smOpen(dev) {
   if (!dev.opened) await dev.open();
   dev.addEventListener('inputreport', smReport); if (!SM.hids.includes(dev)) SM.hids.push(dev); SM.src = 'hid'; smStatus();
 }
 const SM_FILTERS = [{ vendorId: 0x256f }, { vendorId: 0x046d, usagePage: 0x01, usage: 0x08 }];   // 3Dconnexion; старі Logitech/3Dconnexion: «multi-axis controller»
-$('sm_btn').onclick = async () => {
+async function smAsk() {
   if (!('hid' in navigator)) return smStatus();
-  try { const devs = await navigator.hid.requestDevice({ filters: SM_FILTERS }); if (!devs.length) return smStatus('пристрій не вибрано'); for (const d of devs) await smOpen(d); }
-  catch (e) { smStatus('не вдалося відкрити: ' + e.message + ' — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз'); }
-};
+  try { const devs = await navigator.hid.requestDevice({ filters: SM_FILTERS }); if (!devs.length) return smStatus(t('sm.nodev')); for (const d of devs) await smOpen(d); }
+  catch (e) { smStatus(t('sm.failed', { msg: e.message })); }
+}
 if ('hid' in navigator) {
   navigator.hid.getDevices().then(ds => ds.filter(d => d.vendorId === 0x256f || d.vendorId === 0x046d).forEach(d => smOpen(d).catch(() => {})));   // уже дозволені пристрої — без запиту
   navigator.hid.addEventListener('connect', e => { if (e.device.vendorId === 0x256f || e.device.vendorId === 0x046d) smOpen(e.device).catch(() => {}); });   // мишу з чинним дозволом знову ввімкнули в USB
@@ -434,10 +454,10 @@ function smTick(dt) {                                         // виклика�
 }
 setInterval(() => {                                           // діагностика: чи взагалі приходять дані з миші та які
   const f = a => a.map(x => (x >= 0 ? '+' : '') + x.toFixed(2)).join(' ');
-  $('sm_dbg').textContent = !SM.src ? '' : performance.now() - SM.last > 1500 ? (SM.src === 'hid' ? `даних немає (звітів: ${SM.cnt || 0}) — порухайте ковпачок; якщо так і лишиться, пристрій тримає драйвер 3DxWare` : '')
-    : `${SM.src === 'hid' ? SM.dbg : 'gamepad'} · зсув ${f(SM.t)} · оберт ${f(SM.r)}`;
+  $('sm_dbg').textContent = !SM.src ? '' : performance.now() - SM.last > 1500 ? (SM.src === 'hid' ? t('sm.nodata', { n: SM.cnt || 0 }) : '')
+    : t('sm.dbg', { src: SM.src === 'hid' ? SM.dbg : 'gamepad', t: f(SM.t), r: f(SM.r) });
 }, 200);
-smStatus(); window.__SM__ = SM; window.__CAM__ = () => ({ p: camera.position.toArray(), t: controls.target.toArray(), zoom: camera.zoom });   // для тестів
+smUI(); window.__SM__ = SM; window.__CAM__ = () => ({ p: camera.position.toArray(), t: controls.target.toArray(), zoom: camera.zoom });   // для тестів
 //</spacemouse> -----------------------------------------------------------------------------------
 let tPrev = performance.now();
 (function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
@@ -449,8 +469,8 @@ let tPrev = performance.now();
     ang3.boom = values.boom_angle; ang3.stick = values.stick_angle; ang3.bucket = values.bucket_angle;
     if (STATIC) { $('static-note').hidden = false; $('mode').innerHTML = `статична сторінка · зібрано ${STATIC.made}`; ['reset', 'copy', 'rebuild'].forEach(i => $(i).disabled = true); applyBuild(STATIC.build); }
     else await rebuild();
-    const q = new URLSearchParams(location.search).get('view'), QV = { side: 'Збоку', iso: 'Ізометрія', back: 'Ззаду-збоку', top: 'Зверху', front: 'Спереду' };
-    setView(VIEWS[QV[q] || 'Збоку']); window.__READY__ = true;
+    const q = new URLSearchParams(location.search).get('view');
+    setView(q && q in VIEWS ? VIEWS[q] : VIEWS.side); window.__READY__ = true;
   } catch (e) { status('Не вдалося завантажити модель: ' + e.message, 'err'); }
 })();
 </script>
