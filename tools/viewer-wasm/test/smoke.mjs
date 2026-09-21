@@ -45,7 +45,7 @@ for (const l of LANGS.filter(l => l !== 'uk')) {
 // кожен цілий t('ключ') із main.js має бути у словнику (далі — окремо ключі, які код складає з id)
 const used = [...mainJs.matchAll(/\bt\(\s*'([\w.]+)'\s*[),]/g)].map(m => m[1]);
 miss('ключі t() з main.js у словнику', [...new Set(used)].filter(k => !(k in UI.uk)));
-// id поз, виглядів, перемикачів і кутів беруться з самого main.js — на них зав'язані ?view= та кнопка SpaceMouse
+// id поз, виглядів, перемикачів і кутів беруться з самого main.js — на них зав'язана розмітка панелі
 const ids = (re, split) => { const m = mainJs.match(re); return m ? split(m[1]) : []; };
 const objKeys = s => [...s.matchAll(/(\w+)\s*:/g)].map(m => m[1]);
 const built = [

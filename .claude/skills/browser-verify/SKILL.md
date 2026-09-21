@@ -10,7 +10,6 @@ description: Перевірка вебсторінок проєкту (3D-сто
 ```
 python3 tools/viewer.py --port 8791 &                       # або: cd tools/viewer-wasm && npx vite preview --port 8797 --strictPort &
 node tools/media/page_shot.mjs http://127.0.0.1:8791/ --out /tmp/shot.png --view Ізометрія
-node tools/media/page_shot.mjs "http://127.0.0.1:8791/?boom_L1=1100&bucket_width=450" --out /tmp/changed.png   # параметри через адресу → перебудова
 ```
 Код виходу 3 = на сторінці були помилки JS. Знімок обов'язково ВІДКРИЙ і подивись: «файл створено» нічого не доводить.
 

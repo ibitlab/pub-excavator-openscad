@@ -314,20 +314,9 @@ async function loadSchema() {
   schema = readSchema(scadSource);
   byName = {}; const old = values; values = {};
   for (const g of schema) for (const p of g.params) { byName[p.name] = p; values[p.name] = (p.name in old && JSON.stringify(old[p.name]).length && typeof old[p.name] === typeof p.value) ? old[p.name] : p.value; }
-  // ?назва=значення в адресі: початкові значення параметрів (вектор — через кому), напр. ?boom_L1=1000&bucket_ear=30,125&boom_angle=40&view=iso
-  // Object.hasOwn, а не `k in byName`: інакше __proto__ / constructor / toString
-  // знайшлися б через прототип і пролізли б у values.
-  for (const [k, raw] of new URLSearchParams(location.search)) {
-    if (!Object.hasOwn(byName, k)) continue;
-    const p = byName[k];
-    const v = typeof p.value === 'boolean' ? raw === 'true' || raw === '1'
-            : Array.isArray(p.value) ? raw.split(',').map(Number)
-            : p.options ? raw : Number(raw);
-    const ok = Array.isArray(p.value) ? Array.isArray(v) && v.length === p.value.length && v.every(x => Number.isFinite(x))
-             : p.options ? p.options.includes(v)          // довільний текст у .scad не потрапляє
-             : typeof p.value === 'boolean' ? true
-             : Number.isFinite(v);
-    if (ok) values[k] = v; }
+  // З АДРЕСИ НІЧОГО, КРІМ МОВИ. Раніше тут читалися початкові значення параметрів
+  // (?boom_L1=1000) — прибрано навмисно: це був єдиний шлях, яким чуже значення з
+  // посилання потрапляло у ТЕКСТ моделі OpenSCAD. Жоден скрипт цим не користувався.
   buildParamUI(); $('gz').value = values.ground_below_A;
 }
 $('gz').addEventListener('input', e => { if (e.target.value !== '' && isFinite(+e.target.value)) { values.ground_below_A = +e.target.value; buildGround(groundZ()); updatePose(); } });
@@ -564,8 +553,7 @@ function renderAll() {
     await loadSchema();
     ang3.boom = values.boom_angle; ang3.stick = values.stick_angle; ang3.bucket = values.bucket_angle;
     await rebuild();
-    const q = new URLSearchParams(location.search).get('view');
-    setView(q && Object.hasOwn(VIEWS, q) ? VIEWS[q] : VIEWS.side);   // hasOwn: `in` ловить ще й constructor/toString
+    setView(VIEWS.side);                       // ракурс з адреси більше не беремо
     window.__READY__ = true;
   } catch (e) { status('st.load', { msg: e.message }, 'err'); }
 })();
