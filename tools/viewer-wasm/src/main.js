@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import scadDefault from '../../../scad/excavator_boom.scad?raw';      // модель вшивається у сторінку; у dev правка .scad перезавантажує сторінку
+import scadDefault from '../../../scad/excavator_boom.scad?raw';
+import repoViewsFile from '../../../views.json';                 // ракурси з репозиторію; Vite вшиває JSON у dist/      // модель вшивається у сторінку; у dev правка .scad перезавантажує сторінку
 import { readSchema, scadLiteral } from './schema.js';
 import { LANGS, initLang, setLang, getLang, t, tp, tg } from './i18n.js';
 
@@ -403,12 +404,20 @@ smUI(); window.__SM__ = SM; window.__CAM__ = () => ({ p: camera.position.toArray
 // сторінка лише чесно каже свій кут (і півкадр, якщо проєкція паралельна).
 // show.pins і show.edges — суто сторінкові: у моделі таких параметрів немає, CLI їх не відтворить.
 const VIEW_FOV = 32;                                          // = fov у makeCamera(); тримати однаковим
-const savedViews = [];
+const VJ_KEY = 'views';                                       // сховище браузера: ракурси переживають перезавантаження
 const r1 = v => Math.round(v * 10) / 10;
-
 // Без назви ракурс нічим не адресувати у views.py, а поле легко лишити порожнім —
 // тож порожнє замінюємо міткою часу: 2026-09-21-13-47.
 const stamp = () => new Date().toLocaleString('sv').replace(/[: ]/g, '-').slice(0, 16);
+
+// Мої ракурси — у сховищі браузера; ті, що лежать у репозиторії (views.json), кожна
+// сторінка передає сюди сама: сервер маршрутом, WASM — вшитим import'ом. Сховище може
+// бути недоступне (приватне вікно), тому кожне звертання загорнуте.
+let myViews = [];
+let repoViews = [];
+try { myViews = JSON.parse(localStorage.getItem(VJ_KEY) || '[]'); } catch (e) { myViews = []; }
+const vjStore = () => { try { localStorage.setItem(VJ_KEY, JSON.stringify(myViews)); } catch (e) { /* немає сховища */ } };
+function vjRepo(list) { repoViews = Array.isArray(list) ? list : []; vjFill(); }
 
 function viewJSON(name) {
   const e = camera.position, c = controls.target, par = changed();
@@ -418,18 +427,28 @@ function viewJSON(name) {
                 aspect: Math.round(canvas.clientWidth / canvas.clientHeight * 100) / 100 };
   if (camera.isPerspectiveCamera) cam.fov_v = VIEW_FOV; else cam.half_height = r1(camera.top / camera.zoom);
   // ground_below_A — «клієнтський» параметр: changed() його НЕ віддає, бо сторінка
-  // рухає землю сама, не перебудовуючи модель. Без нього рендер брав типові 650,
-  // і занурений ківш опинявся під землею там, де на сторінці він над нею.
+  // рухає землю сама, не перебудовуючи модель. Кути — з ang3 з тієї ж причини:
+  // повзунки пишуть лише туди, а values.*_angle лишається типовим.
   return { name: name || stamp(), note: '', camera: cam,
-           // Кути беремо з ang3, а НЕ з values: повзунки пишуть лише туди (поза рахується
-           // в браузері, модель не перебудовується), і values.*_angle лишається типовим.
            angles: { boom: r1(ang3.boom), stick: r1(ang3.stick), bucket: r1(ang3.bucket) },
            ground_below_A: values.ground_below_A,
            params: par, show: { ...show } };
 }
 
+function vjFill() {
+  const sel = $('vj_pick');
+  const opts = l => l.map(v => `<option>${(v.name || '—').replace(/</g, '&lt;')}</option>`).join('');
+  sel.innerHTML = `<option value="">${t('vw.pick')}</option>`
+    + (myViews.length ? `<optgroup label="${t('vw.mine')}">${opts(myViews)}</optgroup>` : '')
+    + (repoViews.length ? `<optgroup label="${t('vw.repo')}">${opts(repoViews)}</optgroup>` : '');
+  $('vj_row').hidden = !(myViews.length || repoViews.length);
+}
+
 function vjUI() {                                             // підписи через t() — сторінка може бути будь-якою мовою
-  $('vjson').innerHTML = `<div class="row" style="align-items:center;margin-top:6px">
+  $('vjson').innerHTML = `<div class="row" style="align-items:center;margin-top:6px" id="vj_row" hidden>
+      <select id="vj_pick" style="flex:1;min-width:110px"></select>
+      <button id="vj_del" title="${t('vw.del.title')}">✕</button></div>
+    <div class="row" style="align-items:center;margin-top:6px">
       <input id="vj_name" placeholder="${t('vw.name')}" style="flex:1;min-width:80px">
       <button id="vj_copy" title="${t('vw.copy.title')}">${t('vw.copy')}</button>
       <button id="vj_add" title="${t('vw.add.title')}">${t('vw.add')}</button>
@@ -438,18 +457,24 @@ function vjUI() {                                             // підписи 
   const st = extra => { const v = viewJSON();
     $('vj_st').textContent = (extra ? extra + ' · ' : '') +
       t('vw.state', { p: v.camera.projection === 'p' ? t('vw.persp') : t('vw.ortho'),
-                      e: v.camera.eye.join(', '), c: v.camera.target.join(', '), n: savedViews.length }); };
+                      e: v.camera.eye.join(', '), c: v.camera.target.join(', '), n: myViews.length }); };
+  const picked = () => { const n = $('vj_pick').value;
+    return myViews.find(v => (v.name || '—') === n) || repoViews.find(v => (v.name || '—') === n); };
   $('vj_copy').onclick = async () => { await navigator.clipboard.writeText(JSON.stringify(viewJSON($('vj_name').value), null, 2)); st(t('vw.copied')); };
-  $('vj_add').onclick = () => { savedViews.push(viewJSON($('vj_name').value)); $('vj_name').value = ''; st(t('vw.added')); };
+  $('vj_add').onclick = () => { myViews.push(viewJSON($('vj_name').value)); vjStore(); $('vj_name').value = ''; vjFill(); st(t('vw.added')); };
+  $('vj_del').onclick = () => { const v = picked(); if (!v) return;
+    myViews = myViews.filter(x => x !== v); vjStore(); vjFill(); st(t('vw.removed')); };
+  $('vj_pick').onchange = () => { const v = picked(); if (v) { window.__SETVIEW__(v); st(t('vw.applied')); } };
   $('vj_save').onclick = () => {
-    const blob = new Blob([JSON.stringify({ views: savedViews }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ views: myViews }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'views.json'; a.click(); URL.revokeObjectURL(a.href);
   };
   controls.addEventListener('change', () => st());
+  vjFill();
   st();
 }
-vjUI(); window.__VIEW__ = viewJSON;                            // для тестів і круговoї перевірки
+vjUI(); window.__VIEW__ = viewJSON; window.__VJREPO__ = vjRepo;   // для тестів і для списку з репозиторію
 // Поставити сторінку в збережений ракурс — так знімок сторінки можна порівняти
 // з рендером тієї самої камери, а не з чимось схожим.
 window.__SETVIEW__ = v => {
@@ -459,6 +484,7 @@ window.__SETVIEW__ = v => {
   controls.update(); updatePose();
 };
 //</viewjson> --------------------------------------------------------------------------------------
+vjRepo(repoViewsFile.views);                                  // вшито збіркою
 let tPrev = performance.now();
 (function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
 

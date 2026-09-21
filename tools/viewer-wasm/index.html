@@ -40,6 +40,7 @@
   details { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px; background: #fff; }
   summary { cursor: pointer; padding: 7px 9px; font-weight: 600; list-style-position: inside; }
   summary .n { color: var(--acc); font-weight: 600; margin-left: 6px; }
+  #vw_box > div { padding: 0 9px 8px; }
   .p { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 5px 9px; border-top: 1px solid #efebe2; }
   .p .nm { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
   .p .ds { grid-column: 1 / -1; color: var(--mute); font-size: 11px; }
@@ -78,20 +79,22 @@
   <h2 data-i18n="h2.view">Вигляд</h2>
   <div class="row" id="views"></div>
   <div id="toggles"></div>
-  <div id="sm"></div>
-  <div id="vjson"></div>
+  <details id="vw_box"><summary data-i18n="vw.section">Ракурси для рендерів</summary><div id="vjson"></div></details>
   <div class="row" style="align-items:center;margin-top:4px"><label for="gz" data-i18n="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
 
   <h2 data-i18n="h2.params">Параметри моделі — OpenSCAD-WASM у браузері</h2>
   <div class="row"><button id="reset" data-i18n="reset">Скинути все</button><button id="copy" data-i18n="copy">Копіювати зміни</button><button id="rebuild" data-i18n="open" data-i18n-title="open.title">Відкрити .scad…</button><input type="file" id="file" accept=".scad" hidden></div>
   <div id="status"></div>
   <div id="groups"></div>
+
+  <h2 data-i18n="h2.devices">Пристрої</h2>
+  <div id="sm"></div>
   <div class="lic" id="lic" data-i18n-html="lic"></div>
 </div>
 <div id="main">
   <canvas id="c"></canvas>
   <div id="hud"></div>
-  <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка у «Вигляді»</div>
+  <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка в «Пристроях»</div>
 </div>
 
 <script type="module" src="./src/main.js"></script>

@@ -161,6 +161,10 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split('?')[0]                           # ?параметр=значення розбирає сама сторінка
         if path in ('/', '/index.html'):
             self._send(200, open(PAGE, encoding='utf-8').read(), 'text/html; charset=utf-8')
+        elif path == '/api/views':                               # ракурси з views.json у корені
+            f = os.path.join(ROOT, 'views.json')
+            self._send(200, open(f, encoding='utf-8').read() if os.path.isfile(f) else '{"views":[]}',
+                       'application/json')
         elif path == '/api/schema':
             Handler.schema = read_schema()                       # перечитується: модель могли відредагувати
             self._send(200, json.dumps(Handler.schema, ensure_ascii=False), 'application/json')
@@ -179,7 +183,9 @@ class Handler(BaseHTTPRequestHandler):
 def export_static(path):
     schema = read_schema(); data = build({}, schema)
     html = open(PAGE, encoding='utf-8').read()
-    blob = json.dumps(dict(schema=schema, build=data, made=time.strftime('%Y-%m-%d %H:%M')), ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
+    vf = os.path.join(ROOT, 'views.json')                    # ракурси теж вшиваємо: статична сторінка нікуди не ходить
+    views = json.load(open(vf, encoding='utf-8')).get('views', []) if os.path.isfile(vf) else []
+    blob = json.dumps(dict(schema=schema, build=data, views=views, made=time.strftime('%Y-%m-%d %H:%M')), ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
     html = html.replace('window.__STATIC__ = null;', 'window.__STATIC__ = ' + blob + ';', 1)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     open(path, 'w', encoding='utf-8').write(html)
