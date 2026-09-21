@@ -30,9 +30,14 @@
   .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--acc2); border-radius: 3px; }
   .bar.bad i { background: var(--bad); }
   input[type=number], select { font: inherit; padding: 3px 5px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); font-variant-numeric: tabular-nums; }
-  input[type=number]:focus { outline: 2px solid #c9731a55; }
+  input[type=number]:focus-visible { outline: 2px solid #c9731a55; }
   button { font: inherit; padding: 5px 9px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); cursor: pointer; }
-  button:hover { border-color: var(--acc); }
+  /* Підсвітка при наведенні — ЛИШЕ там, де є справжнє наведення. На дотику
+     :hover залипає після тапу, і кнопка лишається виділеною, хоч користувач
+     уже крутить модель. Те саме з :focus — тому :focus-visible (клавіатура). */
+  @media (hover: hover) { button:hover { border-color: var(--acc); } }
+  button:focus { outline: none; }
+  button:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
   button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
   .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .chk { display: inline-flex; align-items: center; gap: 4px; margin: 0 10px 4px 0; white-space: nowrap; }
