@@ -31,7 +31,11 @@ function pose(V, th, psi, om) {
 //</pose> -----------------------------------------------------------------------------------------
 
 const $ = id => document.getElementById(id);
-let scadSource = scadDefault, scadName = 'scad/excavator_boom.scad';
+// Усе, що приходить із .scad (назви груп, описи, варіанти, текст echo) і з імені
+// відкритого файлу, — ЧУЖИЙ текст: «Відкрити .scad…» бере довільний файл із диска.
+// Тому такі рядки складаються через DOM і textContent, а не вставляються в розмітку.
+const el = (tag, props) => Object.assign(document.createElement(tag), props);
+const scadSource = scadDefault;          // модель вшита збіркою; сторінка чужих файлів не приймає
 let schema = [], byName = {}, values = {}, V = null, lastLog = [];
 const ang3 = { boom: 15, stick: 100, bucket: 60 };
 const ANG = [['boom', 'boom_angle'], ['stick', 'stick_angle'], ['bucket', 'bucket_angle']];   // підписи — t('ang.<key>')
@@ -132,12 +136,16 @@ function updatePose() {
   }
   const gz = -groundZ(), T = P.T, mm = t('hud.mm');
   const where = z => t(z >= 0 ? 'hud.above' : 'hud.below');
-  $('hud').innerHTML = `<table>
-    <tr><td>${t('hud.reach')}</td><td><b>${T[0].toFixed(0)}</b> ${mm}</td></tr>
-    <tr><td>${t('hud.tooth', { where: where(T[1] - gz) })}</td><td><b>${Math.abs(T[1] - gz).toFixed(0)}</b> ${mm}</td></tr>
-    <tr><td>${t('hud.axisE', { where: where(P.E[1] - gz) })}</td><td>${Math.abs(P.E[1] - gz).toFixed(0)} ${mm}</td></tr>
-    <tr><td>${t('hud.tilt')}</td><td>${tiltText(P.bdir)}</td></tr></table>` +
-    [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))].map(w => `<div class="w">⚠ ${w}</div>`).join('');
+  const tbl = el('table');
+  const line = (label, ...kids) => { const tr = el('tr'); tr.append(el('td', { textContent: label }), el('td')); tr.lastChild.append(...kids); tbl.appendChild(tr); };
+  line(t('hud.reach'), el('b', { textContent: T[0].toFixed(0) }), ' ' + mm);
+  line(t('hud.tooth', { where: where(T[1] - gz) }), el('b', { textContent: Math.abs(T[1] - gz).toFixed(0) }), ' ' + mm);
+  line(t('hud.axisE', { where: where(P.E[1] - gz) }), Math.abs(P.E[1] - gz).toFixed(0) + ' ' + mm);
+  line(t('hud.tilt'), tiltText(P.bdir));
+  $('hud').replaceChildren(tbl);
+  // Попередження приходять з echo() моделі — у відкритому з диска .scad там може бути будь-що.
+  for (const w of [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))])
+    $('hud').appendChild(el('div', { className: 'w', textContent: '⚠ ' + w }));
 }
 function tiltText(bdir) {                                    // отвір дивиться у бік −ŷ ковша; горизонтальний, коли вісь ковша дивиться на 180°
   let tilt = ((bdir - 180) % 360 + 540) % 360 - 180;         // −: нахил назад (тримає), +: вперед (висипає)
@@ -235,15 +243,25 @@ function buildParamUI() {
   for (const g of schema) {
     const ps = g.params.filter(p => !p.client); if (!ps.length) continue;
     const det = document.createElement('details'); det.dataset.g = g.name; det.open = open.has(g.name);
-    det.innerHTML = `<summary>${tg(g.name)}<span class="n"></span></summary>`; root.appendChild(det);
+    const sum = el('summary', { textContent: tg(g.name) });      // назва групи — з .scad
+    sum.appendChild(el('span', { className: 'n' })); det.appendChild(sum); root.appendChild(det);
     for (const p of ps) {
-      const row = document.createElement('div'); row.className = 'p'; row.id = 'p_' + p.name;
-      const vec = Array.isArray(p.value), vals = vec ? p.value : [p.value], cur = values[p.name], curs = vec ? cur : [cur]; let inputs = '';
-      if (typeof p.value === 'boolean') inputs = `<input type="checkbox" ${cur ? 'checked' : ''}>`;
-      else if (p.options) inputs = `<select>${p.options.map(o => `<option ${o === cur ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
-      else inputs = vals.map((v, i) => `<input type="number" value="${curs[i]}" step="${p.step ?? (Math.abs(v) < 20 && !Number.isInteger(v) ? 0.5 : (Math.abs(v) >= 200 ? 5 : 1))}" ${p.min != null ? `min="${p.min}" max="${p.max}"` : ''}>`).join('');
-      const ds = tp(p);
-      row.innerHTML = `<span class="nm" title="${ds.replace(/"/g, '&quot;')}">${p.name}</span><span class="in">${inputs}<button class="rs" title="${t('p.restore', { v: JSON.stringify(p.value) })}">↺</button></span>${ds ? `<span class="ds">${ds}</span>` : ''}`;
+      const row = el('div', { className: 'p', id: 'p_' + p.name });
+      const vec = Array.isArray(p.value), vals = vec ? p.value : [p.value], cur = values[p.name], curs = vec ? cur : [cur];
+      const ds = tp(p);                                         // опис — теж із .scad
+      const box = el('span', { className: 'in' });
+      if (typeof p.value === 'boolean') box.appendChild(el('input', { type: 'checkbox', checked: !!cur }));
+      else if (p.options) { const sel = el('select');           // варіанти — теж; new Option ставить ТЕКСТ
+        for (const o of p.options) sel.add(new Option(o, o, false, o === cur)); box.appendChild(sel); }
+      else vals.forEach((v, i) => {
+        const inp = el('input', { type: 'number', value: curs[i] });
+        inp.step = p.step ?? (Math.abs(v) < 20 && !Number.isInteger(v) ? 0.5 : (Math.abs(v) >= 200 ? 5 : 1));
+        if (p.min != null) { inp.min = p.min; inp.max = p.max; }
+        box.appendChild(inp);
+      });
+      box.appendChild(el('button', { className: 'rs', textContent: '↺', title: t('p.restore', { v: JSON.stringify(p.value) }) }));
+      row.append(el('span', { className: 'nm', textContent: p.name, title: ds }), box);
+      if (ds) row.appendChild(el('span', { className: 'ds', textContent: ds }));
       det.appendChild(row);
       const els = [...row.querySelectorAll('input,select')];
       const read = () => { let v; if (typeof p.value === 'boolean') v = els[0].checked; else if (p.options) v = els[0].value; else { const n = els.map(e => +e.value); if (n.some(x => !isFinite(x) || e_empty(els))) return; v = vec ? n : n[0]; }
@@ -291,20 +309,25 @@ function applyBuild(d) {
 $('reset').onclick = () => { for (const g of schema) for (const p of g.params) values[p.name] = p.value; buildParamUI(); buildGround(groundZ()); schedule(); updatePose(); };
 $('copy').onclick = async () => { const ch = changed(), txt = Object.keys(ch).length ? Object.entries(ch).map(([k, v]) => `${k} = ${JSON.stringify(v)};`).join('\n') : t('st.nochange');
   try { await navigator.clipboard.writeText(txt); status('st.copied'); $('status').textContent += ' ' + txt.replace(/\n/g, '  '); } catch { prompt(t('st.prompt'), txt); } };
-$('rebuild').onclick = () => $('file').click();
-let fromDisk = false;
-const setMode = () => { $('mode').innerHTML = t(fromDisk ? 'mode.file' : 'mode', { file: scadName }); };
-$('file').onchange = async e => { const f = e.target.files[0]; if (!f) return; scadSource = await f.text(); scadName = f.name; values = {}; fromDisk = true;
-  setMode(); await loadSchema(); rebuild(); };
 
 async function loadSchema() {
   schema = readSchema(scadSource);
   byName = {}; const old = values; values = {};
   for (const g of schema) for (const p of g.params) { byName[p.name] = p; values[p.name] = (p.name in old && JSON.stringify(old[p.name]).length && typeof old[p.name] === typeof p.value) ? old[p.name] : p.value; }
   // ?назва=значення в адресі: початкові значення параметрів (вектор — через кому), напр. ?boom_L1=1000&bucket_ear=30,125&boom_angle=40&view=iso
-  for (const [k, raw] of new URLSearchParams(location.search)) { const p = byName[k]; if (!p) continue;
-    const v = typeof p.value === 'boolean' ? raw === 'true' || raw === '1' : Array.isArray(p.value) ? raw.split(',').map(Number) : p.options ? raw : Number(raw);
-    if (Array.isArray(v) ? v.length === p.value.length && v.every(isFinite) : (typeof v !== 'number' || isFinite(v))) values[k] = v; }
+  // Object.hasOwn, а не `k in byName`: інакше __proto__ / constructor / toString
+  // знайшлися б через прототип і пролізли б у values.
+  for (const [k, raw] of new URLSearchParams(location.search)) {
+    if (!Object.hasOwn(byName, k)) continue;
+    const p = byName[k];
+    const v = typeof p.value === 'boolean' ? raw === 'true' || raw === '1'
+            : Array.isArray(p.value) ? raw.split(',').map(Number)
+            : p.options ? raw : Number(raw);
+    const ok = Array.isArray(p.value) ? Array.isArray(v) && v.length === p.value.length && v.every(x => Number.isFinite(x))
+             : p.options ? p.options.includes(v)          // довільний текст у .scad не потрапляє
+             : typeof p.value === 'boolean' ? true
+             : Number.isFinite(v);
+    if (ok) values[k] = v; }
   buildParamUI(); $('gz').value = values.ground_below_A;
 }
 $('gz').addEventListener('input', e => { if (e.target.value !== '' && isFinite(+e.target.value)) { values.ground_below_A = +e.target.value; buildGround(groundZ()); updatePose(); } });
@@ -436,11 +459,18 @@ function viewJSON(name) {
 }
 
 function vjFill() {
+  // Через DOM, а не innerHTML: назва ракурсу — чужий текст (її вводить користувач
+  // і вона приходить із views.json), а екранування «<» вручну рано чи пізно забудеться.
+  // new Option(текст) і g.label ставлять ТЕКСТ, розмітка в них не оживає.
   const sel = $('vj_pick');
-  const opts = l => l.map(v => `<option>${(v.name || '—').replace(/</g, '&lt;')}</option>`).join('');
-  sel.innerHTML = `<option value="">${t('vw.pick')}</option>`
-    + (myViews.length ? `<optgroup label="${t('vw.mine')}">${opts(myViews)}</optgroup>` : '')
-    + (repoViews.length ? `<optgroup label="${t('vw.repo')}">${opts(repoViews)}</optgroup>` : '');
+  sel.replaceChildren(new Option(t('vw.pick'), ''));
+  const grp = (label, list) => {
+    if (!list.length) return;
+    const g = document.createElement('optgroup'); g.label = label;
+    for (const v of list) g.appendChild(new Option(v.name || '—'));
+    sel.appendChild(g);
+  };
+  grp(t('vw.mine'), myViews); grp(t('vw.repo'), repoViews);
   $('vj_row').hidden = !(myViews.length || repoViews.length);
 }
 
@@ -507,7 +537,6 @@ function applyStatic() {                                      // статичн�
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
   for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = t(el.dataset.i18nHtml);   // рядки з посиланнями
-  setMode();
   if (playing) $('play').textContent = t('stop');
 }
 function buildLangUI() {
@@ -536,6 +565,7 @@ function renderAll() {
     ang3.boom = values.boom_angle; ang3.stick = values.stick_angle; ang3.bucket = values.bucket_angle;
     await rebuild();
     const q = new URLSearchParams(location.search).get('view');
-    setView(q && q in VIEWS ? VIEWS[q] : VIEWS.side); window.__READY__ = true;
+    setView(q && Object.hasOwn(VIEWS, q) ? VIEWS[q] : VIEWS.side);   // hasOwn: `in` ловить ще й constructor/toString
+    window.__READY__ = true;
   } catch (e) { status('st.load', { msg: e.message }, 'err'); }
 })();
