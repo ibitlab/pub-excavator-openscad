@@ -72,6 +72,7 @@
   <div class="row" id="views"></div>
   <div id="toggles"></div>
   <div id="sm"></div>
+  <div id="vjson"></div>
   <div class="row" style="align-items:center;margin-top:4px"><label for="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
 
   <h2>Параметри моделі — через OpenSCAD</h2>
@@ -375,6 +376,18 @@ const SM_UK = {
   'sm.failed': 'не вдалося відкрити: {msg} — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз',
   'sm.nodata': 'даних немає (звітів: {n}) — порухайте ковпачок; якщо так і лишиться, пристрій тримає драйвер 3DxWare',
   'sm.report': 'звіт {id}·{n} байт', 'sm.dbg': '{src} · зсув {t} · оберт {r}',
+  'vw.name': 'назва ракурсу',
+  'vw.copy': 'Копіювати',
+  'vw.copy.title': 'JSON поточного ракурсу в буфер обміну',
+  'vw.add': 'Додати',
+  'vw.add.title': 'додати поточний ракурс до списку',
+  'vw.save': 'Зберегти',
+  'vw.save.title': 'завантажити views.json зі списком ракурсів',
+  'vw.state': '{p} · око {e} · ціль {c} · у списку: {n}',
+  'vw.persp': 'перспектива',
+  'vw.ortho': 'паралельна',
+  'vw.copied': 'скопійовано',
+  'vw.added': 'додано',
 };
 const t = (key, vars) => { const s = SM_UK[key] ?? key; return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s; };
 //<spacemouse> ------------------------------------------------------------------------------------
@@ -460,6 +473,51 @@ setInterval(() => {                                           // діагнос�
 }, 200);
 smUI(); window.__SM__ = SM; window.__CAM__ = () => ({ p: camera.position.toArray(), t: controls.target.toArray(), zoom: camera.zoom });   // для тестів
 //</spacemouse> -----------------------------------------------------------------------------------
+//<viewjson> ---------------------------------------------------------------------------------------
+// Ракурс у JSON: щоб вид, знайдений тут очима, можна було відрендерити OpenSCAD'ом (tools/views.py).
+// Камера сторінки вже в системі координат моделі (camera.up = 0,0,1), тому око й ціль пишуться як є.
+// А кут огляду різний: тут 32° по вертикалі, в OpenSCAD 22.5° — перерахунок робить views.py,
+// сторінка лише чесно каже свій кут (і півкадр, якщо проєкція паралельна).
+// show.pins і show.edges — суто сторінкові: у моделі таких параметрів немає, CLI їх не відтворить.
+const VIEW_FOV = 32;                                          // = fov у makeCamera(); тримати однаковим
+const savedViews = [];
+const r1 = v => Math.round(v * 10) / 10;
+
+function viewJSON(name) {
+  const e = camera.position, c = controls.target, par = changed();
+  for (const k of ['boom_angle', 'stick_angle', 'bucket_angle']) delete par[k];   // вони окремо, в angles
+  const cam = { eye: [r1(e.x), r1(e.y), r1(e.z)], target: [r1(c.x), r1(c.y), r1(c.z)],
+                projection: camera.isPerspectiveCamera ? 'p' : 'o',
+                aspect: Math.round(canvas.clientWidth / canvas.clientHeight * 100) / 100 };
+  if (camera.isPerspectiveCamera) cam.fov_v = VIEW_FOV; else cam.half_height = r1(camera.top / camera.zoom);
+  return { name: name || '', note: '', camera: cam,
+           angles: { boom: values.boom_angle, stick: values.stick_angle, bucket: values.bucket_angle },
+           params: par, show: { ...show } };
+}
+
+function vjUI() {                                             // підписи через t() — сторінка може бути будь-якою мовою
+  $('vjson').innerHTML = `<div class="row" style="align-items:center;margin-top:6px">
+      <input id="vj_name" placeholder="${t('vw.name')}" style="flex:1;min-width:80px">
+      <button id="vj_copy" title="${t('vw.copy.title')}">${t('vw.copy')}</button>
+      <button id="vj_add" title="${t('vw.add.title')}">${t('vw.add')}</button>
+      <button id="vj_save" title="${t('vw.save.title')}">${t('vw.save')}</button></div>
+    <div id="vj_st" style="color:var(--mute);font-size:11.5px;margin-top:2px"></div>`;
+  const st = extra => { const v = viewJSON();
+    $('vj_st').textContent = (extra ? extra + ' · ' : '') +
+      t('vw.state', { p: v.camera.projection === 'p' ? t('vw.persp') : t('vw.ortho'),
+                      e: v.camera.eye.join(', '), c: v.camera.target.join(', '), n: savedViews.length }); };
+  $('vj_copy').onclick = async () => { await navigator.clipboard.writeText(JSON.stringify(viewJSON($('vj_name').value), null, 2)); st(t('vw.copied')); };
+  $('vj_add').onclick = () => { savedViews.push(viewJSON($('vj_name').value)); $('vj_name').value = ''; st(t('vw.added')); };
+  $('vj_save').onclick = () => {
+    const blob = new Blob([JSON.stringify({ views: savedViews }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'views.json'; a.click(); URL.revokeObjectURL(a.href);
+  };
+  controls.addEventListener('change', () => st());
+  st();
+}
+vjUI(); window.__VIEW__ = viewJSON;                            // для тестів і круговoї перевірки
+//</viewjson> --------------------------------------------------------------------------------------
 let tPrev = performance.now();
 (function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
 

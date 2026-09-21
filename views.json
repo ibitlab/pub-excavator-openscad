@@ -1,0 +1,39 @@
+{
+  "views": [
+    {
+      "name": "загальний-вигляд",
+      "note": "приклад формату: цей запис зроблено самою сторінкою кнопкою «Додати»",
+      "camera": {
+        "eye": [
+          1019.2,
+          -5091.6,
+          -78.6
+        ],
+        "target": [
+          1019.2,
+          0,
+          -78.6
+        ],
+        "projection": "p",
+        "aspect": 1.4,
+        "fov_v": 32
+      },
+      "angles": {
+        "boom": 15,
+        "stick": 100,
+        "bucket": 60
+      },
+      "params": {},
+      "show": {
+        "cylinders": true,
+        "linkage": true,
+        "bucket": true,
+        "post": true,
+        "ground": false,
+        "pins": true,
+        "edges": true,
+        "envelope": false
+      }
+    }
+  ]
+}

@@ -28,6 +28,9 @@ const smBlock = f => (readFileSync(f, 'utf8').match(/^\/\/<spacemouse>[^\n]*\n([
 const s1 = smBlock(path.join(here, '../src/main.js')), s2 = smBlock(path.join(root, 'tools/viewer/index.html'));
 s1 && s1 === s2 ? ok('блок //<spacemouse> однаковий в обох версіях сторінки') : fail('блок //<spacemouse> у двох версіях сторінки розійшовся');
 p1 && p1 === p2 ? ok('блок //<pose> однаковий в обох версіях сторінки') : fail('блок //<pose> у tools/viewer-wasm/src/main.js і tools/viewer/index.html розійшовся');
+const vjBlock = f => (readFileSync(f, 'utf8').match(/^\/\/<viewjson>[^\n]*\n([\s\S]*?)^\/\/<\/viewjson>/m) || [])[1];
+const v1 = vjBlock(path.join(here, '../src/main.js')), v2 = vjBlock(path.join(root, 'tools/viewer/index.html'));
+v1 && v1 === v2 ? ok('блок //<viewjson> однаковий в обох версіях сторінки') : fail('блок //<viewjson> у двох версіях сторінки розійшовся');
 
 // --- переклад -------------------------------------------------------------------------------------
 const mainJs = readFileSync(path.join(here, '../src/main.js'), 'utf8');

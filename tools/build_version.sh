@@ -35,10 +35,13 @@ done | tee "$DIR/docs/stl_list.txt"
 # venv потрібен уже тут: ним підрізаються поля рендерів (Pillow)
 [ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
 tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
-# --render ОБОВ'ЯЗКОВИЙ: у режимі прев'ю (OpenCSG) поверхні деталей, що дотикаються,
+# --render=cgal ОБОВ'ЯЗКОВИЙ: у режимі прев'ю (OpenCSG) поверхні деталей, що дотикаються,
+# пробивають одна одну. Саме `=cgal`, а не голий --render: прапорець бере НЕОБОВ'ЯЗКОВИЙ
+# аргумент і, стоячи останнім перед іменем файлу, з'їдає його — openscad друкує usage
+# і мовчки нічого не робить.
 # пробивають одна одну — труба малювалася поверх накладки, і вежа F виглядала так,
 # наче стоїть у повітрі. Геометрія при цьому ціла. З Manifold це майже безкоштовно.
-CAM="--camera=1400,-6000,200,0,0,0 --projection=o --colorscheme=Tomorrow --viewall --autocenter --render"
+CAM="--camera=1400,-6000,200,0,0,0 --projection=o --colorscheme=Tomorrow --viewall --autocenter --render=cgal"
 render() { openscad -o "$DIR/renders/$1.png" --imgsize=2400,1500 $CAM -D "boom_angle=$2" -D "stick_angle=$3" -D "bucket_angle=$4" -D show_ground=false "$SCAD" >/dev/null 2>&1; }
 render side_default 15 100 60
 render folded 58 51 133
@@ -46,10 +49,10 @@ render max_reach -5 155 -16
 render dig_deep -38 90 60
 render max_height 58 155 0
 # --viewall --autocenter обов'язкові: з фіксованою камерою кадр обрізав ківш і колону при зміні геометрії
-openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow --render -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
+openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow --render=cgal -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
 openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true "$SCAD" >/dev/null 2>&1
 for p in boom stick bucket; do
-  openscad -o "$DIR/renders/part_$p.png" --imgsize=2400,1500 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter --render -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
+  openscad -o "$DIR/renders/part_$p.png" --imgsize=2400,1500 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter --render=cgal -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
 done
 
 # Другий ракурс кожного вузла — КРІПЛЕННЯ зблизька: на загальному виді вуха ковша,
@@ -59,7 +62,7 @@ done
 CAM_BOOM="--imgsize=2400,1700 --camera=890,0,229,42,0,205,1300"      # центр: між осями D і F
 CAM_STICK="--imgsize=2400,1500 --camera=40,0,80,42,0,205,1450"        # центр: п'ята, осі B/G/H
 CAM_BUCKET="--imgsize=2400,1600 --camera=0,0,0,42,0,205,0 --viewall --autocenter"
-VIEW="--projection=p --colorscheme=Tomorrow --render"
+VIEW="--projection=p --colorscheme=Tomorrow --render=cgal"
 openscad -o "$DIR/renders/part_boom_mount.png"   $CAM_BOOM   $VIEW -D 'part="boom"'   "$SCAD" >/dev/null 2>&1
 openscad -o "$DIR/renders/part_stick_mount.png"  $CAM_STICK  $VIEW -D 'part="stick"'  "$SCAD" >/dev/null 2>&1
 openscad -o "$DIR/renders/part_bucket_mount.png" $CAM_BUCKET $VIEW -D 'part="bucket"' "$SCAD" >/dev/null 2>&1
