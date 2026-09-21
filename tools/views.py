@@ -45,7 +45,10 @@ PAGE_ONLY = ('pins', 'edges')
 def load(path=VIEWS):
     if not os.path.isfile(path):
         sys.exit(f'{path} немає — збережіть ракурс кнопкою «Зберегти» у tools/viewer.sh')
-    return json.load(open(path, encoding='utf-8'))['views']
+    # «Зберегти» дає {"views": [...]}, «Копіювати» — один об'єкт. Приймаємо обидва:
+    # інакше вставлений із буфера ракурс доводиться загортати руками.
+    d = json.load(open(path, encoding='utf-8'))
+    return d['views'] if isinstance(d, dict) and 'views' in d else [d]
 
 
 def find(name, views):
@@ -100,6 +103,8 @@ def flags(view, size='1600x1100', part=None):
     for k, name in (('boom', 'boom_angle'), ('stick', 'stick_angle'), ('bucket', 'bucket_angle')):
         if k in a:
             out += ['-D', f'{name}={lit(a[k])}']
+    if view.get('ground_below_A') is not None:        # сторінка рухає землю окремо від моделі
+        out += ['-D', f'ground_below_A={lit(view["ground_below_A"])}']
     for k, v in view.get('params', {}).items():
         out += ['-D', f'{k}={lit(v)}']
     for k, v in view.get('show', {}).items():

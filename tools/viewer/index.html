@@ -494,8 +494,14 @@ function viewJSON(name) {
                 projection: camera.isPerspectiveCamera ? 'p' : 'o',
                 aspect: Math.round(canvas.clientWidth / canvas.clientHeight * 100) / 100 };
   if (camera.isPerspectiveCamera) cam.fov_v = VIEW_FOV; else cam.half_height = r1(camera.top / camera.zoom);
+  // ground_below_A — «клієнтський» параметр: changed() його НЕ віддає, бо сторінка
+  // рухає землю сама, не перебудовуючи модель. Без нього рендер брав типові 650,
+  // і занурений ківш опинявся під землею там, де на сторінці він над нею.
   return { name: name || stamp(), note: '', camera: cam,
-           angles: { boom: values.boom_angle, stick: values.stick_angle, bucket: values.bucket_angle },
+           // Кути беремо з ang3, а НЕ з values: повзунки пишуть лише туди (поза рахується
+           // в браузері, модель не перебудовується), і values.*_angle лишається типовим.
+           angles: { boom: r1(ang3.boom), stick: r1(ang3.stick), bucket: r1(ang3.bucket) },
+           ground_below_A: values.ground_below_A,
            params: par, show: { ...show } };
 }
 
@@ -521,6 +527,14 @@ function vjUI() {                                             // підписи 
   st();
 }
 vjUI(); window.__VIEW__ = viewJSON;                            // для тестів і круговoї перевірки
+// Поставити сторінку в збережений ракурс — так знімок сторінки можна порівняти
+// з рендером тієї самої камери, а не з чимось схожим.
+window.__SETVIEW__ = v => {
+  camera.position.set(...v.camera.eye); controls.target.set(...v.camera.target);
+  if (v.angles) for (const [k, n] of ANG) if (k in v.angles) { values[n] = v.angles[k]; ang3[k] = v.angles[k]; }
+  if (v.ground_below_A != null) { values.ground_below_A = v.ground_below_A; buildGround(groundZ()); }
+  controls.update(); updatePose();
+};
 //</viewjson> --------------------------------------------------------------------------------------
 let tPrev = performance.now();
 (function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
