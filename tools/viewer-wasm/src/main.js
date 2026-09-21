@@ -144,8 +144,8 @@ function updatePose() {
   line(t('hud.tilt'), tiltText(P.bdir));
   $('hud').replaceChildren(tbl);
   // Ті самі числа — у ручці шухляди: у згорнутому стані це все, що видно з панелі.
-  $('grab_info').textContent = `${t('m.reach')} ${T[0].toFixed(0)} ${mm} · ${t('m.tooth')} `
-    + `${Math.abs(T[1] - gz).toFixed(0)} ${mm} ${where(T[1] - gz)}`;
+  $('grab_info').textContent = `${t('m.reach')} ${T[0].toFixed(0)} · ${t('m.tooth')} `
+    + `${Math.abs(T[1] - gz).toFixed(0)} ${mm} ${where(T[1] - gz)}`;   // «мм» один раз: у ручці лічені пікселі
   // Попередження приходять з echo() моделі — у відкритому з диска .scad там може бути будь-що.
   for (const w of [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))])
     $('hud').appendChild(el('div', { className: 'w', textContent: '⚠ ' + w }));
@@ -516,14 +516,21 @@ vjRepo(repoViewsFile.views);                                  // вшито зб
 // Три стани: згорнута (сама ручка з числами), робоча і повна. Тягнеться за ручку,
 // дотик по ручці згортає/розгортає, дотик по моделі прибирає повну назад у робочу.
 // Канва міняє висоту разом зі шухлядою, тож resize() потрібен після переходу.
-let sheet = 1;
+let sheet = 1, prevSheet = 1, savedScroll = 0, restoreScroll = false;
 function setSheet(n) {
+  const from = sheet;
   sheet = Math.max(0, Math.min(2, n));
+  // Згортаємо — запамʼятовуємо, де людина була: і стан, і місце прокрутки. Інакше
+  // після згортання панель повертається на початок, а вона могла гортати її донизу.
+  if (from > 0 && sheet === 0) { prevSheet = from; savedScroll = $('side').scrollTop; }
+  if (from === 0 && sheet > 0) restoreScroll = true;
   document.body.classList.toggle('sheet0', sheet === 0);
   document.body.classList.toggle('sheet2', sheet === 2);
   $('grab').setAttribute('aria-expanded', String(sheet > 0));
+  $('fold_btn').textContent = sheet > 0 ? '▾' : '▴';
   try { localStorage.setItem('sheet', String(sheet)); } catch (e) { /* немає сховища */ }
 }
+const foldToggle = () => setSheet(sheet > 0 ? 0 : prevSheet);
 {
   const g = $('grab');
   let y0 = null, h0 = 0, raf = 0;
@@ -535,10 +542,11 @@ function setSheet(n) {
   // Рух і відпускання слухаємо на ВІКНІ, а не на ручці: палець одразу йде за її межі,
   // а setPointerCapture при емуляції дотику спрацьовує не завжди — перевірено, драг
   // мовчки не доходив до кінця на двох розмірах із трьох.
+  $('fold_btn').onclick = foldToggle;
   $('warn_btn').onclick = () => { $('warn').open = !$('warn').open; };
   $('warn').addEventListener('click', () => { if (mob.matches) $('warn').open = false; });
   g.addEventListener('pointerdown', e => {
-    if (e.target.closest('.lang') || e.target.id === 'warn_btn') return;   // кнопки в ручці — не драг
+    if (e.target.closest('.lang') || e.target.closest('button')) return;   // кнопки в ручці — не драг
     y0 = e.clientY; h0 = $('side').getBoundingClientRect().height;
     document.body.classList.add('dragging');
     e.preventDefault();
@@ -555,14 +563,14 @@ function setSheet(n) {
     y0 = null;
     document.body.classList.remove('dragging');
     document.body.style.removeProperty('--sheet');
-    setSheet(moved < 6 ? (sheet === 0 ? 1 : 0)
-                       : h < innerHeight * 0.2 ? 0 : h > innerHeight * 0.62 ? 2 : 1);
+    if (moved < 6) foldToggle();                       // дотик по ручці — те саме, що кнопка
+    else setSheet(h < innerHeight * 0.2 ? 0 : h > innerHeight * 0.62 ? 2 : 1);
   };
   addEventListener('pointerup', release);
   addEventListener('pointercancel', release);
   g.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault(); setSheet(sheet === 0 ? 1 : 0);
+    e.preventDefault(); foldToggle();
   });
   $('main').addEventListener('pointerdown', () => { if (sheet === 2) setSheet(1); });
   // Канва міняє не лише висоту, а й ПРОПОРЦІЮ: у згорнутому стані вона вища й вужча,
@@ -572,6 +580,7 @@ function setSheet(n) {
   $('main').addEventListener('transitionend', e => {
     if (e.propertyName !== 'height') return;
     if (mob.matches) setView(null); else resize();
+    if (restoreScroll) { $('side').scrollTop = savedScroll; restoreScroll = false; }
   });
 
   let start = 1;

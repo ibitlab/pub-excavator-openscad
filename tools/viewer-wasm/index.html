@@ -62,7 +62,7 @@
   .note { background: #fff6e6; border: 1px solid #ecd9b0; border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; }
   .note > summary { padding: 0; font-weight: 600; }
   .note > summary + span { display: block; margin-top: 5px; }
-  #grab, #warn_btn { display: none; }
+  #grab, #warn_btn, #fold_btn, .mobnote { display: none; }
 
   /* Дотикові пристрої: модель на весь екран, панель — шухляда знизу у трьох станах.
      Умова не лише за шириною: телефон лежачи (844 px) і планшет у портреті (768 px)
@@ -81,6 +81,9 @@
             position: sticky; top: 0; z-index: 3; background: var(--panel);
             padding: 8px 0 7px; margin: 0 -12px; border-radius: 14px 14px 0 0;
             touch-action: none; user-select: none; cursor: grab; }
+    /* sticky, а не relative: інакше ручка з кнопками їде вгору разом із прокруткою
+       панелі й опиняється під канвою — згорнути стає нічим. Sticky сам є
+       контейнером для абсолютних дітей, окремий relative тут лише перебивав його. */
     #grab .bar { width: 38px; height: 4px; border-radius: 2px; background: #cfc8ba; }
     #grab_info { font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
     body.sheet0 #side > :not(#grab) { display: none; }   /* #warn повертає собі видимість правилом нижче */
@@ -95,16 +98,21 @@
        Смужка ходу циліндра теж зникає: при ввімкненому обмеженні вона ніколи не
        червоніє, тобто на телефоні це три рядки чисел без роботи. */
     .hdr, #clamp_row, .cyl { display: none; }        /* перемикач мови JS переносить у ручку */
-    #grab { position: relative; }
     #grab .lang { position: absolute; right: 2px; top: 8px; }
     #side .lang button { min-height: 0; }            /* інакше кнопки мови теж стають 40 px і налазять униз */
-    #grab #warn_btn { display: inline-flex; align-items: center; justify-content: center;
-                position: absolute; left: 4px; top: 8px; min-height: 0;    /* #side button інакше робить 40 px */
-                width: 30px; height: 23px; padding: 0; font-size: 13px; color: #a8761f; }
-    #grab_info { max-width: calc(100% - 140px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Дві кнопки в ручці. Ручка — sticky, тож вони на місці й тоді, коли панель
+       прокручена донизу: згорнути й розгорнути можна з будь-якої позиції. */
+    #grab #fold_btn, #grab #warn_btn { display: inline-flex; align-items: center; justify-content: center;
+                position: absolute; top: 8px; min-height: 0;    /* #side button інакше робить 40 px */
+                width: 30px; height: 23px; padding: 0; font-size: 13px; }
+    #grab #fold_btn { left: 4px; color: var(--mute); font-size: 15px; line-height: 1; }
+    #grab #warn_btn { left: 38px; color: #a8761f; }
+    #grab_info { max-width: calc(100% - 152px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     /* Попередження на телефоні — під значком ⚠, а не рядком у смузі: з телефона
        екскаватор не будують. Показується карткою поверх моделі, а не в панелі,
        бо панель прокручується і обрізала б її. */
+    .mobnote { display: block; margin: 14px 0 0; padding: 8px 10px; border-radius: 7px;
+               background: #eef1f4; color: var(--mute); font-size: 11.5px; line-height: 1.45; }
     #warn { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 6; margin: 0;
             box-shadow: 0 4px 14px #0000002e; }
     #warn:not([open]) { display: none; }
@@ -137,6 +145,7 @@
 <div id="side">
   <div id="grab" role="button" tabindex="0" aria-controls="side" data-i18n-aria="sheet.aria">
     <span class="bar"></span><span id="grab_info"></span>
+    <button id="fold_btn" aria-controls="side" data-i18n-aria="sheet.aria">▾</button>
     <button id="warn_btn" aria-controls="warn" data-i18n-aria="warn.short">⚠</button>
   </div>
   <div class="hdr">
@@ -168,6 +177,7 @@
 
   <h2 class="adv" data-i18n="h2.devices">Пристрої</h2>
   <div id="sm" class="adv"></div>
+  <div class="mobnote" data-i18n="mob.note"></div>
   <div class="lic" id="lic" data-i18n-html="lic"></div>
 </div>
 <div id="main">
