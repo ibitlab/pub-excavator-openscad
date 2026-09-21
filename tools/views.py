@@ -49,10 +49,17 @@ def load(path=VIEWS):
 
 
 def find(name, views):
+    # Сторінка сама підставляє мітку часу замість порожньої назви, але у файлах,
+    # збережених раніше, безіменні записи трапляються: один такий беремо без питань.
+    names = ', '.join(v['name'] or '(без назви)' for v in views)
+    if not name:
+        if len(views) == 1:
+            return views[0]
+        sys.exit('у файлі кілька ракурсів — потрібна назва: ' + names)
     for v in views:
         if v['name'] == name:
             return v
-    sys.exit(f'ракурс «{name}» не знайдено; є: {", ".join(v["name"] for v in views)}')
+    sys.exit(f'ракурс «{name}» не знайдено; є: {names}')
 
 
 def camera_arg(cam):
@@ -129,11 +136,10 @@ def main():
             note = f' — {v["note"]}' if v.get('note') else ''
             page = [k for k in PAGE_ONLY if not v.get('show', {}).get(k, True)]
             warn = f'  (сторінкове, не відтвориться: {", ".join(page)})' if page else ''
-            print(f'  {v["name"]:24} {c["projection"]} око {c["eye"]} ціль {c["target"]}{note}{warn}')
+            print(f'  {(v["name"] or "(без назви)"):24} {c["projection"]} око {c["eye"]} '
+                  f'ціль {c["target"]}{note}{warn}')
         return
 
-    if not a.name:
-        sys.exit('потрібна назва ракурсу')
     v = find(a.name, views)
     args = flags(v, a.size, a.part)
     if a.cmd == 'flags':

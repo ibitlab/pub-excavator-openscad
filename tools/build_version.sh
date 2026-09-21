@@ -50,7 +50,8 @@ render dig_deep -38 90 60
 render max_height 58 155 0
 # --viewall --autocenter обов'язкові: з фіксованою камерою кадр обрізав ківш і колону при зміні геометрії
 openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow --render=cgal -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
-openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true "$SCAD" >/dev/null 2>&1
+# ground_span менший за типовий: із --viewall площина 9000 мм ужимає машину вдвічі
+openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true -D ground_span=3000 "$SCAD" >/dev/null 2>&1
 for p in boom stick bucket; do
   openscad -o "$DIR/renders/part_$p.png" --imgsize=2400,1500 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter --render=cgal -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
 done

@@ -331,4 +331,5 @@ export const PARAMS_EN = {
 
   show_envelope: 'Show the work envelope (cutting edge points over a grid of angles)',
   ground_below_A: 'Height of axis A above the ground, mm',
+  ground_span: 'Side of the ground plane, mm (9000 matches the 3D page; views rendered with --viewall get a smaller one). The page draws its own ground and ignores this',
 };
