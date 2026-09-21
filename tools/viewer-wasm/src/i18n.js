@@ -97,6 +97,8 @@ export const UI = {
     'view.front': 'Спереду',
     'view.fit': 'Вписати',
     'view.ortho': 'Ортогонально',
+    'view.persp': 'Перспектива',
+    'view.proj': 'Проєкція: {p}' ,
 
     'tog.cylinders': 'циліндри',
     'tog.linkage': 'коромисло і тяга',
@@ -239,6 +241,8 @@ export const UI = {
     'view.front': 'Front',
     'view.fit': 'Fit',
     'view.ortho': 'Orthographic',
+    'view.persp': 'Perspective',
+    'view.proj': 'Projection: {p}',
 
     'tog.cylinders': 'cylinders',
     'tog.linkage': 'rocker and link',

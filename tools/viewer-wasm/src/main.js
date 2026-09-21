@@ -260,9 +260,14 @@ const ICON = {
        + '<rect x="9" y="9" width="6" height="6" fill="currentColor" opacity=".55"/>'
        + '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor"'
        + ' stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  // Проєкція — не вид, а СТАН, тож іконка показує поточний: у перспективі
+  // сторони кадру сходяться, в ортогональній — паралельні.
   ortho: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
-       + '<rect x="4" y="7" width="16" height="10" fill="none" stroke="currentColor" stroke-width="1.4"/>'
-       + '<path d="M7 7h10" stroke="currentColor" stroke-width="1.4"/></svg>',
+       + '<rect x="5" y="7" width="14" height="10" rx="1" fill="currentColor" fill-opacity=".2"'
+       + ' stroke="currentColor" stroke-width="1.4"/></svg>',
+  persp: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
+       + '<path d="M8 7h8l3 10H5z" fill="currentColor" fill-opacity=".2" stroke="currentColor"'
+       + ' stroke-width="1.4" stroke-linejoin="round"/></svg>',
 };
 function viewButton(id, onclick) {
   const b = el('button', { onclick });
@@ -272,12 +277,32 @@ function viewButton(id, onclick) {
   b.setAttribute('aria-label', t('view.' + id));
   return b;
 }
-function buildViewUI() {
-  $('views').replaceChildren();
-  for (const [id, d] of Object.entries(VIEWS)) $('views').appendChild(viewButton(id, () => setView(d)));
-  const b = viewButton('ortho', () => { setView(null, !ortho); b.classList.toggle('on', ortho); });
+// Перемикач проєкції серед кнопок видів читався як сьомий вид. Тепер він і
+// виглядає перемикачем: окрема група за роздільником, кругла форма замість
+// прямокутної, іконка показує ПОТОЧНИЙ стан, і є aria-pressed.
+function syncOrtho(b) {
   b.classList.toggle('on', ortho);
-  $('views').appendChild(b);
+  b.setAttribute('aria-pressed', String(ortho));
+  b.firstChild.remove();
+  b.insertAdjacentHTML('afterbegin', ICON[ortho ? 'ortho' : 'persp']);
+  const txt = t(ortho ? 'view.ortho' : 'view.persp');
+  b.querySelector('.lbl').textContent = txt;
+  b.title = t('view.proj', { p: txt });
+  b.setAttribute('aria-label', b.title);
+}
+function buildViewUI() {
+  const box = $('views');
+  box.replaceChildren();
+  const sep = () => box.appendChild(el('span', { className: 'sep' }));
+  for (const [id, d] of Object.entries(VIEWS)) {
+    if (id === 'fit') sep();                                  // далі вже не види, а дія
+    box.appendChild(viewButton(id, () => setView(d)));
+  }
+  sep();
+  const b = viewButton('ortho', () => { setView(null, !ortho); syncOrtho(b); });
+  b.classList.add('tgl');
+  box.appendChild(b);
+  syncOrtho(b);
 }
 function buildLegend() {                                      // кольори — з color(...) моделі, див. legend.js
   const box = $('legend'); box.replaceChildren();

@@ -74,7 +74,13 @@
   #load.busy .track i { width: 35% !important; animation: slide 1.1s ease-in-out infinite; }
   @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
   #load .sub { margin-top: 7px; font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+  #views { align-items: center; }
   #views button { display: inline-flex; align-items: center; gap: 5px; }
+  /* Роздільники — лише для однорядкового ряду іконок на телефоні: на великому
+     екрані ряд переноситься, і роздільник осиротів би в кінці рядка. Там межу
+     груп і так видно за підписами та круглою формою перемикача. */
+  #views .sep { display: none; width: 1px; align-self: stretch; min-height: 22px; background: var(--line); margin: 0 3px; }
+  #views button.tgl { border-radius: 999px; }      /* перемикач, а не ще один вид */
   #views svg { display: block; flex: none; }
   #legend { gap: 4px 12px; margin: 2px 0 8px; }
   #legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--mute); }
@@ -125,6 +131,7 @@
     #h2ang #views { margin: 0; gap: 3px; flex: none; }
     #views .lbl { display: none; }
     #h2ang #views button { min-height: 30px; width: 30px; padding: 0; justify-content: center; }
+    #h2ang #views .sep { display: block; }
     #grab .lang { position: absolute; right: 2px; top: 8px; }
     #side .lang button { min-height: 0; }            /* інакше кнопки мови теж стають 40 px і налазять униз */
     /* Дві кнопки в ручці. Ручка — sticky, тож вони на місці й тоді, коли панель
