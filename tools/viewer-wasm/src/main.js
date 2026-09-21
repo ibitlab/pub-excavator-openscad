@@ -5,6 +5,7 @@ import repoViewsFile from '../../../views.json';                 // ракурс
 import { readSchema, scadLiteral } from './schema.js';
 import workerUrl from './scad-worker.js?worker&url';
 import { LEGEND } from './legend.js';
+import { KIN, PIN_HEX, kinLegend } from './kin.js';
 import { armFromTip } from './ik.js';   // саме так, інакше Vite не підставить збудований шлях
 import { LANGS, initLang, setLang, getLang, t, tp, tg } from './i18n.js';
 
@@ -70,7 +71,7 @@ const bodies = {}, world = new THREE.Group(); scene.add(world);
 const pinsGroup = new THREE.Group(); world.add(pinsGroup);
 const ground = new THREE.Group(); world.add(ground);
 const envelope = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xd0402f, size: 5, sizeAttenuation: false })); world.add(envelope);
-const show = { cylinders: true, linkage: true, bucket: true, post: true, ground: true, pins: true, edges: true, envelope: false };
+const show = { cylinders: true, linkage: true, bucket: true, post: true, ground: true, pins: true, edges: true, envelope: false, kin: false };
 
 function buildGround(z) {
   ground.clear();
@@ -98,8 +99,12 @@ function setMeshes(parts) {
 }
 function setPins() {
   pinsGroup.clear(); if (!V) return;
-  const mat = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.35, metalness: 0.6 });
-  for (const [k, d, len] of V.pins) { const m = new THREE.Mesh(new THREE.CylinderGeometry(d / 2, d / 2, len, 24), mat); m.name = k; pinsGroup.add(m); }   // вісь циліндра three.js — уздовж Y, як і пальці
+  const base = new THREE.Color(0xc8ccd0);
+  for (const [k, d, len] of V.pins) {                         // свій матеріал у кожного: інакше перефарбування чіпає всі разом
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(d / 2, d / 2, len, 24),
+                             new THREE.MeshStandardMaterial({ color: base.clone(), roughness: 0.35, metalness: 0.6 }));
+    m.name = k; m.userData.base = base.clone(); pinsGroup.add(m);   // вісь циліндра three.js — уздовж Y, як і пальці
+  }
 }
 const place = (o, p, a) => { if (!o) return; o.position.set(p[0], 0, p[1]); o.rotation.set(0, -a * RAD, 0); };
 
@@ -131,7 +136,8 @@ function updatePose() {
   for (const [key] of ANG) {
     const title = t('ang.' + key);
     const [closed, stroke] = V['cyl_' + key], L = P.L[key], bad = L == null || L < closed - 0.5 || L > closed + stroke + 0.5;
-    const body = bodies[`v_cyl_${key}_body`]; if (body) body.traverse(o => { if (o.isMesh) o.material.color.copy(bad ? new THREE.Color(0xd23c2c) : o.userData.base); });
+    const nm = `v_cyl_${key}_body`, body = bodies[nm];
+    if (body) body.traverse(o => { if (o.isMesh) o.material.color.copy(bad ? new THREE.Color(0xd23c2c) : toneFor(nm, o)); });
     const el = $('cyl_' + key); if (el) { const f = L == null ? 0 : (L - closed) / stroke;
       el.querySelector('.bar').classList.toggle('bad', bad); el.querySelector('i').style.width = Math.max(0, Math.min(1, f)) * 100 + '%';
       el.querySelector('span').textContent = L == null ? t('cyl.nolink') : t('cyl.state', { L: L.toFixed(0), used: (L - closed).toFixed(0), stroke }); }
@@ -183,10 +189,40 @@ function updateEnvelope() {
     const P = pose(V, lb[0] + (lb[1] - lb[0]) * i / 24, ls[0] + (ls[1] - ls[0]) * j / 24, o); pts.push(P.T[0], 0, P.T[1]); }
   envelope.geometry.dispose(); envelope.geometry = new THREE.BufferGeometry(); envelope.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
 }
+// Перефарбування за жорсткими тілами і підсвітка вибраного. Базовий колір кожної
+// сітки лежить у userData.base — тим самим шляхом гільза червоніє поза ходом.
+let picked = null;                                            // тіло, підсвічене дотиком
+const FADE = new THREE.Color(0xe6e3dc);                       // у що гасимо решту
+const HILITE = new THREE.Color(0xc9731a);                     // вибране тіло — одним кольором
+// Один обчислювач тону на всіх: ним же користується updatePose, коли фарбує гільзу
+// червоним поза ходом. Інакше вона щокадру поверталася б до базового кольору й
+// збивала і кінематичне фарбування, і підсвітку.
+function toneFor(name, mesh) {
+  const kin = show.kin && KIN[name] ? new THREE.Color(KIN[name].hex) : null;
+  const on = picked === name;
+  // Вибране тіло фарбуємо ОДНИМ кольором, а не лишаємо власні: половина деталей
+  // і так сіра, і на тлі вицвілого сірого підсвітки просто не видно.
+  const c = on ? (kin || HILITE) : (kin || mesh.userData.base);
+  return (picked && !on) ? c.clone().lerp(FADE, 0.75) : c;
+}
+function paint() {
+  for (const [name, g] of Object.entries(bodies))
+    g.traverse(o => { if (o.isMesh) o.material.color.copy(toneFor(name, o)); });
+  for (const m of pinsGroup.children) {
+    const c = show.kin ? new THREE.Color(PIN_HEX) : m.userData.base;
+    m.material.color.copy(picked ? c.clone().lerp(FADE, 0.75) : c);
+  }
+}
+function pick(name) {                                         // null — зняти підсвітку
+  picked = picked === name ? null : name;
+  paint();
+}
+window.__PICK__ = () => picked;                               // для тестів
 function applyShow() {
   if (bodies.post) bodies.post.visible = show.post; if (bodies.bucket) bodies.bucket.visible = show.bucket;
   ground.visible = show.ground; envelope.visible = show.envelope;
   for (const k in bodies) bodies[k].traverse(o => { if (o.userData.edge) o.visible = show.edges; });
+  paint(); buildLegend();                                     // легенда залежить від режиму
   updateEnvelope(); updatePose();
 }
 
@@ -324,12 +360,12 @@ const lockBtn = $('lock');
 function placeLock() { (MOB.matches ? $('grab') : $('main')).appendChild(lockBtn); }
 function buildLegend() {                                      // кольори — з color(...) моделі, див. legend.js
   const box = $('legend'); box.replaceChildren();
-  for (const l of LEGEND) {
+  for (const l of (show.kin ? kinLegend() : LEGEND)) {
     const sp = el('span'); sp.append(el('i', { style: `background:${l.hex}` }), t(l.key));
     box.appendChild(sp);
   }
 }
-const TOG = ['cylinders', 'linkage', 'bucket', 'post', 'pins', 'ground', 'edges', 'envelope'];
+const TOG = ['cylinders', 'linkage', 'bucket', 'post', 'pins', 'ground', 'edges', 'envelope', 'kin'];
 function buildToggleUI() {
   $('toggles').innerHTML = '';
   for (const k of TOG) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${t('tog.' + k)}`;
@@ -730,6 +766,7 @@ canvas.addEventListener('pointermove', e => {
     return;
   }
   const p = planePoint(e); if (!p) return;
+  drag.moved = true;
   const a = effAngles();
   if (drag.curl) {
     const P = pose(V, a.boom, a.stick, a.bucket);
@@ -740,9 +777,26 @@ canvas.addEventListener('pointermove', e => {
   }
   updatePose();
 });
+// Дотик без руху — не перетягування, а питання «що рухається разом із цим?».
+// Слухаємо на перехопленні, щоб спрацювало й тоді, коли перетягування не почалося
+// (порожнє місце крутить камеру, і звичайний pointerdown туди не дійде).
+let tapAt = null;
+canvas.addEventListener('pointerdown', e => { tapAt = [e.clientX, e.clientY]; }, true);
+canvas.addEventListener('pointerup', e => {
+  if (!tapAt) return;
+  const moved = Math.hypot(e.clientX - tapAt[0], e.clientY - tapAt[1]);
+  tapAt = null;
+  if (moved > 6 || !V) return;
+  aim(e);
+  const hit = ray.intersectObjects(Object.values(bodies), true).find(i => i.object.isMesh);
+  let o = hit && hit.object;
+  while (o && !bodies[o.name]) o = o.parent;
+  pick(o ? o.name : null);
+});
+
 const dropDrag = e => {
   if (!drag) return;
-  tipOperation();                                             // рахуємо саме ЗАВЕРШЕНІ перетягування
+  if (drag.moved) tipOperation();                             // рахуємо саме ЗАВЕРШЕНІ перетягування, а не дотики
   drag = null; controls.enabled = !locked;
   canvas.style.cursor = locked ? 'grab' : '';
   if (e && canvas.hasPointerCapture?.(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
