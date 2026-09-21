@@ -53,6 +53,7 @@ export const UI = {
     'lg.pin': 'пальці',
 
     'h2.angles': 'Кути — миттєво, у браузері',
+    'h2.angles.short': 'Кути',
     'h2.view': 'Вигляд',
     'h2.params': 'Параметри моделі — OpenSCAD-WASM у браузері',
     'adv': 'Розширені можливості',
@@ -194,6 +195,7 @@ export const UI = {
     'lg.pin': 'pins',
 
     'h2.angles': 'Angles — instant, in the browser',
+    'h2.angles.short': 'Angles',
     'h2.view': 'View',
     'h2.params': 'Model parameters — OpenSCAD-WASM in the browser',
     'adv': 'Advanced',

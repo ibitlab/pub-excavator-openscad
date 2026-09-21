@@ -239,11 +239,45 @@ function setView(dir, isOrtho = ortho) {
   makeCamera(isOrtho, c.clone().addScaledVector(d, r * 3.4 / Math.min(1, a)), c); resize();
 }
 const VIEWS = { side: [0, -1, 0], iso: [0.55, -1, 0.45], back: [-0.8, -1, 0.35], top: [0, -0.001, 1], front: [1, 0, 0.05], fit: null };
+// Іконки видів — як у CAD: куб в ізометрії з підсвіченою гранню, на яку дивишся.
+// Розмітка тут НАША власна й стала (жодних чужих даних), тому insertAdjacentHTML
+// доречний; підпис поруч лишається текстом.
+const CUBE = { top: 'M12 3l8 4.5-8 4.5-8-4.5z', left: 'M4 7.5l8 4.5v9l-8-4.5z', right: 'M20 7.5l-8 4.5v9l8-4.5z' };
+// Заливка навмисно бліда: при щільній три залиті грані зливаються в темний кубик
+// і жодної інформації не лишається — перевірено на знімку.
+const cube = (...faces) =>
+  '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
+  + faces.map(f => `<path d="${CUBE[f]}" fill="currentColor" opacity=".38"/>`).join('')
+  + '<g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">'
+  + `<path d="${CUBE.top}"/><path d="${CUBE.left}"/><path d="${CUBE.right}"/></g></svg>`;
+const ICON = {
+  side:  cube('right'),                 // дивимось збоку — світиться бічна грань
+  iso:   cube(),                        // три чверті — жодної грані, просто куб
+  back:  cube('top', 'right'),          // ззаду-згори — дві грані
+  top:   cube('top'),
+  front: cube('left'),
+  fit:   '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
+       + '<rect x="9" y="9" width="6" height="6" fill="currentColor" opacity=".55"/>'
+       + '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor"'
+       + ' stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  ortho: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
+       + '<rect x="4" y="7" width="16" height="10" fill="none" stroke="currentColor" stroke-width="1.4"/>'
+       + '<path d="M7 7h10" stroke="currentColor" stroke-width="1.4"/></svg>',
+};
+function viewButton(id, onclick) {
+  const b = el('button', { onclick });
+  b.insertAdjacentHTML('afterbegin', ICON[id]);
+  b.appendChild(el('span', { className: 'lbl', textContent: t('view.' + id) }));
+  b.title = t('view.' + id);
+  b.setAttribute('aria-label', t('view.' + id));
+  return b;
+}
 function buildViewUI() {
-  $('views').innerHTML = '';
-  for (const [id, d] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = t('view.' + id); b.onclick = () => setView(d); $('views').appendChild(b); }
-  const b = document.createElement('button'); b.textContent = t('view.ortho'); b.classList.toggle('on', ortho);
-  b.onclick = () => { setView(null, !ortho); b.classList.toggle('on', ortho); }; $('views').appendChild(b);
+  $('views').replaceChildren();
+  for (const [id, d] of Object.entries(VIEWS)) $('views').appendChild(viewButton(id, () => setView(d)));
+  const b = viewButton('ortho', () => { setView(null, !ortho); b.classList.toggle('on', ortho); });
+  b.classList.toggle('on', ortho);
+  $('views').appendChild(b);
 }
 function buildLegend() {                                      // кольори — з color(...) моделі, див. legend.js
   const box = $('legend'); box.replaceChildren();
@@ -739,7 +773,17 @@ const foldToggle = () => setSheet(sheet > 0 ? 0 : prevSheet);
   // На телефоні вона ховається, а перемикач мови переїжджає в ручку шухляди.
   const mob = matchMedia('(max-width: 900px), (pointer: coarse)');
   const placeLang = () => (mob.matches ? g : document.querySelector('.hdr')).appendChild($('lang'));
-  placeLang(); mob.addEventListener('change', placeLang);
+  // Види на телефоні переїжджають у рядок заголовка «Кути»: так вони на першому
+  // екрані, без прокрутки, а сам заголовок коротшає, щоб звільнити місце.
+  const h2ang = $('h2ang'), h2txt = h2ang.firstElementChild;
+  const placeViews = () => {
+    // на великому екрані види повертаються у свій блок «Вигляд», а не під «Кути»
+    if (mob.matches) h2ang.appendChild($('views'));
+    else document.querySelector('h2[data-i18n="h2.view"]').after($('views'));
+    h2txt.textContent = t(mob.matches ? 'h2.angles.short' : 'h2.angles');
+  };
+  placeLang(); placeViews();
+  mob.addEventListener('change', () => { placeLang(); placeViews(); });
   // Рух і відпускання слухаємо на ВІКНІ, а не на ручці: палець одразу йде за її межі,
   // а setPointerCapture при емуляції дотику спрацьовує не завжди — перевірено, драг
   // мовчки не доходив до кінця на двох розмірах із трьох.
@@ -811,6 +855,9 @@ function applyStatic() {                                      // статичн�
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
   for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));   // елементи без тексту
+  // applyStatic щойно повернув довгий заголовок — на телефоні він знову короткий
+  if (matchMedia('(max-width: 900px), (pointer: coarse)').matches)
+    $('h2ang').firstElementChild.textContent = t('h2.angles.short');
   for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = t(el.dataset.i18nHtml);   // рядки з посиланнями
   if (playing) $('play').textContent = t('stop');
 }
