@@ -665,32 +665,35 @@ const clampAng = (key, v) => {
   return ($('clamp').checked && l) ? Math.min(l[1], Math.max(l[0], v)) : v;
 };
 
-// Підказка про перетягування живе рівно доти, доки не стала зайвою: гасне після
-// першого ж перетягування ковша (або за вісім секунд, або по хрестику) і більше
-// не з'являється. Постійного рядка в панелі не заводимо — він муляв би всім,
-// хто вже зрозумів, а на телефоні коштував би цілого рядка смуги.
-let tipTimer = null;
+// Підказка про перетягування має ДВА місця. Постійне — у картці під значком ⚠
+// (там же, де попередження про ШІ): її видно завжди й на телефоні, і на комп'ютері.
+// Плашка над моделлю — лише для того, хто тут уперше, і тримається, доки він не
+// зробить ДВІ операції: після однієї ще не видно, що жест повторюваний, а таймер
+// сховав би її від того, хто читає повільно.
+const TIP_NEED = 2;
+let tipDone = 0;
 function hideTip(learned) {
   const box = $('tip');
   if (box.hidden || box.classList.contains('away')) return;
-  clearTimeout(tipTimer);
   box.classList.add('away');
   setTimeout(() => { box.hidden = true; }, 400);
   if (learned) { try { localStorage.setItem('tip', 'off'); } catch (e) { /* немає сховища */ } }
 }
+function tipOperation() {                                     // одне завершене перетягування
+  if ($('tip').hidden) return;
+  if (++tipDone >= TIP_NEED) hideTip(true);
+}
 function showTip() {
   let seen = null;
   try { seen = localStorage.getItem('tip'); } catch (e) { /* приватне вікно — покажемо */ }
-  if (seen === 'off') return;
+  if (seen === 'off') return;                                 // вже навчився; текст лишається за значком ⚠
   $('tip').hidden = false;
-  tipTimer = setTimeout(() => hideTip(false), 8000);
 }
 $('tip_x').onclick = () => hideTip(true);
 
 canvas.addEventListener('pointerdown', e => {
   if (!V || e.button === 2) return;
   if (!locked && !onBucket(e)) return;                        // без замка порожнє місце крутить камеру
-  hideTip(true);                                              // зрозумів — більше не показуємо
   const p = planePoint(e); if (!p) return;
   const a = effAngles(), P = pose(V, a.boom, a.stick, a.bucket);
   const близькоЗуба = Math.hypot(p[0] - P.T[0], p[1] - P.T[1]) < V.tip * 0.4;
@@ -721,6 +724,7 @@ canvas.addEventListener('pointermove', e => {
 });
 const dropDrag = e => {
   if (!drag) return;
+  tipOperation();                                             // рахуємо саме ЗАВЕРШЕНІ перетягування
   drag = null; controls.enabled = !locked;
   canvas.style.cursor = locked ? 'grab' : '';
   if (e && canvas.hasPointerCapture?.(e.pointerId)) canvas.releasePointerCapture(e.pointerId);

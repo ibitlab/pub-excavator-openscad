@@ -111,6 +111,10 @@
   .note { background: #fff6e6; border: 1px solid #ecd9b0; border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; }
   .note > summary { padding: 0; font-weight: 600; }
   .note > summary + span { display: block; margin-top: 5px; }
+  /* Друга частина картки: як керувати. Вона тут, а не окремим блоком, бо це те саме
+     місце, куди людина зазирає по значку ⚠ — і на телефоні, і на комп'ютері. */
+  .note .hh { display: block; margin-top: 9px; padding-top: 8px; border-top: 1px solid #0000001a; }
+  .note .hh + span { display: block; margin-top: 4px; }
   #grab, #warn_btn, #fold_btn, .mobnote, .mobinfo { display: none; }
 
   /* Дотикові пристрої: модель на весь екран, панель — шухляда знизу у трьох станах.
@@ -225,7 +229,8 @@
     <h1 data-i18n="h1">Міні-екскаватор: стріла · рукоять · ківш</h1>
     <div class="lang" id="lang" data-i18n-title="lang.title"></div>
   </div>
-  <details class="note" id="warn"><summary data-i18n="warn.short"></summary><span data-i18n="warn"></span></details>
+  <details class="note" id="warn"><summary data-i18n="warn.short"></summary><span data-i18n="warn"></span>
+    <b class="hh" data-i18n="howto.h"></b><span data-i18n="howto"></span></details>
 
   <label class="chk adv-sw" data-i18n-title="adv.title"><input type="checkbox" id="adv_on"> <span data-i18n="adv">Розширені можливості</span></label>
 
