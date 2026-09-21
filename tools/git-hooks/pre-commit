@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # Перед комітом змін моделі перевірити, що пластини прилягають, а не перекриваються (≈4 с).
 # Увімкнути один раз після клонування: git config core.hooksPath tools/git-hooks
+ROOT="$(git rev-parse --show-toplevel)"
+
+# Нагадування про нотатку-передачу temp/CONTEXT.md (з неї починається нова сесія).
+# Вона НЕ в git, тож єдиний її слід — час зміни файлу; рахуємо, скільки комітів лягло
+# після нього. Правило «оновлюй нотатку з кожною віхою» — це інструкція, а інструкція
+# без тригера не спрацьовує: датовані CONTEXT-файли так і не оновилися жодного разу.
+# Вивід коміту читають завжди, тому нагадування живе саме тут. Коміт НЕ зупиняється.
+ctx="$ROOT/temp/CONTEXT.md"
+if [ -f "$ctx" ]; then
+  n=$(git rev-list --count --since="$(date -r "$ctx" +%Y-%m-%dT%H:%M:%S)" HEAD 2>/dev/null)
+  [ "${n:-0}" -ge 5 ] && echo "pre-commit: temp/CONTEXT.md не оновлювався вже $n комітів — онови «Зараз у роботі» й «Відкрите» (коміт не зупинено)"
+fi
+
 git diff --cached --name-only | grep -q '^scad/' || exit 0
 command -v openscad >/dev/null || { echo "pre-commit: openscad не знайдено — перевірку перетинів пропущено"; exit 0; }
-out=$("$(git rev-parse --show-toplevel)/tools/check_overlaps.sh") || { echo "$out" | grep -v '^ok'; echo "pre-commit: коміт зупинено (обійти: git commit --no-verify)"; exit 1; }
+out=$("$ROOT/tools/check_overlaps.sh") || { echo "$out" | grep -v '^ok'; echo "pre-commit: коміт зупинено (обійти: git commit --no-verify)"; exit 1; }
