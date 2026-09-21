@@ -154,12 +154,14 @@ function updatePose() {
   $('grab_info').replaceChildren(`${t('m.reach')} ${T[0].toFixed(0)} · ${t('m.tooth')} `,
     el('b', { textContent: `${Math.abs(dz).toFixed(0)} ${mm} ${where(dz)}`,
               style: під ? 'color:var(--bad)' : 'font-weight:400' }));
+  $('gz_info').textContent = `${t('gz.info')}: ${values.ground_below_A} ${mm}`;
   // те саме текстом — для підпису під збереженою картинкою
   lastInfo = [`${t('hud.reach')}: ${T[0].toFixed(0)} ${mm} · ${t('hud.tooth', { where: where(dz) })}: `
               + `${Math.abs(dz).toFixed(0)} ${mm} · ${t('hud.axisE', { where: where(P.E[1] - gz) })}: `
               + `${Math.abs(P.E[1] - gz).toFixed(0)} ${mm}`,
               ANG.map(([k]) => `${t('ang.' + k)} ${effAngles()[k].toFixed(0)}°`).join(' · ')
-              + ` · ${t('hud.tilt')}: ${tiltText(P.bdir)}`];
+              + ` · ${t('hud.tilt')}: ${tiltText(P.bdir)}`
+              + ` · ${t('gz.info')}: ${values.ground_below_A} ${mm}`];
   // Попередження приходять з echo() моделі — у відкритому з диска .scad там може бути будь-що.
   for (const w of [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))])
     $('hud').appendChild(el('div', { className: 'w', textContent: '⚠ ' + w }));
