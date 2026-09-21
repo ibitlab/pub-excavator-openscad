@@ -62,7 +62,7 @@
   .note { background: #fff6e6; border: 1px solid #ecd9b0; border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; }
   .note > summary { padding: 0; font-weight: 600; }
   .note > summary + span { display: block; margin-top: 5px; }
-  #grab { display: none; }
+  #grab, #warn_btn { display: none; }
 
   /* Дотикові пристрої: модель на весь екран, панель — шухляда знизу у трьох станах.
      Умова не лише за шириною: телефон лежачи (844 px) і планшет у портреті (768 px)
@@ -83,7 +83,7 @@
             touch-action: none; user-select: none; cursor: grab; }
     #grab .bar { width: 38px; height: 4px; border-radius: 2px; background: #cfc8ba; }
     #grab_info { font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
-    body.sheet0 #side > :not(#grab) { display: none; }
+    body.sheet0 #side > :not(#grab) { display: none; }   /* #warn повертає собі видимість правилом нижче */
     /* З телефона моделлю крутять і тикають пози — параметрів моделі, пристроїв
        і ракурсів для рендерів там не міняють. Ховаємо їх разом із самим
        перемикачем «Розширені можливості»: інакше це просто рядок-баласт. */
@@ -96,8 +96,20 @@
        червоніє, тобто на телефоні це три рядки чисел без роботи. */
     .hdr, #clamp_row, .cyl { display: none; }        /* перемикач мови JS переносить у ручку */
     #grab { position: relative; }
-    #grab .lang { position: absolute; right: 2px; top: 9px; }
-    #grab_info { max-width: calc(100% - 90px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #grab .lang { position: absolute; right: 2px; top: 8px; }
+    #side .lang button { min-height: 0; }            /* інакше кнопки мови теж стають 40 px і налазять униз */
+    #grab #warn_btn { display: inline-flex; align-items: center; justify-content: center;
+                position: absolute; left: 4px; top: 8px; min-height: 0;    /* #side button інакше робить 40 px */
+                width: 30px; height: 23px; padding: 0; font-size: 13px; color: #a8761f; }
+    #grab_info { max-width: calc(100% - 140px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Попередження на телефоні — під значком ⚠, а не рядком у смузі: з телефона
+       екскаватор не будують. Показується карткою поверх моделі, а не в панелі,
+       бо панель прокручується і обрізала б її. */
+    #warn { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 6; margin: 0;
+            box-shadow: 0 4px 14px #0000002e; }
+    #warn:not([open]) { display: none; }
+    #warn > summary { display: none; }
+    body.sheet0 #side > #warn[open] { display: block; }
     .ang { margin-bottom: 8px; }
     .ang input[type=range] { margin: 2px 0 0; }
     .note { margin-bottom: 6px; }
@@ -125,6 +137,7 @@
 <div id="side">
   <div id="grab" role="button" tabindex="0" aria-controls="side" data-i18n-aria="sheet.aria">
     <span class="bar"></span><span id="grab_info"></span>
+    <button id="warn_btn" aria-controls="warn" data-i18n-aria="warn.short">⚠</button>
   </div>
   <div class="hdr">
     <h1 data-i18n="h1">Міні-екскаватор: стріла · рукоять · ківш</h1>

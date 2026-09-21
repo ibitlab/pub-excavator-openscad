@@ -535,8 +535,10 @@ function setSheet(n) {
   // Рух і відпускання слухаємо на ВІКНІ, а не на ручці: палець одразу йде за її межі,
   // а setPointerCapture при емуляції дотику спрацьовує не завжди — перевірено, драг
   // мовчки не доходив до кінця на двох розмірах із трьох.
+  $('warn_btn').onclick = () => { $('warn').open = !$('warn').open; };
+  $('warn').addEventListener('click', () => { if (mob.matches) $('warn').open = false; });
   g.addEventListener('pointerdown', e => {
-    if (e.target.closest('.lang')) return;            // кнопки мови всередині ручки — не драг
+    if (e.target.closest('.lang') || e.target.id === 'warn_btn') return;   // кнопки в ручці — не драг
     y0 = e.clientY; h0 = $('side').getBoundingClientRect().height;
     document.body.classList.add('dragging');
     e.preventDefault();
