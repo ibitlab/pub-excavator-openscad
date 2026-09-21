@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import scadDefault from '../../../scad/excavator_boom.scad?raw';
 import repoViewsFile from '../../../views.json';                 // ракурси з репозиторію; Vite вшиває JSON у dist/      // модель вшивається у сторінку; у dev правка .scad перезавантажує сторінку
 import { readSchema, scadLiteral } from './schema.js';
+import workerUrl from './scad-worker.js?worker&url';
+import { LEGEND } from './legend.js';   // саме так, інакше Vite не підставить збудований шлях
 import { LANGS, initLang, setLang, getLang, t, tp, tg } from './i18n.js';
 
 // Друга версія перегляду: БЕЗ бекенду. OpenSCAD працює у веб-воркері (WASM), сторінка — звичайна статика.
@@ -31,6 +33,7 @@ function pose(V, th, psi, om) {
 //</pose> -----------------------------------------------------------------------------------------
 
 const $ = id => document.getElementById(id);
+let lastInfo = ['', ''];                       // два рядки підпису під збереженою картинкою
 // Усе, що приходить із .scad (назви груп, описи, варіанти, текст echo) і з імені
 // відкритого файлу, — ЧУЖИЙ текст: «Відкрити .scad…» бере довільний файл із диска.
 // Тому такі рядки складаються через DOM і textContent, а не вставляються в розмітку.
@@ -138,14 +141,25 @@ function updatePose() {
   const where = z => t(z >= 0 ? 'hud.above' : 'hud.below');
   const tbl = el('table');
   const line = (label, ...kids) => { const tr = el('tr'); tr.append(el('td', { textContent: label }), el('td')); tr.lastChild.append(...kids); tbl.appendChild(tr); };
+  const dz = T[1] - gz, під = dz < 0;                         // головне число сторінки: куди дістає зуб
   line(t('hud.reach'), el('b', { textContent: T[0].toFixed(0) }), ' ' + mm);
-  line(t('hud.tooth', { where: where(T[1] - gz) }), el('b', { textContent: Math.abs(T[1] - gz).toFixed(0) }), ' ' + mm);
+  line(t('hud.tooth', { where: where(dz) }),
+       el('b', { textContent: Math.abs(dz).toFixed(0), className: під ? 'neg' : '' }),
+       el('span', { textContent: ' ' + mm, className: під ? 'neg' : '' }));
   line(t('hud.axisE', { where: where(P.E[1] - gz) }), Math.abs(P.E[1] - gz).toFixed(0) + ' ' + mm);
   line(t('hud.tilt'), tiltText(P.bdir));
   $('hud').replaceChildren(tbl);
   // Ті самі числа — у ручці шухляди: у згорнутому стані це все, що видно з панелі.
-  $('grab_info').textContent = `${t('m.reach')} ${T[0].toFixed(0)} · ${t('m.tooth')} `
-    + `${Math.abs(T[1] - gz).toFixed(0)} ${mm} ${where(T[1] - gz)}`;   // «мм» один раз: у ручці лічені пікселі
+  // «мм» один раз: у ручці лічені пікселі. Через DOM, бо «нижче землі» фарбуємо.
+  $('grab_info').replaceChildren(`${t('m.reach')} ${T[0].toFixed(0)} · ${t('m.tooth')} `,
+    el('b', { textContent: `${Math.abs(dz).toFixed(0)} ${mm} ${where(dz)}`,
+              style: під ? 'color:var(--bad)' : 'font-weight:400' }));
+  // те саме текстом — для підпису під збереженою картинкою
+  lastInfo = [`${t('hud.reach')}: ${T[0].toFixed(0)} ${mm} · ${t('hud.tooth', { where: where(dz) })}: `
+              + `${Math.abs(dz).toFixed(0)} ${mm} · ${t('hud.axisE', { where: where(P.E[1] - gz) })}: `
+              + `${Math.abs(P.E[1] - gz).toFixed(0)} ${mm}`,
+              ANG.map(([k]) => `${t('ang.' + k)} ${effAngles()[k].toFixed(0)}°`).join(' · ')
+              + ` · ${t('hud.tilt')}: ${tiltText(P.bdir)}`];
   // Попередження приходять з echo() моделі — у відкритому з диска .scad там може бути будь-що.
   for (const w of [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))])
     $('hud').appendChild(el('div', { className: 'w', textContent: '⚠ ' + w }));
@@ -228,6 +242,13 @@ function buildViewUI() {
   const b = document.createElement('button'); b.textContent = t('view.ortho'); b.classList.toggle('on', ortho);
   b.onclick = () => { setView(null, !ortho); b.classList.toggle('on', ortho); }; $('views').appendChild(b);
 }
+function buildLegend() {                                      // кольори — з color(...) моделі, див. legend.js
+  const box = $('legend'); box.replaceChildren();
+  for (const l of LEGEND) {
+    const sp = el('span'); sp.append(el('i', { style: `background:${l.hex}` }), t(l.key));
+    box.appendChild(sp);
+  }
+}
 const TOG = ['cylinders', 'linkage', 'bucket', 'post', 'pins', 'ground', 'edges', 'envelope'];
 function buildToggleUI() {
   $('toggles').innerHTML = '';
@@ -285,24 +306,66 @@ function mark() {
 }
 let timer = null, inflight = false, again = false, worker = null, jobId = 0, engineReady = false;
 function schedule() { clearTimeout(timer); timer = setTimeout(rebuild, 300); }
-function runOpenSCAD(defs) {                                  // один запуск у воркері: part="view_all" → усі деталі одразу
-  if (!worker) worker = new Worker(new URL('./scad-worker.js', import.meta.url), { type: 'module' });
+// Рушій — 11 МБ одним файлом (wasm зашито в base64 усередині воркера), і браузер
+// тягне його мовчки. Тому завантажуємо самі, потоково, з показом відсотків, і
+// віддаємо воркеру вже готовий Blob — так файл їде рівно один раз.
+// У dev так не можна: там воркер ще не зібраний і має справжні import-и.
+function loadNote(key, vars, pct, sub) {
+  const box = $('load');
+  box.hidden = false;
+  box.querySelector('.ttl').textContent = t(key, vars);
+  box.classList.toggle('busy', pct == null);                  // без відсотків — біжуча смужка
+  box.querySelector('.track i').style.width = pct == null ? '' : pct + '%';
+  box.querySelector('.sub').textContent = sub || '';
+}
+const ENGINE_MB = 11;                                         // приблизний розмір воркера з убудованим wasm
+let noBlob = false;                                           // якщо Blob-воркер не заведеться — більше не пробуємо
+async function makeWorker() {
+  const plain = () => new Worker(workerUrl, { type: 'module' });
+  if (!import.meta.env.PROD || noBlob) return plain();
+  try {
+    const r = await fetch(workerUrl);
+    if (!r.ok || !r.body) return plain();
+    // Content-Length при стисненні — це розмір СТИСНУТОГО, а читач дає розпакований.
+    // Тому точну частку беремо лише без стиснення, інакше рахуємо від відомих ~11 МБ.
+    const total = (!r.headers.get('content-encoding') && +r.headers.get('content-length')) || ENGINE_MB * 1e6;
+    const reader = r.body.getReader(), chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      loadNote('load.engine', {}, Math.min(99, Math.round(got / total * 100)),
+               `${(got / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(0)} ${t('hud.mb')}`);
+    }
+    return new Worker(URL.createObjectURL(new Blob(chunks, { type: 'text/javascript' })), { type: 'module' });
+  } catch (e) {
+    return plain();                                           // не вийшло — хай тягне браузер, як раніше
+  }
+}
+async function runOpenSCAD(defs) {                            // один запуск у воркері: part="view_all" → усі деталі одразу
+  if (!worker) worker = await makeWorker();
   const id = ++jobId;
   return new Promise((resolve, reject) => {
     const done = e => { if (e.data.id !== id) return; worker.removeEventListener('message', done); resolve(e.data); };
     worker.addEventListener('message', done);
-    worker.onerror = e => { worker.terminate(); worker = null; reject(new Error(e.message || t('st.worker'))); };
+    worker.onerror = e => {
+      worker.terminate(); worker = null;
+      if (!noBlob) { noBlob = true; resolve(runOpenSCAD(defs)); return; }   // Blob не завівся — пробуємо звичайним шляхом
+      reject(new Error(e.message || t('st.worker')));
+    };
     worker.postMessage({ id, source: scadSource, defs });
   });
 }
 async function rebuild() {
   if (inflight) { again = true; return; } inflight = true;
   status(engineReady ? 'st.build' : 'st.engine', {}, 'busy');
+  if (!engineReady) loadNote('load.engine', {}, null); else if (!$('load').hidden) loadNote('load.build', {}, null);
   try {
     const ch = changed(), defs = Object.keys(ch).sort().map(k => `${k}=${scadLiteral(byName[k], ch[k])}`);
     const t0 = performance.now(), d = await runOpenSCAD(defs);
     if (d.error) { status('st.err', { msg: d.error }, 'err'); lastLog = d.log || []; }
-    else { engineReady = true; applyBuild(d); status('st.done', { ms: (d.ms / 1000).toFixed(2), total: ((performance.now() - t0) / 1000).toFixed(2), n: Object.keys(ch).length }); }
+    else { engineReady = true; $('load').hidden = true; applyBuild(d); status('st.done', { ms: (d.ms / 1000).toFixed(2), total: ((performance.now() - t0) / 1000).toFixed(2), n: Object.keys(ch).length }); }
   } catch (e) { status('st.err', { msg: e.message }, 'err'); }
   inflight = false; if (again) { again = false; rebuild(); }
 }
@@ -512,6 +575,56 @@ window.__SETVIEW__ = v => {
 //</viewjson> --------------------------------------------------------------------------------------
 vjRepo(repoViewsFile.views);                                  // вшито збіркою
 
+// ------------------------------------------------------- знімок кадру у PNG
+// Канва рендериться з preserveDrawingBuffer, тож її можна просто перемалювати в
+// інший canvas. Під кадром — смуга з тими самими числами, що в HUD: знімок без
+// них нічого не доводить, а екранний знімок тягне за собою всю панель.
+function pngBlob() {
+  renderer.render(scene, camera);                             // свіжий кадр у буфері
+  const w = canvas.width, h = canvas.height, k = w / (canvas.clientWidth || w);
+  const pad = Math.round(13 * k), lh = Math.round(17 * k), strip = pad * 2 + lh * 2;
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h + strip;
+  const g = out.getContext('2d');
+  g.drawImage(canvas, 0, 0);
+  g.fillStyle = '#fbfaf7'; g.fillRect(0, h, w, strip);
+  g.fillStyle = '#ddd8cd'; g.fillRect(0, h, w, Math.max(1, Math.round(k)));
+  g.textBaseline = 'top';
+  g.fillStyle = '#23262b'; g.font = `${Math.round(12.5 * k)}px -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+  g.fillText(lastInfo[0], pad, h + pad);
+  g.fillStyle = '#6d7278'; g.font = `${Math.round(11.5 * k)}px -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+  g.fillText(lastInfo[1], pad, h + pad + lh);
+  return new Promise(res => out.toBlob(res, 'image/png'));
+}
+window.__PNG__ = pngBlob;                                     // для тестів і для набору матеріалів
+$('png').onclick = async () => {
+  const blob = await pngBlob();
+  const name = `excavator-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.png`;
+  const file = new File([blob], name, { type: 'image/png' });
+  // На телефоні «завантажити» веде в теку, якої користувач може й не знайти;
+  // системний «Поділитися» дає і збереження у фото, і надсилання.
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+};
+
+// ------------------------------------------------------------------- клавіші
+// Лише для клавіатури: на дотикових це мертвий код, тож і не вішаємо.
+if (!matchMedia('(pointer: coarse)').matches) {
+  const KEYS = Object.keys(VIEWS);                            // 1..6 — ті самі види, що кнопками
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const el = document.activeElement;
+    if (el && /^(input|select|textarea|summary)$/.test(el.tagName.toLowerCase())) return;
+    const i = '123456'.indexOf(e.key);
+    if (i >= 0 && i < KEYS.length) { setView(VIEWS[KEYS[i]]); e.preventDefault(); return; }
+    if (e.key === ' ') { $('play').click(); e.preventDefault(); }
+  });
+}
+
 // --------------------------------------------- шухляда знизу на дотикових пристроях
 // Три стани: згорнута (сама ручка з числами), робоча і повна. Тягнеться за ручку,
 // дотик по ручці згортає/розгортає, дотик по моделі прибирає повну назад у робочу.
@@ -623,7 +736,7 @@ function buildLangUI() {
 }
 // Зміна мови лише перемальовує підписи: OpenSCAD не перезапускається, кути, галочки й змінені параметри лишаються.
 function renderAll() {
-  buildLangUI(); applyStatic(); buildAngleUI(); buildPoseUI(); buildViewUI(); buildToggleUI(); smUI();
+  buildLangUI(); applyStatic(); buildAngleUI(); buildPoseUI(); buildViewUI(); buildToggleUI(); buildLegend(); smUI();
   if (schema.length) buildParamUI();
   if (lastStatus) status(lastStatus.key, lastStatus.vars, lastStatus.cls);
   updateAngleRanges(); updatePose();
@@ -640,5 +753,5 @@ function renderAll() {
     await rebuild();
     setView(VIEWS.side);                       // ракурс з адреси більше не беремо
     window.__READY__ = true;
-  } catch (e) { status('st.load', { msg: e.message }, 'err'); }
+  } catch (e) { $('load').hidden = true; status('st.load', { msg: e.message }, 'err'); }
 })();

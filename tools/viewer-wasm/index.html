@@ -59,6 +59,25 @@
   #hud b { font-weight: 600; } #hud .w { color: var(--bad); margin-top: 5px; white-space: normal; }
   #hud table { border-collapse: collapse; } #hud td { padding: 1px 0 1px 10px; } #hud td:first-child { padding-left: 0; color: var(--mute); }
   #help { position: absolute; left: 10px; bottom: 8px; color: var(--mute); font-size: 11.5px; pointer-events: none; }
+  /* Накладка завантаження. Вона потрібна саме окремим елементом: рядок #status
+     має клас .adv і схований, поки не ввімкнені «Розширені можливості», — тобто
+     11 МБ рушія їхали б у повній тиші. */
+  #load { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+          background: #fbfaf7f2; border: 1px solid var(--line); border-radius: 10px;
+          padding: 14px 18px; width: min(300px, 78%); text-align: center;
+          box-shadow: 0 6px 20px #00000014; }
+  #load[hidden] { display: none; }
+  #load .ttl { font-size: 12.5px; margin-bottom: 9px; }
+  #load .track { height: 6px; border-radius: 3px; background: #e6e1d6; overflow: hidden; }
+  #load .track i { display: block; height: 100%; width: 0; background: var(--acc); border-radius: 3px;
+                   transition: width .2s linear; }
+  #load.busy .track i { width: 35% !important; animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+  #load .sub { margin-top: 7px; font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+  #legend { gap: 4px 12px; margin: 2px 0 8px; }
+  #legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--mute); }
+  #legend i { width: 11px; height: 11px; border-radius: 2px; border: 1px solid #0000002e; }
+  #hud .neg { color: var(--bad); }
   .note { background: #fff6e6; border: 1px solid #ecd9b0; border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; }
   .note > summary { padding: 0; font-weight: 600; }
   .note > summary + span { display: block; margin-top: 5px; }
@@ -167,6 +186,8 @@
   <h2 data-i18n="h2.view">Вигляд</h2>
   <div class="row" id="views"></div>
   <div id="toggles"></div>
+  <div class="row" id="legend"></div>
+  <div class="row"><button id="png" data-i18n="png" data-i18n-title="png.title">Зберегти PNG</button></div>
   <details id="vw_box"><summary data-i18n="vw.section">Ракурси для рендерів</summary><div id="vjson"></div></details>
   <div class="row" id="gz_row" style="align-items:center;margin-top:4px"><label for="gz" data-i18n="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
 
@@ -183,6 +204,7 @@
 <div id="main">
   <canvas id="c"></canvas>
   <div id="hud"></div>
+  <div id="load"><div class="ttl" data-i18n="load.engine"></div><div class="track"><i></i></div><div class="sub"></div></div>
   <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — у «Розширених можливостях»</div>
 </div>
 

@@ -12,6 +12,7 @@ import { createOpenSCAD } from 'openscad-wasm-prebuilt';
 import { splitOff } from '../src/offmesh.js';
 import { readSchema, scadLiteral } from '../src/schema.js';
 import { UI, LANGS, GROUPS_EN, PARAMS_EN } from '../src/i18n.js';
+import { LEGEND } from '../src/legend.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url)), root = path.resolve(here, '../../..');
 const source = readFileSync(path.join(root, 'scad/excavator_boom.scad'), 'utf8');
@@ -20,6 +21,23 @@ const fail = m => { console.error('✗ ' + m); process.exitCode = 1; }, ok = m =
 const schema = readSchema(source), all = schema.flatMap(g => g.params);
 all.length > 80 ? ok(`схема: ${schema.length} груп, ${all.length} параметрів`) : fail(`схема підозріло мала: ${all.length}`);
 const L1 = all.find(p => p.name === 'boom_L1'); scadLiteral(L1, 950) === '950' ? ok('літерали параметрів') : fail('scadLiteral');
+
+// Легенда кольорів мусить показувати ТІ САМІ кольори, що стоять у color(...) моделі:
+// інакше вона тихо почне брехати після першої ж зміни палітри.
+{
+  // Беремо ВСІ трійки 0..1 у тексті, а не лише ті, що стоять прямо в color():
+  // колір гільзи приходить через типове значення параметра col_body.
+  const nums = [...source.matchAll(/\[\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\]/g)]
+    .map(m => m.slice(1, 4).map(Number))
+    .filter(v => v.every(x => x >= 0 && x <= 1))
+    .map(v => v.join(','));
+  const names = [...source.matchAll(/color\(\s*"([^"]+)"/g)].map(m => m[1]);
+  const lost = LEGEND.filter(l => typeof l.scad === 'string'
+    ? !names.includes(l.scad)
+    : !nums.includes(l.scad.join(',')));
+  lost.length ? fail('легенда розійшлася з моделлю: ' + lost.map(l => l.key).join(', '))
+              : ok(`легенда: ${LEGEND.length} кольорів, усі є в моделі`);
+}
 
 // Маркери мають стояти НА ПОЧАТКУ рядка: інакше згадка тегу в коментарі вище зсуває межу блоку і ховає розходження.
 const poseBlock = f => (readFileSync(f, 'utf8').match(/^\/\/<pose>[^\n]*\n([\s\S]*?)^\/\/<\/pose>/m) || [])[1];
