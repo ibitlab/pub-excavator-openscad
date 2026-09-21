@@ -143,6 +143,9 @@ function updatePose() {
   line(t('hud.axisE', { where: where(P.E[1] - gz) }), Math.abs(P.E[1] - gz).toFixed(0) + ' ' + mm);
   line(t('hud.tilt'), tiltText(P.bdir));
   $('hud').replaceChildren(tbl);
+  // Ті самі числа — у ручці шухляди: у згорнутому стані це все, що видно з панелі.
+  $('grab_info').textContent = `${t('m.reach')} ${T[0].toFixed(0)} ${mm} · ${t('m.tooth')} `
+    + `${Math.abs(T[1] - gz).toFixed(0)} ${mm} ${where(T[1] - gz)}`;
   // Попередження приходять з echo() моделі — у відкритому з диска .scad там може бути будь-що.
   for (const w of [...warn, ...lastLog.filter(l => l.includes('!!!')).map(l => l.replace(/!!!\s*/, ''))])
     $('hud').appendChild(el('div', { className: 'w', textContent: '⚠ ' + w }));
@@ -213,7 +216,10 @@ function sceneBox() { const b = new THREE.Box3(); for (const k in bodies) if (bo
 function setView(dir, isOrtho = ortho) {
   const b = sceneBox(), c = b.getCenter(new THREE.Vector3()), r = b.getSize(new THREE.Vector3()).length() * 0.5;
   const d = dir ? new THREE.Vector3(...dir).normalize() : camera.position.clone().sub(controls.target).normalize();
-  makeCamera(isOrtho, c.clone().addScaledVector(d, r * 3.4), c); resize();
+  // У вертикальному кадрі машину обмежує ШИРИНА: горизонтальний кут огляду вужчий
+  // за вертикальний рівно в aspect разів. Без цього в портреті вона тулиться до краю.
+  const a = (canvas.clientWidth || 1) / (canvas.clientHeight || 1);
+  makeCamera(isOrtho, c.clone().addScaledVector(d, r * 3.4 / Math.min(1, a)), c); resize();
 }
 const VIEWS = { side: [0, -1, 0], iso: [0.55, -1, 0.45], back: [-0.8, -1, 0.35], top: [0, -0.001, 1], front: [1, 0, 0.05], fit: null };
 function buildViewUI() {
@@ -506,6 +512,73 @@ window.__SETVIEW__ = v => {
 //</viewjson> --------------------------------------------------------------------------------------
 vjRepo(repoViewsFile.views);                                  // вшито збіркою
 
+// --------------------------------------------- шухляда знизу на дотикових пристроях
+// Три стани: згорнута (сама ручка з числами), робоча і повна. Тягнеться за ручку,
+// дотик по ручці згортає/розгортає, дотик по моделі прибирає повну назад у робочу.
+// Канва міняє висоту разом зі шухлядою, тож resize() потрібен після переходу.
+let sheet = 1;
+function setSheet(n) {
+  sheet = Math.max(0, Math.min(2, n));
+  document.body.classList.toggle('sheet0', sheet === 0);
+  document.body.classList.toggle('sheet2', sheet === 2);
+  $('grab').setAttribute('aria-expanded', String(sheet > 0));
+  try { localStorage.setItem('sheet', String(sheet)); } catch (e) { /* немає сховища */ }
+}
+{
+  const g = $('grab');
+  let y0 = null, h0 = 0, raf = 0;
+  // Шапка з назвою — 38 px, яких у робочому стані бракує саме на перший ряд поз.
+  // На телефоні вона ховається, а перемикач мови переїжджає в ручку шухляди.
+  const mob = matchMedia('(max-width: 900px), (pointer: coarse)');
+  const placeLang = () => (mob.matches ? g : document.querySelector('.hdr')).appendChild($('lang'));
+  placeLang(); mob.addEventListener('change', placeLang);
+  // Рух і відпускання слухаємо на ВІКНІ, а не на ручці: палець одразу йде за її межі,
+  // а setPointerCapture при емуляції дотику спрацьовує не завжди — перевірено, драг
+  // мовчки не доходив до кінця на двох розмірах із трьох.
+  g.addEventListener('pointerdown', e => {
+    if (e.target.closest('.lang')) return;            // кнопки мови всередині ручки — не драг
+    y0 = e.clientY; h0 = $('side').getBoundingClientRect().height;
+    document.body.classList.add('dragging');
+    e.preventDefault();
+  });
+  addEventListener('pointermove', e => {
+    if (y0 === null) return;
+    const h = Math.min(innerHeight * 0.9, Math.max(50, h0 + (y0 - e.clientY)));
+    document.body.style.setProperty('--sheet', h + 'px');
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; resize(); });   // без throttle WebGL перемальовується на кожен рух
+  });
+  const release = e => {
+    if (y0 === null) return;
+    const h = $('side').getBoundingClientRect().height, moved = Math.abs(e.clientY - y0);
+    y0 = null;
+    document.body.classList.remove('dragging');
+    document.body.style.removeProperty('--sheet');
+    setSheet(moved < 6 ? (sheet === 0 ? 1 : 0)
+                       : h < innerHeight * 0.2 ? 0 : h > innerHeight * 0.62 ? 2 : 1);
+  };
+  addEventListener('pointerup', release);
+  addEventListener('pointercancel', release);
+  g.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault(); setSheet(sheet === 0 ? 1 : 0);
+  });
+  $('main').addEventListener('pointerdown', () => { if (sheet === 2) setSheet(1); });
+  // Канва міняє не лише висоту, а й ПРОПОРЦІЮ: у згорнутому стані вона вища й вужча,
+  // і при сталому вертикальному куті огляду широка машина обрізалася б з боків.
+  // Тому після переходу вписуємо її заново — напрямок погляду при цьому зберігається.
+  // Змінювати camera.fov не можна: його як сталу віддає viewJSON у спільному блоці.
+  $('main').addEventListener('transitionend', e => {
+    if (e.propertyName !== 'height') return;
+    if (mob.matches) setView(null); else resize();
+  });
+
+  let start = 1;
+  try { const v = localStorage.getItem('sheet'); if (v !== null) start = +v; } catch (e) { /* немає сховища */ }
+  setSheet(Number.isFinite(start) ? start : 1);
+  // На великому екрані попередження про ШІ розгорнуте: місця вдосталь, і воно важливе.
+  if (!matchMedia('(max-width: 900px), (pointer: coarse)').matches) $('warn').open = true;
+}
+
 // ------------------------------------------ розширене: параметри моделі та пристрої, сховані
 (function () {                                  // більшості достатньо кутів і вигляду
   const sw = $('adv_on');
@@ -525,6 +598,7 @@ function applyStatic() {                                      // статичн�
   document.documentElement.lang = getLang();
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
+  for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));   // елементи без тексту
   for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = t(el.dataset.i18nHtml);   // рядки з посиланнями
   if (playing) $('play').textContent = t('stop');
 }

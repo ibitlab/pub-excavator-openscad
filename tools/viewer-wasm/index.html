@@ -60,22 +60,83 @@
   #hud table { border-collapse: collapse; } #hud td { padding: 1px 0 1px 10px; } #hud td:first-child { padding-left: 0; color: var(--mute); }
   #help { position: absolute; left: 10px; bottom: 8px; color: var(--mute); font-size: 11.5px; pointer-events: none; }
   .note { background: #fff6e6; border: 1px solid #ecd9b0; border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; }
-  @media (max-width: 760px) { body { flex-direction: column-reverse; } #side { width: 100%; height: 46%; border-right: none; border-top: 1px solid var(--line); } #main { height: 54%; flex: none; } #hud { font-size: 11px; max-width: 60%; } #help { display: none; } }
+  .note > summary { padding: 0; font-weight: 600; }
+  .note > summary + span { display: block; margin-top: 5px; }
+  #grab { display: none; }
+
+  /* Дотикові пристрої: модель на весь екран, панель — шухляда знизу у трьох станах.
+     Умова не лише за шириною: телефон лежачи (844 px) і планшет у портреті (768 px)
+     проходили повз поріг 760 і діставали бічну панель на пів екрана.
+     Канва міняє висоту разом зі шухлядою, а не ховається під нею, — модель видно цілком. */
+  @media (max-width: 900px), (pointer: coarse) {
+    body { flex-direction: column-reverse; --sheet: 45%; }
+    body.sheet0 { --sheet: 56px; }
+    body.sheet2 { --sheet: min(86%, calc(100% - 170px)); }   /* моделі завжди лишається смуга, навіть лежачи */
+    body.dragging #side, body.dragging #main { transition: none; }
+    #main { flex: none; height: calc(100% - var(--sheet)); transition: height .2s ease; }
+    #side { width: 100%; height: var(--sheet); border-right: none; border-top: 1px solid var(--line);
+            border-radius: 14px 14px 0 0; box-shadow: 0 -5px 16px #00000014;
+            padding: 0 12px 28px; transition: height .2s ease; overscroll-behavior: contain; }
+    #grab { display: flex; flex-direction: column; align-items: center; gap: 4px;
+            position: sticky; top: 0; z-index: 3; background: var(--panel);
+            padding: 8px 0 7px; margin: 0 -12px; border-radius: 14px 14px 0 0;
+            touch-action: none; user-select: none; cursor: grab; }
+    #grab .bar { width: 38px; height: 4px; border-radius: 2px; background: #cfc8ba; }
+    #grab_info { font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+    body.sheet0 #side > :not(#grab) { display: none; }
+    /* З телефона моделлю крутять і тикають пози — параметрів моделі, пристроїв
+       і ракурсів для рендерів там не міняють. Ховаємо їх разом із самим
+       перемикачем «Розширені можливості»: інакше це просто рядок-баласт. */
+    #vw_box, #gz_row, .adv-sw, .adv { display: none !important; }
+    /* Далі — боротьба за пікселі в робочому стані: у нього мають влізти три повзунки
+       І хоча б перший ряд готових поз. Назва сторінки є у вкладці та в картці
+       посилання, а «обмежувати ходом циліндрів» лишається ввімкненим — це фізична
+       правда, і вимикати її з телефона нема потреби (прапорець просто схований).
+       Смужка ходу циліндра теж зникає: при ввімкненому обмеженні вона ніколи не
+       червоніє, тобто на телефоні це три рядки чисел без роботи. */
+    .hdr, #clamp_row, .cyl { display: none; }        /* перемикач мови JS переносить у ручку */
+    #grab { position: relative; }
+    #grab .lang { position: absolute; right: 2px; top: 9px; }
+    #grab_info { max-width: calc(100% - 90px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ang { margin-bottom: 8px; }
+    .ang input[type=range] { margin: 2px 0 0; }
+    .note { margin-bottom: 6px; }
+    /* розміри під палець: 44 px — рекомендований мінімум, дотягуємось полем, не шрифтом */
+    /* Ціль дотику — увесь підпис, а не квадратик: сам checkbox лишається 20 px,
+       але клікабельна площа — рядок .chk заввишки 40. Рекомендований мінімум 44
+       тут не беремо свідомо: при ньому перший ряд готових поз виїжджає за край
+       робочого стану, а саме ці кнопки з телефона й тиснуть. */
+    #side button { min-height: 40px; }
+    .chk { min-height: 40px; margin-right: 14px; }
+    .chk input[type=checkbox] { width: 20px; height: 20px; }
+    .ang input[type=range] { height: 28px; }
+    input[type=number], select { min-height: 34px; }
+    .row { gap: 8px; }
+    .p { padding: 8px 9px; }
+    /* числа переїхали в ручку шухляди; у HUD лишаються тільки попередження моделі */
+    #hud { background: none; border: none; padding: 0; top: 8px; left: 10px; right: 10px; max-width: none; }
+    #hud table { display: none; }
+    #hud .w { background: #fff4f2e8; border: 1px solid #e3b4ab; border-radius: 7px; padding: 5px 8px; margin: 0 0 5px; }
+  }
+  @media (hover: none) { #help { display: none; } }
 </style>
 </head>
 <body>
 <div id="side">
+  <div id="grab" role="button" tabindex="0" aria-controls="side" data-i18n-aria="sheet.aria">
+    <span class="bar"></span><span id="grab_info"></span>
+  </div>
   <div class="hdr">
     <h1 data-i18n="h1">Міні-екскаватор: стріла · рукоять · ківш</h1>
     <div class="lang" id="lang" data-i18n-title="lang.title"></div>
   </div>
-  <div class="note" data-i18n="warn"></div>
+  <details class="note" id="warn"><summary data-i18n="warn.short"></summary><span data-i18n="warn"></span></details>
 
   <label class="chk adv-sw" data-i18n-title="adv.title"><input type="checkbox" id="adv_on"> <span data-i18n="adv">Розширені можливості</span></label>
 
   <h2 data-i18n="h2.angles">Кути — миттєво, у браузері</h2>
   <div id="angles"></div>
-  <div class="row">
+  <div class="row" id="clamp_row">
     <label class="chk"><input type="checkbox" id="clamp" checked> <span data-i18n="clamp">обмежувати ходом циліндрів</span></label>
   </div>
   <div class="row" id="poses"></div>
@@ -85,7 +146,7 @@
   <div class="row" id="views"></div>
   <div id="toggles"></div>
   <details id="vw_box"><summary data-i18n="vw.section">Ракурси для рендерів</summary><div id="vjson"></div></details>
-  <div class="row" style="align-items:center;margin-top:4px"><label for="gz" data-i18n="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
+  <div class="row" id="gz_row" style="align-items:center;margin-top:4px"><label for="gz" data-i18n="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
 
   <h2 class="adv" data-i18n="h2.params">Параметри моделі — OpenSCAD-WASM у браузері</h2>
   <div class="row adv"><button id="reset" data-i18n="reset">Скинути все</button><button id="copy" data-i18n="copy">Копіювати зміни</button></div>
