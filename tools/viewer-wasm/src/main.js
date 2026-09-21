@@ -368,7 +368,9 @@ function buildLegend() {                                      // кольори 
 const TOG = ['cylinders', 'linkage', 'bucket', 'post', 'pins', 'ground', 'edges', 'envelope', 'kin'];
 function buildToggleUI() {
   $('toggles').innerHTML = '';
-  for (const k of TOG) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${t('tog.' + k)}`;
+  // id="tog_НАЗВА" — щоб проба (tools/media/probe.mjs) цілилася в прапорець за ім'ям,
+  // а не за порядковим номером чи підписом: підпис змінюється з мовою.
+  for (const k of TOG) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" id="tog_${k}" ${show[k] ? 'checked' : ''}> ${t('tog.' + k)}`;
     l.querySelector('input').onchange = e => { show[k] = e.target.checked; applyShow(); }; $('toggles').appendChild(l); }
 }
 canvas.addEventListener('dblclick', e => {                   // подвійний клік — новий центр обертання на поверхні моделі

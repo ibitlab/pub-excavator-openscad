@@ -313,7 +313,8 @@ const VIEW_LABEL = { side: 'Збоку', iso: 'Ізометрія', back: 'Зз�
 for (const [id, d] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = VIEW_LABEL[id]; b.onclick = () => setView(d); $('views').appendChild(b); }
 { const b = document.createElement('button'); b.textContent = 'Ортогонально'; b.onclick = () => { setView(null, !ortho); b.classList.toggle('on', ortho); }; $('views').appendChild(b); }
 const TOG = { cylinders: 'циліндри', linkage: 'коромисло і тяга', bucket: 'ківш', post: 'колона', pins: 'пальці', ground: 'земля', edges: 'ребра', envelope: 'робоча зона (траєкторії зуба)' };
-for (const [k, label] of Object.entries(TOG)) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" ${show[k] ? 'checked' : ''}> ${label}`;
+// id="tog_НАЗВА" — щоб проба (tools/media/probe.mjs) цілилася в прапорець за ім'ям, а не за номером у ряду.
+for (const [k, label] of Object.entries(TOG)) { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = `<input type="checkbox" id="tog_${k}" ${show[k] ? 'checked' : ''}> ${label}`;
   l.querySelector('input').onchange = e => { show[k] = e.target.checked; applyShow(); }; $('toggles').appendChild(l); }
 canvas.addEventListener('dblclick', e => {                   // подвійний клік — новий центр обертання на поверхні моделі
   const r = canvas.getBoundingClientRect(), ray = new THREE.Raycaster();
