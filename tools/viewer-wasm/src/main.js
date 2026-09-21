@@ -192,7 +192,7 @@ function buildAngleUI() {
   for (const [key] of ANG) {
     const title = t('ang.' + key), hint = t('ang.' + key + '.hint');
     const d = document.createElement('div'); d.className = 'ang';
-    d.innerHTML = `<div class="top"><label for="sl_${key}" title="${hint}">${title} <span style="color:var(--mute);font-weight:400">· ${hint}</span></label><span><input type="number" id="num_${key}" step="1"> °</span></div>
+    d.innerHTML = `<div class="top"><label for="sl_${key}" title="${t('ang.' + key + '.ref')}">${title} <span style="color:var(--mute);font-weight:400">· ${hint}</span></label><span><input type="number" id="num_${key}" step="1"> °</span></div>
       <input type="range" id="sl_${key}" step="0.1"><div class="cyl" id="cyl_${key}"><div class="bar"><i></i></div><span></span></div>`;
     $('angles').appendChild(d);
     const set = v => { if (!isFinite(v)) return; ang3[key] = v; stopPlay(); updatePose(); };
