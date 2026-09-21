@@ -283,7 +283,7 @@ async function rebuild() {
   inflight = false; if (again) { again = false; rebuild(); }
 }
 let lastStatus = null;                                        // останній рядок стану — щоб перемалювати його новою мовою
-function status(key, vars = {}, cls = '') { lastStatus = { key, vars, cls }; const s = $('status'); s.textContent = t(key, vars); s.className = cls; }
+function status(key, vars = {}, cls = '') { lastStatus = { key, vars, cls }; const s = $('status'); s.textContent = t(key, vars); s.className = 'adv ' + cls; }   // adv — мітка «розширене», її не можна стирати
 function applyBuild(d) {
   lastLog = (d.log || []).filter(l => !/ПОТОЧНЕ|ЗУБ КОВША|поза межами циліндра|Циліндр між/.test(l));
   if (d.view) V = d.view; setMeshes(d.parts || {}); setPins(); buildGround(groundZ()); updateAngleRanges(); updateEnvelope(); updatePose();
@@ -448,12 +448,13 @@ function vjUI() {                                             // підписи 
   $('vjson').innerHTML = `<div class="row" style="align-items:center;margin-top:6px" id="vj_row" hidden>
       <select id="vj_pick" style="flex:1;min-width:110px"></select>
       <button id="vj_del" title="${t('vw.del.title')}">✕</button></div>
-    <div class="row" style="align-items:center;margin-top:6px">
-      <input id="vj_name" placeholder="${t('vw.name')}" style="flex:1;min-width:80px">
-      <button id="vj_copy" title="${t('vw.copy.title')}">${t('vw.copy')}</button>
-      <button id="vj_add" title="${t('vw.add.title')}">${t('vw.add')}</button>
-      <button id="vj_save" title="${t('vw.save.title')}">${t('vw.save')}</button></div>
-    <div id="vj_st" style="color:var(--mute);font-size:11.5px;margin-top:2px"></div>`;
+    <div id="vj_edit" class="adv">
+      <div class="row" style="align-items:center;margin-top:6px">
+        <input id="vj_name" placeholder="${t('vw.name')}" style="flex:1;min-width:80px">
+        <button id="vj_copy" title="${t('vw.copy.title')}">${t('vw.copy')}</button>
+        <button id="vj_add" title="${t('vw.add.title')}">${t('vw.add')}</button>
+        <button id="vj_save" title="${t('vw.save.title')}">${t('vw.save')}</button></div>
+      <div id="vj_st" style="color:var(--mute);font-size:11.5px;margin-top:2px"></div></div>`;
   const st = extra => { const v = viewJSON();
     $('vj_st').textContent = (extra ? extra + ' · ' : '') +
       t('vw.state', { p: v.camera.projection === 'p' ? t('vw.persp') : t('vw.ortho'),
@@ -485,6 +486,18 @@ window.__SETVIEW__ = v => {
 };
 //</viewjson> --------------------------------------------------------------------------------------
 vjRepo(repoViewsFile.views);                                  // вшито збіркою
+
+// ------------------------------------------ розширене: параметри моделі та пристрої, сховані
+(function () {                                  // більшості достатньо кутів і вигляду
+  const sw = $('adv_on');
+  try { sw.checked = localStorage.getItem('adv') === '1'; } catch (e) { /* немає сховища */ }
+  const apply = () => {
+    document.body.classList.toggle('advon', sw.checked);       // решту робить CSS: body:not(.advon) .adv
+    try { localStorage.setItem('adv', sw.checked ? '1' : '0'); } catch (e) { /* не критично */ }
+  };
+  sw.onchange = apply;
+  apply();
+})();
 let tPrev = performance.now();
 (function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
 

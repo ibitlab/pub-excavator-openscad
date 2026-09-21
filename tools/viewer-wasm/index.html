@@ -41,6 +41,11 @@
   summary { cursor: pointer; padding: 7px 9px; font-weight: 600; list-style-position: inside; }
   summary .n { color: var(--acc); font-weight: 600; margin-left: 6px; }
   #vw_box > div { padding: 0 9px 8px; }
+  /* «Розширені можливості» — один вимикач для всього, що потрібне лише авторові моделі.
+     Розширене лишається на своєму місці в панелі, а не збирається в окрему теку. */
+  .adv-sw { margin: 0 0 4px; color: var(--mute); font-size: 11.5px; }
+  body:not(.advon) .adv { display: none; }
+  body:not(.advon) #vw_box:has(#vj_row[hidden]) { display: none; }   /* нічого вибирати й нічого створювати */
   .p { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 5px 9px; border-top: 1px solid #efebe2; }
   .p .nm { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
   .p .ds { grid-column: 1 / -1; color: var(--mute); font-size: 11px; }
@@ -68,6 +73,8 @@
   <div class="sub" id="mode"></div>
   <div class="note" data-i18n="warn"></div>
 
+  <label class="chk adv-sw" data-i18n-title="adv.title"><input type="checkbox" id="adv_on"> <span data-i18n="adv">Розширені можливості</span></label>
+
   <h2 data-i18n="h2.angles">Кути — миттєво, у браузері</h2>
   <div id="angles"></div>
   <div class="row">
@@ -82,19 +89,19 @@
   <details id="vw_box"><summary data-i18n="vw.section">Ракурси для рендерів</summary><div id="vjson"></div></details>
   <div class="row" style="align-items:center;margin-top:4px"><label for="gz" data-i18n="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
 
-  <h2 data-i18n="h2.params">Параметри моделі — OpenSCAD-WASM у браузері</h2>
-  <div class="row"><button id="reset" data-i18n="reset">Скинути все</button><button id="copy" data-i18n="copy">Копіювати зміни</button><button id="rebuild" data-i18n="open" data-i18n-title="open.title">Відкрити .scad…</button><input type="file" id="file" accept=".scad" hidden></div>
-  <div id="status"></div>
-  <div id="groups"></div>
+  <h2 class="adv" data-i18n="h2.params">Параметри моделі — OpenSCAD-WASM у браузері</h2>
+  <div class="row adv"><button id="reset" data-i18n="reset">Скинути все</button><button id="copy" data-i18n="copy">Копіювати зміни</button><button id="rebuild" data-i18n="open" data-i18n-title="open.title">Відкрити .scad…</button><input type="file" id="file" accept=".scad" hidden></div>
+  <div id="status" class="adv"></div>
+  <div id="groups" class="adv"></div>
 
-  <h2 data-i18n="h2.devices">Пристрої</h2>
-  <div id="sm"></div>
+  <h2 class="adv" data-i18n="h2.devices">Пристрої</h2>
+  <div id="sm" class="adv"></div>
   <div class="lic" id="lic" data-i18n-html="lic"></div>
 </div>
 <div id="main">
   <canvas id="c"></canvas>
   <div id="hud"></div>
-  <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка в «Пристроях»</div>
+  <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — у «Розширених можливостях»</div>
 </div>
 
 <script type="module" src="./src/main.js"></script>

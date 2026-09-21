@@ -40,6 +40,8 @@ export const UI = {
     'h2.angles': 'Кути — миттєво, у браузері',
     'h2.view': 'Вигляд',
     'h2.params': 'Параметри моделі — OpenSCAD-WASM у браузері',
+    'adv': 'Розширені можливості',
+    'adv.title': 'Параметри моделі, пристрої та створення ракурсів — потрібні лише тим, хто змінює саму модель',
 
     'clamp': 'обмежувати ходом циліндрів',
     'play': '▶ цикл копання',
@@ -49,7 +51,7 @@ export const UI = {
     'copy': 'Копіювати зміни',
     'open': 'Відкрити .scad…',
     'open.title': 'Відкрити власний варіант файлу .scad з диска (нікуди не надсилається)',
-    'help': 'ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — кнопка в «Пристроях»',
+    'help': 'ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — у «Розширених можливостях»',
 
     'ang.boom': 'Стріла',
     'ang.boom.hint': 'кут хорди A→B до горизонту',
@@ -158,6 +160,8 @@ export const UI = {
     'h2.angles': 'Angles — instant, in the browser',
     'h2.view': 'View',
     'h2.params': 'Model parameters — OpenSCAD-WASM in the browser',
+    'adv': 'Advanced',
+    'adv.title': 'Model parameters, devices and creating views — only needed if you edit the model itself',
 
     'clamp': 'limit to cylinder stroke',
     'play': '▶ dig cycle',
@@ -167,7 +171,7 @@ export const UI = {
     'copy': 'Copy changes',
     'open': 'Open .scad…',
     'open.title': 'Open your own .scad file from disk (it is never uploaded anywhere)',
-    'help': 'left button — orbit · right / Shift — pan · wheel — zoom · double click — set orbit centre · SpaceMouse — button under “Devices”',
+    'help': 'left button — orbit · right / Shift — pan · wheel — zoom · double click — set orbit centre · SpaceMouse — under “Advanced”',
 
     'ang.boom': 'Boom',
     'ang.boom.hint': 'chord A→B angle to the horizon',
