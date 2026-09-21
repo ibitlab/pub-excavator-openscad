@@ -10,10 +10,11 @@
 збігаються з точністю до TOL. Саме на них губиться той, хто складає: 34_B_bushing
 і 35_E_bushing різняться на 0.8 мм, 36_R_bushing і 41_bk_spacer_Q — на 0.4.
 
-usage: make_assembly.py parts.tsv assembly.tsv check.json [тека_версії] > ASSEMBLY.md
+usage: make_assembly.py parts.tsv assembly.tsv check.json [тека_версії] [report.echo] > ASSEMBLY.md
 """
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'print3d'))
@@ -41,6 +42,19 @@ def load_parts(path):
         f = line.split('\t')
         out[f[0]] = dict(file=f[-4], qty=int(f[-3]), group=f[-2], desc=f[-1])
     return out
+
+
+def load_pos(path):
+    """echo(POS) з parts.scad: [деталь, база, що міряємо, мм у металі] + масштаб."""
+    if not path or not os.path.isfile(path):
+        return [], 1
+    txt = open(path, encoding='utf-8').read()
+    m = re.search(r'ECHO: POS = (\[.*?\])\n', txt, re.S)
+    sc = re.search(r'=== друк компонентів 1:(\d+)', txt)
+    if not m:
+        return [], 1
+    rows = json.loads(m.group(1).replace('undef', 'null'))
+    return rows, int(sc.group(1)) if sc else 1
 
 
 def load_steps(path):
@@ -115,6 +129,7 @@ def main():
     steps = load_steps(sys.argv[2])
     checks = {c['файл']: c for c in json.load(open(sys.argv[3], encoding='utf-8'))}
     ver_dir = sys.argv[4] if len(sys.argv) > 4 else ''
+    pos, SC = load_pos(sys.argv[5] if len(sys.argv) > 5 else '')
     here = os.path.dirname(os.path.abspath(sys.argv[1]))
     smap = sheets(ver_dir, here)
     img_dir = os.path.join(os.path.dirname(here), 'docs', 'img')
@@ -171,6 +186,31 @@ def main():
     print('відсортовані від найбільшого до найменшого, щоб порівняння не залежало від того,')
     print('яким боком ви взяли деталь.')
     print()
+
+    # ------------------------------------------------ прив'язки накладних деталей
+    if pos:
+        print('## Де саме стають накладні деталі')
+        print()
+        print('Більшість деталей упирається в кромку або в отвір — їх не поставиш інакше.')
+        print('А вежа F і вилка D приварюються ПОСЕРЕД пластини, нічим не впираючись, тож')
+        print('на око їх не виставити. Числа нижче — з тих самих виразів моделі, що будують')
+        print('вузол; у правій колонці вони вже поділені на масштаб набору.')
+        if os.path.isfile(os.path.join(here, 'img', 'positions.png')):
+            print()
+            print('![прив\'язки вежі F і вилки D](img/positions.png)')
+        prev = None
+        for part, base, what, mm in pos:
+            if (part, base) != prev:
+                name = parts[part]['file'] if part in parts else part
+                print(f'\n**`{name}` на `{base}`**\n')
+                print('| Розмір | У металі, мм | Надруковано, мм |')
+                print('|---|---:|---:|')
+                prev = (part, base)
+            print(f'| {what} | {mm:g} | {mm / SC:.2f} |')
+        print()
+        print('Обидві деталі — дзеркальні пари й стоять симетрично середній площині вузла,')
+        print('тому «від кромки до зовнішньої грані» однакове з обох боків.')
+        print()
 
     # ---------------------------------------------------------------- кроки
     last = None

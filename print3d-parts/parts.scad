@@ -147,9 +147,10 @@ else if (pp == "cyl_bucket_rod")  lay() hyd_cyl_part("rod", bucket_cyl_bore, buc
 // Пальці. Довжини — ті самі формули, що в assembly() і post_schematic();
 // збігаються з echo(BOM_PINS) моделі.
 else if (pp == "pin_A") lay() make_pin(pin_A,          boom_foot_boss_len + 2 + 40);
-// C і D — одна й та сама деталь (echo(BOM_PINS): "pin_CD", 2 шт, Ø30×74).
-// Тут стояла довжина пальця A (182) — палець C виходив утричі довшим за потрібний.
-else if (pp == "pin_C") lay() make_pin(boom_cyl_pin,   clevis_gap_30 + 2*plate_clevis + 20);
+// УВАГА: рядок "pin_CD, 2 шт, Ø30×74" в echo(BOM_PINS) НЕПРАВИЛЬНИЙ — C і D різні.
+// C тримає базу циліндра стріли в плитах колони (post_schematic(): pin(C, …, w + 40),
+// w = boom_foot_boss_len + 2), тобто він такий самий, як A: 182. D — 74.
+else if (pp == "pin_C") lay() make_pin(boom_cyl_pin,   boom_foot_boss_len + 2 + 40);
 else if (pp == "pin_B") lay() make_pin(pin_B,          boom_tube_w + 2*plate_clevis + 24);
 else if (pp == "pin_D") lay() make_pin(boom_cyl_pin,   clevis_gap_30 + 2*plate_clevis + 20);
 else if (pp == "pin_E") lay() make_pin(pin_E,          pin_E_len);
@@ -173,5 +174,27 @@ else if (pp == "none") {
     if (boom_tube_t/SC < 2*NOZZLE) echo(str("WARNING: стінка труби ", boom_tube_t/SC, " мм < двох ліній"));
     if (bucket_shell_t/SC < 2*NOZZLE) echo(str("WARNING: обичайка ковша ", bucket_shell_t/SC, " мм < двох ліній"));
     if ((boom_tube_w - stick_pack_w)/2/SC < NOZZLE) echo(str("WARNING: шайба осі B ", (boom_tube_w - stick_pack_w)/2/SC, " мм < сопла — не друкується"));
+
+    // Прив'язки накладних деталей до їхніх баз — для ASSEMBLY.md. Числа в МЕТАЛІ,
+    // виведені з тих самих виразів, що будують вузол; масштабує їх make_assembly.py.
+    // Вежа F і вилка D стоять на пластинах (накладка перелому / сідло), тобто нічим
+    // не впираються в кромку — без цих розмірів їх нема як поставити.
+    echo(POS = [
+      ["F_tower", "05_cover", "задня кромка вежі від задньої кромки накладки", 0],
+      ["F_tower", "05_cover", "передня кромка вежі не доходить до лінії перелому на", -tower_fwd],
+      ["F_tower", "05_cover", "довжина основи вежі на накладці", cover_half + tower_fwd],
+      ["F_tower", "05_cover", "центр отвору F назад від лінії перелому", -((F_l - K_l) * u1_l)],
+      ["F_tower", "05_cover", "центр отвору F над верхньою поверхнею накладки",
+          (F_l - K_l) * n1_l - (boom_tube_h/2 + plate_gusset)],
+      ["F_tower", "05_cover", "проміжок між двома пластинами вежі", clevis_gap_25],
+      ["F_tower", "05_cover", "від бічної кромки накладки до зовнішньої грані пластини",
+          (boom_tube_w - clevis_gap_25)/2 - plate_clevis],
+      ["D_clevis", "07_D_saddle", "відступ кромки вилки від кожного торця сідла", 20],
+      ["D_clevis", "07_D_saddle", "центр отвору D від середини сідла вздовж", 0],
+      ["D_clevis", "07_D_saddle", "центр отвору D нижче нижньої поверхні сідла",
+          boom_cyl_eD - boom_tube_h/2 - plate_boss],
+      ["D_clevis", "07_D_saddle", "проміжок між двома пластинами вилки", clevis_gap_30],
+      ["D_clevis", "07_D_saddle", "від бічної кромки сідла до зовнішньої грані пластини",
+          (boom_tube_w - clevis_gap_30)/2 - plate_clevis]]);
 }
 else echo(str("!!! невідомий компонент: ", pp, " (own=", own, ")"));

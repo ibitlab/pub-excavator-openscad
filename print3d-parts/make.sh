@@ -52,9 +52,16 @@ python3 print3d/make_bom.py "$TSV" /tmp/parts_check.json /tmp/parts_report.echo 
 echo "  print3d-parts/BOM.md"
 
 echo
+echo "== креслення прив'язок"
+# Вежа F і вилка D стають посеред пластини — словами це не пояснити.
+mkdir -p print3d-parts/img
+tools/.venv/bin/python print3d-parts/make_pos_drawing.py /tmp/parts_report.echo \
+    print3d-parts/img/positions.png
+
+echo
 echo "== інструкція складання"
 # Зупиняє збирання навмисно: деталь без кроку складання — це деталь, яку нікуди
 # не приклеїти, і краще дізнатися про це тут, ніж із надрукованим набором у руках.
 python3 print3d-parts/make_assembly.py "$TSV" print3d-parts/assembly.tsv \
-    /tmp/parts_check.json "$VER" > print3d-parts/ASSEMBLY.md
+    /tmp/parts_check.json "$VER" /tmp/parts_report.echo > print3d-parts/ASSEMBLY.md
 echo "  print3d-parts/ASSEMBLY.md"
