@@ -153,8 +153,10 @@ function updatePose() {
   $('hud').replaceChildren(tbl);
   // Ті самі числа — у ручці шухляди: у згорнутому стані це все, що видно з панелі.
   // «мм» один раз: у ручці лічені пікселі. Через DOM, бо «нижче землі» фарбуємо.
+  // Без «мм»: у ручці лічені пікселі, а одиниці тут і так очевидні — повні числа
+  // з одиницями лишаються в HUD і в підписі під збереженою картинкою.
   $('grab_info').replaceChildren(`${t('m.reach')} ${T[0].toFixed(0)} · ${t('m.tooth')} `,
-    el('b', { textContent: `${Math.abs(dz).toFixed(0)} ${mm} ${where(dz)}`,
+    el('b', { textContent: `${Math.abs(dz).toFixed(0)} ${where(dz)}`,
               style: під ? 'color:var(--bad)' : 'font-weight:400' }));
   $('gz_info').textContent = `${t('gz.info')}: ${values.ground_below_A} ${mm}`;
   // те саме текстом — для підпису під збереженою картинкою
@@ -314,11 +316,12 @@ function buildViewUI() {
   syncOrtho(b);
   placeLock();                                                // ряд щойно перебудовано — замок повертаємо на місце
 }
-// На телефоні замок стоїть у ряду іконок, на комп'ютері плаває над канвою.
-// Тримаємо ВУЗОЛ, а не шукаємо щоразу: buildViewUI робить replaceChildren, після
-// чого від'єднаний замок уже не знаходиться через getElementById.
+// На телефоні замок живе в РУЧЦІ шухляди, поруч зі значком ⚠: ручка прилипла до
+// верху панелі й видна завжди, а ряд видів у заголовку «Кути» прокручується.
+// На комп'ютері замок плаває над канвою. Тримаємо ВУЗОЛ, а не шукаємо щоразу:
+// при перебудові ряду видів від'єднаний вузол уже не знайшовся б.
 const lockBtn = $('lock');
-function placeLock() { (MOB.matches ? $('views') : $('main')).appendChild(lockBtn); }
+function placeLock() { (MOB.matches ? $('grab') : $('main')).appendChild(lockBtn); }
 function buildLegend() {                                      // кольори — з color(...) моделі, див. legend.js
   const box = $('legend'); box.replaceChildren();
   for (const l of LEGEND) {

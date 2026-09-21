@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Міні-екскаватор — інтерактивна модель</title>
 <style>
-  :root { --bg:#f3f1ec; --panel:#fbfaf7; --ink:#23262b; --mute:#6d7278; --line:#ddd8cd; --acc:#c9731a; --acc2:#2f5d8a; --bad:#c0392b; --ok:#3d7a4a; }
+  :root { --bg:#f3f1ec; --panel:#fbfaf7; --ink:#23262b; --mute:#6d7278; --line:#ddd8cd; --acc:#c9731a; --acc-on:#a85d12; --acc2:#2f5d8a; --bad:#c0392b; --ok:#3d7a4a; }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body { font: 13px/1.4 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--bg); display: flex; overflow: hidden; }
@@ -32,7 +32,9 @@
   @media (hover: hover) { button:hover { border-color: var(--acc); } }
   button:focus { outline: none; }
   button:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
-  button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+  /* Натиснутий стан має свій, темніший відтінок: білий текст на --acc дає
+     контраст 3.5 при нормі 4.5, а на --acc-on — 4.95. Решту палітри не чіпаємо. */
+  button.on { background: var(--acc-on); border-color: var(--acc-on); color: #fff; }
   .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .chk { display: inline-flex; align-items: center; gap: 4px; margin: 0 10px 4px 0; white-space: nowrap; }
   details { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px; background: #fff; }
