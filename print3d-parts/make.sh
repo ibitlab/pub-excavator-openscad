@@ -67,6 +67,12 @@ python3 print3d-parts/make_assembly.py "$TSV" print3d-parts/assembly.tsv \
 echo "  print3d-parts/ASSEMBLY.md"
 
 echo
+echo "== інструкція складання на папері"
+# Біля принтера зручніше з аркушем, ніж із екраном: ескізи деталей у PDF стоять
+# у тексті картинками, а не посиланнями. Потрібні лише python з Pillow і Chrome.
+tools/.venv/bin/python print3d-parts/make_assembly_pdf.py || echo "  PDF не зібрано (потрібен Chrome) — ASSEMBLY.md на місці"
+
+echo
 echo "== розкладка по завданнях друку"
 # Рендер завжди кладе STL у корінь stl/, а друкуються вони з тек «одне завдання
 # слайсера» (колір, висота шару, підпори). Тому розкладка — останній крок збирання:
