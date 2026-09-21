@@ -64,6 +64,23 @@
   #hud b { font-weight: 600; } #hud .w { color: var(--bad); margin-top: 5px; white-space: normal; }
   #hud table { border-collapse: collapse; } #hud td { padding: 1px 0 1px 10px; } #hud td:first-child { padding-left: 0; color: var(--mute); }
   #help { position: absolute; left: 10px; bottom: 8px; color: var(--mute); font-size: 11.5px; pointer-events: none; }
+  /* Підказка про перетягування — ОДНОРАЗОВА: зникає після першого ж перетягування
+     ковша й більше не показується (пам'ять браузера). Постійного рядка в панелі
+     не додаємо: він би займав місце в кожного, хто вже все зрозумів. */
+  /* width: max-content — інакше абсолютний блок із left:50% стискається до
+     половини ширини канви й текст ламається вдвічі раніше, ніж треба. */
+  #tip { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+         display: flex; align-items: center; gap: 8px;
+         width: max-content; max-width: min(430px, calc(100% - 24px));
+         background: #23262bec; color: #f3f1ec; border-radius: 999px;
+         padding: 8px 8px 8px 14px; font-size: 12px; line-height: 1.35;
+         box-shadow: 0 4px 14px #00000033; opacity: 1; transition: opacity .35s ease; }
+  #tip[hidden] { display: none; }
+  #tip.away { opacity: 0; pointer-events: none; }
+  #tip button { background: none; border: none; color: #f3f1ecb0; font-size: 17px;
+                line-height: 1; padding: 2px 7px; min-height: 0; border-radius: 999px; flex: none; }
+  #tip button:hover { color: #fff; border: none; }
+
   /* Накладка завантаження. Вона потрібна саме окремим елементом: рядок #status
      має клас .adv і схований, поки не ввімкнені «Розширені можливості», — тобто
      11 МБ рушія їхали б у повній тиші. */
@@ -137,6 +154,9 @@
     #views .lbl { display: none; }
     #h2ang #views button { min-height: 30px; width: 30px; padding: 0; justify-content: center; }
     #h2ang #views .sep { display: block; }
+    /* У розкладці з шухлядою рядок підказок про мишу лише заважає — і саме він
+       налазив на плашку з порадою у вузькому вікні. */
+    #help { display: none; }
     #grab .lang { position: absolute; right: 2px; top: 8px; }
     #side .lang button { min-height: 0; }            /* інакше кнопки мови теж стають 40 px і налазять униз */
     /* Дві кнопки в ручці. Ручка — sticky, тож вони на місці й тоді, коли панель
@@ -183,6 +203,15 @@
     #hud .w { background: #fff4f2e8; border: 1px solid #e3b4ab; border-radius: 7px; padding: 5px 8px; margin: 0 0 5px; }
   }
   @media (hover: none) { #help { display: none; } }
+  /* На великому екрані низ кадру зайнятий рядком підказок (він буває й на два
+     рядки), а правий верх — HUD. Вільний кут — верхній лівий, туди й ставимо. */
+  /* min-width: 901px — бо вужче вмикається шухляда, і там плашка має лишитись
+     унизу по центру. max-width лишає місце під HUD праворуч: без цього на вікні
+     ~1100 px плашка на нього налазила. */
+  @media (hover: hover) and (min-width: 901px) {
+    #tip { top: 14px; bottom: auto; left: 14px; transform: none;
+           max-width: min(430px, calc(100% - 360px)); }
+  }
 </style>
 </head>
 <body>
@@ -231,6 +260,7 @@
 <div id="main">
   <canvas id="c"></canvas>
   <div id="hud"></div>
+  <div id="tip" hidden><span data-i18n="tip.drag"></span><button id="tip_x" aria-label="×">×</button></div>
   <div id="load"><div class="ttl" data-i18n="load.engine"></div><div class="track"><i></i></div><div class="sub"></div></div>
   <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — у «Розширених можливостях»</div>
 </div>

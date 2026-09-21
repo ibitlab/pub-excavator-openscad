@@ -427,7 +427,7 @@ async function rebuild() {
     const ch = changed(), defs = Object.keys(ch).sort().map(k => `${k}=${scadLiteral(byName[k], ch[k])}`);
     const t0 = performance.now(), d = await runOpenSCAD(defs);
     if (d.error) { status('st.err', { msg: d.error }, 'err'); lastLog = d.log || []; }
-    else { engineReady = true; $('load').hidden = true; applyBuild(d); status('st.done', { ms: (d.ms / 1000).toFixed(2), total: ((performance.now() - t0) / 1000).toFixed(2), n: Object.keys(ch).length }); }
+    else { engineReady = true; $('load').hidden = true; showTip(); applyBuild(d); status('st.done', { ms: (d.ms / 1000).toFixed(2), total: ((performance.now() - t0) / 1000).toFixed(2), n: Object.keys(ch).length }); }
   } catch (e) { status('st.err', { msg: e.message }, 'err'); }
   inflight = false; if (again) { again = false; rebuild(); }
 }
@@ -665,9 +665,32 @@ const clampAng = (key, v) => {
   return ($('clamp').checked && l) ? Math.min(l[1], Math.max(l[0], v)) : v;
 };
 
+// Підказка про перетягування живе рівно доти, доки не стала зайвою: гасне після
+// першого ж перетягування ковша (або за вісім секунд, або по хрестику) і більше
+// не з'являється. Постійного рядка в панелі не заводимо — він муляв би всім,
+// хто вже зрозумів, а на телефоні коштував би цілого рядка смуги.
+let tipTimer = null;
+function hideTip(learned) {
+  const box = $('tip');
+  if (box.hidden || box.classList.contains('away')) return;
+  clearTimeout(tipTimer);
+  box.classList.add('away');
+  setTimeout(() => { box.hidden = true; }, 400);
+  if (learned) { try { localStorage.setItem('tip', 'off'); } catch (e) { /* немає сховища */ } }
+}
+function showTip() {
+  let seen = null;
+  try { seen = localStorage.getItem('tip'); } catch (e) { /* приватне вікно — покажемо */ }
+  if (seen === 'off') return;
+  $('tip').hidden = false;
+  tipTimer = setTimeout(() => hideTip(false), 8000);
+}
+$('tip_x').onclick = () => hideTip(true);
+
 canvas.addEventListener('pointerdown', e => {
   if (!V || e.button === 2) return;
   if (!locked && !onBucket(e)) return;                        // без замка порожнє місце крутить камеру
+  hideTip(true);                                              // зрозумів — більше не показуємо
   const p = planePoint(e); if (!p) return;
   const a = effAngles(), P = pose(V, a.boom, a.stick, a.bucket);
   const близькоЗуба = Math.hypot(p[0] - P.T[0], p[1] - P.T[1]) < V.tip * 0.4;
