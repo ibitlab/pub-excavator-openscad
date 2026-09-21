@@ -34,6 +34,7 @@ function pose(V, th, psi, om) {
 //</pose> -----------------------------------------------------------------------------------------
 
 const $ = id => document.getElementById(id);
+const MOB = matchMedia('(max-width: 900px), (pointer: coarse)');   // розкладка з шухлядою
 let lastInfo = ['', ''];                       // два рядки підпису під збереженою картинкою
 // Усе, що приходить із .scad (назви груп, описи, варіанти, текст echo) і з імені
 // відкритого файлу, — ЧУЖИЙ текст: «Відкрити .scad…» бере довільний файл із диска.
@@ -265,6 +266,14 @@ const ICON = {
   ortho: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
        + '<rect x="5" y="7" width="14" height="10" rx="1" fill="currentColor" fill-opacity=".2"'
        + ' stroke="currentColor" stroke-width="1.4"/></svg>',
+  lockOn:  '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
+         + '<rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="currentColor" fill-opacity=".25"'
+         + ' stroke="currentColor" stroke-width="1.4"/>'
+         + '<path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+  lockOff: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
+         + '<rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none"'
+         + ' stroke="currentColor" stroke-width="1.4"/>'
+         + '<path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
   persp: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">'
        + '<path d="M8 7h8l3 10H5z" fill="currentColor" fill-opacity=".2" stroke="currentColor"'
        + ' stroke-width="1.4" stroke-linejoin="round"/></svg>',
@@ -303,7 +312,13 @@ function buildViewUI() {
   b.classList.add('tgl');
   box.appendChild(b);
   syncOrtho(b);
+  placeLock();                                                // ряд щойно перебудовано — замок повертаємо на місце
 }
+// На телефоні замок стоїть у ряду іконок, на комп'ютері плаває над канвою.
+// Тримаємо ВУЗОЛ, а не шукаємо щоразу: buildViewUI робить replaceChildren, після
+// чого від'єднаний замок уже не знаходиться через getElementById.
+const lockBtn = $('lock');
+function placeLock() { (MOB.matches ? $('views') : $('main')).appendChild(lockBtn); }
 function buildLegend() {                                      // кольори — з color(...) моделі, див. legend.js
   const box = $('legend'); box.replaceChildren();
   for (const l of LEGEND) {
@@ -732,11 +747,21 @@ const dropDrag = e => {
 canvas.addEventListener('pointerup', dropDrag);
 canvas.addEventListener('pointercancel', dropDrag);
 
-$('lock').onclick = () => {
+function syncLock() {
+  const b = lockBtn;
+  b.classList.toggle('on', locked);
+  b.setAttribute('aria-pressed', String(locked));
+  if (b.firstChild && b.firstChild.tagName === 'svg') b.firstChild.remove();
+  b.insertAdjacentHTML('afterbegin', ICON[locked ? 'lockOn' : 'lockOff']);
+  b.querySelector('.lbl').textContent = t('lock');
+  b.title = t('lock.title');
+  b.setAttribute('aria-label', t('lock'));
+}
+lockBtn.onclick = () => {
   locked = !locked;
-  $('lock').classList.toggle('on', locked);
   controls.enabled = !locked;
   canvas.style.cursor = locked ? 'grab' : '';
+  syncLock();
 };
 
 // ------------------------------------------------------- знімок кадру у PNG
@@ -834,8 +859,8 @@ const foldToggle = () => setSheet(sheet > 0 ? 0 : prevSheet);
     else document.querySelector('h2[data-i18n="h2.view"]').after($('views'));
     h2txt.textContent = t(mob.matches ? 'h2.angles.short' : 'h2.angles');
   };
-  placeLang(); placeViews();
-  mob.addEventListener('change', () => { placeLang(); placeViews(); });
+  placeLang(); placeViews(); placeLock(); syncLock();
+  mob.addEventListener('change', () => { placeLang(); placeViews(); placeLock(); });
   // Рух і відпускання слухаємо на ВІКНІ, а не на ручці: палець одразу йде за її межі,
   // а setPointerCapture при емуляції дотику спрацьовує не завжди — перевірено, драг
   // мовчки не доходив до кінця на двох розмірах із трьох.
