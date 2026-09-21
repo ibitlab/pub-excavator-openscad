@@ -161,7 +161,8 @@ module print_pin(d, len) {
 
 // довжини пальців — ті самі формули, що у assembly() і post_schematic()
 pin_len_A  = boom_foot_boss_len + 2 + 40;
-pin_len_C  = pin_len_A;
+// C і D — одна деталь (echo(BOM_PINS): "pin_CD", 2 шт, Ø30×74), а не довжина пальця A.
+pin_len_C  = clevis_gap_30 + 2*plate_clevis + 20;
 pin_len_B  = boom_tube_w + 2*plate_clevis + 24;
 pin_len_D  = clevis_gap_30 + 2*plate_clevis + 20;
 pin_len_F  = clevis_gap_25 + 2*plate_clevis + 20;

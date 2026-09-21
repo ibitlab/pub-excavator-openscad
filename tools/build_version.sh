@@ -32,19 +32,33 @@ for p in $PARTS; do
 done | tee "$DIR/docs/stl_list.txt"
 
 # 3. Рендери: робочі положення + вузли окремо
+# venv потрібен уже тут: ним підрізаються поля рендерів (Pillow)
+[ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
+tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
 CAM="--camera=1400,-6000,200,0,0,0 --projection=o --colorscheme=Tomorrow --viewall --autocenter"
-render() { openscad -o "$DIR/renders/$1.png" --imgsize=1600,1000 $CAM -D "boom_angle=$2" -D "stick_angle=$3" -D "bucket_angle=$4" -D show_ground=false "$SCAD" >/dev/null 2>&1; }
+render() { openscad -o "$DIR/renders/$1.png" --imgsize=2400,1500 $CAM -D "boom_angle=$2" -D "stick_angle=$3" -D "bucket_angle=$4" -D show_ground=false "$SCAD" >/dev/null 2>&1; }
 render side_default 15 100 60
 render folded 58 51 133
 render max_reach -5 155 -16
 render dig_deep -38 90 60
 render max_height 58 155 0
 # --viewall --autocenter обов'язкові: з фіксованою камерою кадр обрізав ківш і колону при зміні геометрії
-openscad -o "$DIR/renders/iso_default.png" --imgsize=1600,1100 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
+openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
 openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true "$SCAD" >/dev/null 2>&1
 for p in boom stick bucket; do
-  openscad -o "$DIR/renders/part_$p.png" --imgsize=1600,1000 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
+  openscad -o "$DIR/renders/part_$p.png" --imgsize=2400,1500 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
 done
+
+# 3а. Підрізати порожні поля: --viewall вписує габаритну СФЕРУ, тож довга деталь
+# займала 16 % кадру. Пози ріжуться СПІЛЬНОЮ рамкою — інакше кожна дістане свій
+# масштаб і перестане бути порівнянною з рештою.
+tools/.venv/bin/python tools/trim_png.py --common "$DIR/renders/folded.png" \
+    "$DIR/renders/max_reach.png" "$DIR/renders/dig_deep.png" "$DIR/renders/max_height.png" | tail -1
+# side_default ні з чим не порівнюється (колаж поз медіа-набору робиться зі знімків
+# сторінки, не звідси), тож ріжеться по собі — це головна картинка README.
+tools/.venv/bin/python tools/trim_png.py "$DIR"/renders/part_*.png \
+    "$DIR/renders/side_default.png" "$DIR/renders/iso_default.png" \
+    "$DIR/renders/envelope.png" | tail -1
 
 # 4. Звіти і знімок моделі — пишуться ЛИШЕ у теку версії (у корені репозиторію згенерованих копій немає)
 (cd tools && python3 kinematics.py > "../$DIR/docs/02-kinematics.md" && python3 strength.py --boom 120x80x5 --stick 100x60x5 > "../$DIR/docs/03-strength.md")
@@ -55,8 +69,6 @@ openscad -o "$DIR/docs/ranges.echo" "$SCAD" >/dev/null 2>&1
 # Вихідні дані пишуться вручну і можуть бути відсутні (їх немає у публічній копії) — не зупиняти через це збирання
 if [ -f docs/01-design-inputs.md ]; then cp docs/01-design-inputs.md "$DIR/docs/"
 else echo "  docs/01-design-inputs.md немає — пропущено (документ пишеться вручну)"; fi
-[ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
-tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
 (cd tools && .venv/bin/python bucket.py --png "../$DIR/renders/bucket_motion_2d.png" > "../$DIR/docs/05-bucket.md") || echo "!!! bucket.py: є зіткнення у 2D-перевірці — див. docs/05-bucket.md"
 # Креслення робочої зони з розмірами (A…J) — обома мовами, як і README
 tools/.venv/bin/python tools/work_range.py --out "$DIR/renders/work-range.png" | tail -1

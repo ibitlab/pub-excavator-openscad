@@ -10,6 +10,10 @@ OUT=print3d/stl
 SCAD=print3d/print_parts.scad
 TSV=print3d/parts.tsv
 mkdir -p "$OUT"
+# Тека версії — для підпису геометрії в BOM і для посилань на аркуші ескізів.
+# Набір читає ЖИВУ модель, тож це підпис, а не залежність; беремо найбільший номер.
+VER=$(ls -d versions/V* 2>/dev/null | sort | tail -1)
+[ -n "$VER" ] || echo "  versions/ порожня — BOM буде без підпису версії й без ескізів"
 
 echo "== звіт параметрів друку"
 openscad -o /tmp/print_report.echo -D 'part="none"' -D 'pp="none"' "$SCAD" 2>/dev/null
@@ -39,5 +43,6 @@ python3 print3d/check_print.py "$OUT"/*.stl --bed 250 --angle 45 --json > /tmp/p
 
 echo
 echo "== BOM"
-python3 print3d/make_bom.py "$TSV" /tmp/print_check.json /tmp/print_report.echo > print3d/BOM.md
+python3 print3d/make_bom.py "$TSV" /tmp/print_check.json /tmp/print_report.echo \
+    "Специфікація друкованого набору" "$VER" > print3d/BOM.md
 echo "  print3d/BOM.md"

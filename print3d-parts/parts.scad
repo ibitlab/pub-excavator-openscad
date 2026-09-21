@@ -147,7 +147,9 @@ else if (pp == "cyl_bucket_rod")  lay() hyd_cyl_part("rod", bucket_cyl_bore, buc
 // Пальці. Довжини — ті самі формули, що в assembly() і post_schematic();
 // збігаються з echo(BOM_PINS) моделі.
 else if (pp == "pin_A") lay() make_pin(pin_A,          boom_foot_boss_len + 2 + 40);
-else if (pp == "pin_C") lay() make_pin(boom_cyl_pin,   boom_foot_boss_len + 2 + 40);
+// C і D — одна й та сама деталь (echo(BOM_PINS): "pin_CD", 2 шт, Ø30×74).
+// Тут стояла довжина пальця A (182) — палець C виходив утричі довшим за потрібний.
+else if (pp == "pin_C") lay() make_pin(boom_cyl_pin,   clevis_gap_30 + 2*plate_clevis + 20);
 else if (pp == "pin_B") lay() make_pin(pin_B,          boom_tube_w + 2*plate_clevis + 24);
 else if (pp == "pin_D") lay() make_pin(boom_cyl_pin,   clevis_gap_30 + 2*plate_clevis + 20);
 else if (pp == "pin_E") lay() make_pin(pin_E,          pin_E_len);

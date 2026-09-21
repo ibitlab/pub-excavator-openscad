@@ -11,6 +11,10 @@ OUT=print3d-parts/stl
 SCAD=print3d-parts/parts.scad
 TSV=print3d-parts/parts.tsv
 mkdir -p "$OUT"
+# Тека версії — для підпису геометрії в BOM і для посилань на аркуші ескізів.
+# Набори читають ЖИВУ модель, тож це підпис, а не залежність; беремо найбільший номер.
+VER=$(ls -d versions/V* 2>/dev/null | sort | tail -1)
+[ -n "$VER" ] || echo "  versions/ порожня — BOM буде без підпису версії й без ескізів"
 
 echo "== звіт параметрів друку"
 openscad -o /tmp/parts_report.echo -D 'part="none"' -D 'pp="none"' "$SCAD" 2>/dev/null
@@ -44,5 +48,13 @@ python3 print3d/check_print.py "$OUT"/*.stl --bed 250 --angle 45 --json > /tmp/p
 echo
 echo "== BOM"
 python3 print3d/make_bom.py "$TSV" /tmp/parts_check.json /tmp/parts_report.echo \
-    "Специфікація компонентів під зварювання" > print3d-parts/BOM.md
+    "Специфікація компонентів під зварювання" "$VER" так > print3d-parts/BOM.md
 echo "  print3d-parts/BOM.md"
+
+echo
+echo "== інструкція складання"
+# Зупиняє збирання навмисно: деталь без кроку складання — це деталь, яку нікуди
+# не приклеїти, і краще дізнатися про це тут, ніж із надрукованим набором у руках.
+python3 print3d-parts/make_assembly.py "$TSV" print3d-parts/assembly.tsv \
+    /tmp/parts_check.json "$VER" > print3d-parts/ASSEMBLY.md
+echo "  print3d-parts/ASSEMBLY.md"
