@@ -4,7 +4,7 @@
 #
 # Модель не змінюється: parts.scad підключає її як бібліотеку з part="none".
 # Склад набору — print3d-parts/parts.tsv (єдине джерело правди).
-# Перевірка й генератор BOM спільні з print3d/ — не дублюються.
+# Перевірка (check_print.py) і генератор BOM (make_bom.py) лежать тут же: цей набір самодостатній.
 set -eu
 cd "$(dirname "$0")/.."
 OUT=print3d-parts/stl
@@ -42,12 +42,12 @@ echo "  компонентів: $n"
 
 echo
 echo "== перевірка (стіл 250×250×250, межа нависання 45°)"
-python3 print3d/check_print.py "$OUT"/*.stl --bed 250 --angle 45 || true
-python3 print3d/check_print.py "$OUT"/*.stl --bed 250 --angle 45 --json > /tmp/parts_check.json
+python3 print3d-parts/check_print.py "$OUT"/*.stl --bed 250 --angle 45 || true
+python3 print3d-parts/check_print.py "$OUT"/*.stl --bed 250 --angle 45 --json > /tmp/parts_check.json
 
 echo
 echo "== BOM"
-python3 print3d/make_bom.py "$TSV" /tmp/parts_check.json /tmp/parts_report.echo \
+python3 print3d-parts/make_bom.py "$TSV" /tmp/parts_check.json /tmp/parts_report.echo \
     "Специфікація компонентів під зварювання" "$VER" так > print3d-parts/BOM.md
 echo "  print3d-parts/BOM.md"
 
@@ -65,3 +65,12 @@ echo "== інструкція складання"
 python3 print3d-parts/make_assembly.py "$TSV" print3d-parts/assembly.tsv \
     /tmp/parts_check.json "$VER" print3d-parts/img/positions.json > print3d-parts/ASSEMBLY.md
 echo "  print3d-parts/ASSEMBLY.md"
+
+echo
+echo "== розкладка по завданнях друку"
+# Рендер завжди кладе STL у корінь stl/, а друкуються вони з тек «одне завдання
+# слайсера» (колір, висота шару, підпори). Тому розкладка — останній крок збирання:
+# структура однакова після кожного запуску, дублікатів у корені не лишається.
+# Скрипт зупиняє збирання, якщо деталь не потрапила в жодну групу: нову деталь
+# треба вписати і в parts.tsv, і в stl/group.sh.
+"$OUT/group.sh"

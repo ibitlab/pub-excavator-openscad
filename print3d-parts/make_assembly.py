@@ -17,8 +17,8 @@ import os
 import re
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'print3d'))
-from make_bom import sheet, sheets           # noqa: E402  (спільне на два набори)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from make_bom import sheet, sheets           # noqa: E402  (лежить поруч, у цій же теці)
 
 # Рендери готового вузла на початку розділу. Два ракурси: загальний вигляд і
 # КРІПЛЕННЯ зблизька — на загальному виді вуха ковша, вежа F і вилка D ховаються
