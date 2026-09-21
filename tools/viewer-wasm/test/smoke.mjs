@@ -13,6 +13,7 @@ import { splitOff } from '../src/offmesh.js';
 import { readSchema, scadLiteral } from '../src/schema.js';
 import { UI, LANGS, GROUPS_EN, PARAMS_EN } from '../src/i18n.js';
 import { LEGEND } from '../src/legend.js';
+import { armFromTip } from '../src/ik.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url)), root = path.resolve(here, '../../..');
 const source = readFileSync(path.join(root, 'scad/excavator_boom.scad'), 'utf8');
@@ -96,6 +97,23 @@ else {
   const wide = Object.entries(parts).filter(([, p]) => { let m = 0; for (let i = 1; i < p.pos.length; i += 3) m = Math.max(m, Math.abs(p.pos[i])); return m > V.spacing / 2; });
   wide.length ? fail('деталь ширша за view_spacing/2 — розрізання за Y зламається: ' + wide.map(w => w[0])) : ok('розрізання за Y коректне');
   const { pose } = await import('data:text/javascript,' + encodeURIComponent(p1 + '\nexport { pose };'));
+  // Зворотна задача мусить бути точним оберненням прямої: ставимо зуб туди, де він
+  // щойно був, і кути мають повернутися ті самі. Без цього перетягування за ківш
+  // тихо «попливе» після будь-якої зміни геометрії.
+  {
+    let worst = 0, миші = 0;
+    for (const [b, s2, o] of [[15, 100, 60], [-20, 140, 20], [40, 80, 90], [5, 120, 45], [0, 158, 0]]) {
+      const Q = pose(V, b, s2, o);
+      const r = armFromTip(V, Q.T, o, { boom: b, stick: s2 });
+      if (!r) { миші++; continue; }
+      const back = pose(V, r.boom, r.stick, o);
+      worst = Math.max(worst, Math.hypot(back.T[0] - Q.T[0], back.T[1] - Q.T[1]));
+    }
+    миші === 0 && worst < 0.01
+      ? ok(`зворотна задача: зуб стає на місце, похибка ${worst.toExponential(1)} мм`)
+      : fail(`зворотна задача: без розв'язку ${миші}, похибка до ${worst.toFixed(3)} мм`);
+  }
+
   const [th, psi, om] = V.angles, P = pose(V, th, psi, om), tm = err.join('\n').match(/ЗУБ КОВША: x=(-?\d+) z=(-?\d+)/);
   tm && Math.abs(P.T[0] - tm[1]) <= 1 && Math.abs(P.T[1] - tm[2]) <= 1 ? ok(`поза JS = echo моделі: зуб (${P.T[0].toFixed(1)}, ${P.T[1].toFixed(1)})`) : fail(`поза JS (${P.T}) ≠ echo моделі (${tm && tm.slice(1)})`);
 }

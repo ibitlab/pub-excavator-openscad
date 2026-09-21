@@ -4,7 +4,8 @@ import scadDefault from '../../../scad/excavator_boom.scad?raw';
 import repoViewsFile from '../../../views.json';                 // ракурси з репозиторію; Vite вшиває JSON у dist/      // модель вшивається у сторінку; у dev правка .scad перезавантажує сторінку
 import { readSchema, scadLiteral } from './schema.js';
 import workerUrl from './scad-worker.js?worker&url';
-import { LEGEND } from './legend.js';   // саме так, інакше Vite не підставить збудований шлях
+import { LEGEND } from './legend.js';
+import { armFromTip } from './ik.js';   // саме так, інакше Vite не підставить збудований шлях
 import { LANGS, initLang, setLang, getLang, t, tp, tg } from './i18n.js';
 
 // Друга версія перегляду: БЕЗ бекенду. OpenSCAD працює у веб-воркері (WASM), сторінка — звичайна статика.
@@ -577,6 +578,81 @@ window.__SETVIEW__ = v => {
 //</viewjson> --------------------------------------------------------------------------------------
 vjRepo(repoViewsFile.views);                                  // вшито збіркою
 
+// ------------------------------------------ перетягування машини за ківш
+// Хапаєш корпус ковша — за пальцем іде вся стріла (зворотна задача, ik.js).
+// Хапаєш зуби — ківш підвертається навколо осі E, стріла стоїть.
+// Замок вимикає обертання камери зовсім: тоді тягнути можна з будь-якого місця.
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let drag = null, locked = false;
+
+function aim(e) {                                             // промінь із пальця/курсора
+  const r = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height * 2 - 1));
+  ray.setFromCamera(ndc, camera);
+}
+function planePoint(e) {                                      // машина пласка, тож ціль — площина y=0
+  aim(e);
+  const p = new THREE.Vector3();
+  return ray.ray.intersectPlane(GROUND_PLANE, p) ? [p.x, p.z] : null;
+}
+function onBucket(e) {
+  if (!bodies.bucket || !bodies.bucket.visible) return false;
+  aim(e);
+  return ray.intersectObject(bodies.bucket, true).length > 0;
+}
+const clampAng = (key, v) => {
+  const l = limits(key);
+  return ($('clamp').checked && l) ? Math.min(l[1], Math.max(l[0], v)) : v;
+};
+
+canvas.addEventListener('pointerdown', e => {
+  if (!V || e.button === 2) return;
+  if (!locked && !onBucket(e)) return;                        // без замка порожнє місце крутить камеру
+  const p = planePoint(e); if (!p) return;
+  const a = effAngles(), P = pose(V, a.boom, a.stick, a.bucket);
+  const близькоЗуба = Math.hypot(p[0] - P.T[0], p[1] - P.T[1]) < V.tip * 0.4;
+  drag = близькоЗуба
+    ? { curl: true, off: ang(sub(p, P.E)) - P.bdir }          // тримаємо взяту точку під пальцем
+    : { curl: false, off: sub(P.T, p) };
+  controls.enabled = false;
+  canvas.setPointerCapture(e.pointerId);
+  canvas.style.cursor = 'grabbing';
+  stopPlay();
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) {
+    if (!matchMedia('(pointer: coarse)').matches)
+      canvas.style.cursor = locked ? 'grab' : (V && onBucket(e) ? 'grab' : '');
+    return;
+  }
+  const p = planePoint(e); if (!p) return;
+  const a = effAngles();
+  if (drag.curl) {
+    const P = pose(V, a.boom, a.stick, a.bucket);
+    ang3.bucket = clampAng('bucket', P.sdir - (ang(sub(p, P.E)) - drag.off));
+  } else {
+    const r = armFromTip(V, add(p, drag.off), a.bucket, ang3);
+    if (r) { ang3.boom = clampAng('boom', r.boom); ang3.stick = clampAng('stick', r.stick); }
+  }
+  updatePose();
+});
+const dropDrag = e => {
+  if (!drag) return;
+  drag = null; controls.enabled = !locked;
+  canvas.style.cursor = locked ? 'grab' : '';
+  if (e && canvas.hasPointerCapture?.(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+};
+canvas.addEventListener('pointerup', dropDrag);
+canvas.addEventListener('pointercancel', dropDrag);
+
+$('lock').onclick = () => {
+  locked = !locked;
+  $('lock').classList.toggle('on', locked);
+  controls.enabled = !locked;
+  canvas.style.cursor = locked ? 'grab' : '';
+};
+
 // ------------------------------------------------------- знімок кадру у PNG
 // Канва рендериться з preserveDrawingBuffer, тож її можна просто перемалювати в
 // інший canvas. Під кадром — смуга з тими самими числами, що в HUD: знімок без
@@ -599,6 +675,16 @@ function pngBlob() {
   return new Promise(res => out.toBlob(res, 'image/png'));
 }
 window.__PNG__ = pngBlob;                                     // для тестів і для набору матеріалів
+// Екранні координати зуба й осі ковша — потрібні тестам, щоб «схопити» ківш там,
+// де він насправді намальований, а не вгадувати точку.
+window.__ONSCREEN__ = () => {
+  if (!V) return null;
+  const a = effAngles(), P = pose(V, a.boom, a.stick, a.bucket), r = canvas.getBoundingClientRect();
+  const to2d = q => { const v = new THREE.Vector3(q[0], 0, q[1]).project(camera);
+    return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; };
+  const box = new THREE.Box3().setFromObject(bodies.bucket), c = box.getCenter(new THREE.Vector3());
+  return { tooth: to2d(P.T), axisE: to2d(P.E), body: to2d([c.x, c.z]) };   // body — центр габариту, там метал
+};
 $('png').onclick = async () => {
   const blob = await pngBlob();
   const name = `excavator-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.png`;
