@@ -41,8 +41,12 @@ if (k == "") {
         ["base_H", [stick_tube_w, plate_boss]],
         ["base_E", [bucket_width, bucket_top_t]]]);
 } else {
+    // k = "*" — без фільтра $sel: зріз крізь УВЕСЬ вузол на одній площині.
+    // Саме так перевіряють, чи деталі справді стикаються: окремі зрізи на різних
+    // площинах цього не показують.
     projection(cut = true) rotate([90, 0, 0]) translate([0, -ycut, 0]) {
-        $sel = k; $one = true;
+        $sel = (k == "*") ? "" : k;
+        $one = (k != "*");
         part_by_name(own);
     }
 }

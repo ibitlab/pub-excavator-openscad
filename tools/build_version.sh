@@ -35,7 +35,10 @@ done | tee "$DIR/docs/stl_list.txt"
 # venv потрібен уже тут: ним підрізаються поля рендерів (Pillow)
 [ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
 tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
-CAM="--camera=1400,-6000,200,0,0,0 --projection=o --colorscheme=Tomorrow --viewall --autocenter"
+# --render ОБОВ'ЯЗКОВИЙ: у режимі прев'ю (OpenCSG) поверхні деталей, що дотикаються,
+# пробивають одна одну — труба малювалася поверх накладки, і вежа F виглядала так,
+# наче стоїть у повітрі. Геометрія при цьому ціла. З Manifold це майже безкоштовно.
+CAM="--camera=1400,-6000,200,0,0,0 --projection=o --colorscheme=Tomorrow --viewall --autocenter --render"
 render() { openscad -o "$DIR/renders/$1.png" --imgsize=2400,1500 $CAM -D "boom_angle=$2" -D "stick_angle=$3" -D "bucket_angle=$4" -D show_ground=false "$SCAD" >/dev/null 2>&1; }
 render side_default 15 100 60
 render folded 58 51 133
@@ -43,11 +46,38 @@ render max_reach -5 155 -16
 render dig_deep -38 90 60
 render max_height 58 155 0
 # --viewall --autocenter обов'язкові: з фіксованою камерою кадр обрізав ківш і колону при зміні геометрії
-openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
+openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow --render -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
 openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true "$SCAD" >/dev/null 2>&1
 for p in boom stick bucket; do
-  openscad -o "$DIR/renders/part_$p.png" --imgsize=2400,1500 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
+  openscad -o "$DIR/renders/part_$p.png" --imgsize=2400,1500 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter --render -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
 done
+
+# Другий ракурс кожного вузла — КРІПЛЕННЯ зблизька: на загальному виді вуха ковша,
+# вежа F і вилка D ховаються за корпусом. Камери тут з фіксованою відстанню (це
+# наближення, а не весь вузол), тому після зміни геометрії ці три картинки треба
+# переглянути очима: --viewall їх не врятує, кадр може зрізати кронштейн.
+CAM_BOOM="--imgsize=2400,1700 --camera=890,0,229,42,0,205,1300"      # центр: між осями D і F
+CAM_STICK="--imgsize=2400,1500 --camera=40,0,80,42,0,205,1450"        # центр: п'ята, осі B/G/H
+CAM_BUCKET="--imgsize=2400,1600 --camera=0,0,0,42,0,205,0 --viewall --autocenter"
+VIEW="--projection=p --colorscheme=Tomorrow --render"
+openscad -o "$DIR/renders/part_boom_mount.png"   $CAM_BOOM   $VIEW -D 'part="boom"'   "$SCAD" >/dev/null 2>&1
+openscad -o "$DIR/renders/part_stick_mount.png"  $CAM_STICK  $VIEW -D 'part="stick"'  "$SCAD" >/dev/null 2>&1
+openscad -o "$DIR/renders/part_bucket_mount.png" $CAM_BUCKET $VIEW -D 'part="bucket"' "$SCAD" >/dev/null 2>&1
+
+# Труба в крупному плані ЗАВЖДИ виходить за кадр — це нормально. А от кронштейн не
+# повинен: перевіряємо це, рендеруючи ті самі камери з самими лише кронштейнами.
+# Підрізка полів зрізаного кадру не виявить — він виглядає як нормальний.
+CHK=$(mktemp -d)
+for g in boom_gussets boom_bracket_D boom_bracket_F; do
+  openscad -o "$CHK/$g.png" $CAM_BOOM $VIEW -D "part=\"$g\"" "$SCAD" >/dev/null 2>&1
+done
+for g in stick_cheeks stick_bracket_H; do
+  openscad -o "$CHK/$g.png" $CAM_STICK $VIEW -D "part=\"$g\"" "$SCAD" >/dev/null 2>&1
+done
+openscad -o "$CHK/bucket_ears.png" $CAM_BUCKET $VIEW -D 'part="bucket_ears"' "$SCAD" >/dev/null 2>&1
+tools/.venv/bin/python tools/trim_png.py --edges "$CHK"/*.png \
+  || echo "!!! крупний план зрізає кронштейн — виправ камеру в tools/build_version.sh"
+rm -rf "$CHK"
 
 # 3а. Підрізати порожні поля: --viewall вписує габаритну СФЕРУ, тож довга деталь
 # займала 16 % кадру. Пози ріжуться СПІЛЬНОЮ рамкою — інакше кожна дістане свій
@@ -92,6 +122,7 @@ fi
 mkdir -p docs/img
 cp "$DIR/renders/side_default.png" "$DIR/renders/envelope.png" "$DIR/renders/part_boom.png" "$DIR/renders/part_stick.png" "$DIR/renders/part_bucket.png" "$DIR/renders/bucket_motion_2d.png" docs/img/
 cp "$DIR/renders/work-range.png" "$DIR/renders/work-range.en.png" docs/img/
+cp "$DIR"/renders/part_*_mount.png docs/img/
 cp "$DIR"/drawings/png/*_cheek.png docs/img/sketch_cheek.png
 
 # 5. Опис версії

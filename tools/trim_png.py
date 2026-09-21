@@ -62,12 +62,52 @@ def trim(path, margin_pct):
     return crop_to(path, with_margin(bb, im.size, margin_pct))
 
 
+def edges(path):
+    """Яких країв кадру торкається геометрія. Порожній список = деталь ціла в кадрі."""
+    im = Image.open(path).convert('RGB')
+    w, h = im.size
+    bb = content_box(im)
+    if not bb:
+        return ['порожній']
+    return [n for n, c in (('ліворуч', bb[0] <= 1), ('зверху', bb[1] <= 1),
+                           ('праворуч', bb[2] >= w - 1), ('знизу', bb[3] >= h - 1)) if c]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('files', nargs='+')
     ap.add_argument('--margin', type=float, default=3.0, help='рамка, %% від більшого боку вмісту')
     ap.add_argument('--common', action='store_true', help='одна рамка на всі файли')
+    ap.add_argument('--edges', action='store_true',
+                    help='нічого не різати: лише сказати, чи деталь не вилазить за кадр')
+    ap.add_argument('--report', action='store_true',
+                    help='таблиця по всіх файлах: розмір, заповнення, краї, порожні')
     a = ap.parse_args()
+    if a.report:
+        # Одна команда замість десятка відкритих картинок: більшість питань про
+        # рендер («не порожньо? не зрізано? не половина кадру біла?») — числові.
+        print(f'{"файл":38} {"розмір":>12} {"вміст":>6}  стан')
+        for f in a.files:
+            im = Image.open(f).convert('RGB')
+            w, h = im.size
+            bb = content_box(im)
+            if not bb:
+                print(f'{os.path.basename(f):38} {f"{w}×{h}":>12} {"—":>6}  ПОРОЖНІЙ')
+                continue
+            fill = (bb[2] - bb[0]) * (bb[3] - bb[1]) / (w * h) * 100
+            e = edges(f)
+            state = f'ЗРІЗАНО: {", ".join(e)}' if e else ('багато полів' if fill < 55 else 'ok')
+            print(f'{os.path.basename(f):38} {f"{w}×{h}":>12} {fill:5.0f}%  {state}')
+        return
+    if a.edges:
+        bad = 0
+        for f in a.files:
+            e = edges(f)
+            if e:
+                print(f'  !!! {os.path.basename(f)}: ЗРІЗАНО {", ".join(e)}')
+                bad += 1
+        print(f'  цілих у кадрі: {len(a.files) - bad} з {len(a.files)}')
+        sys.exit(1 if bad else 0)
     files = [f for f in a.files if os.path.isfile(f)]
     for f in set(a.files) - set(files):
         print(f'  {f}: немає файлу', file=sys.stderr)

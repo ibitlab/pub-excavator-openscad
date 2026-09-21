@@ -20,12 +20,20 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'print3d'))
 from make_bom import sheet, sheets           # noqa: E402  (спільне на два набори)
 
-# Рендер готового вузла на початку розділу — щоб було видно, що саме складається.
-# Ці картинки оновлює build_version.sh; яких немає, тих просто не буде в тексті.
+# Рендери готового вузла на початку розділу. Два ракурси: загальний вигляд і
+# КРІПЛЕННЯ зблизька — на загальному виді вуха ковша, вежа F і вилка D ховаються
+# за корпусом, а саме вони найважчі для складання.
+# Картинки оновлює build_version.sh; яких немає, тих просто не буде в тексті.
 NODE_IMG = {
-    '1. Стріла': 'part_boom.png',
-    '2. Рукоять': 'part_stick.png',
-    '3. Ківш': 'part_bucket.png',
+    '1. Стріла': [('part_boom.png', 'вузол цілком'),
+                  ('part_boom_mount.png',
+                   'перелом зблизька: щоки, накладка, вежа F зверху, сідло і вилка D знизу')],
+    '2. Рукоять': [('part_stick.png', 'вузол цілком'),
+                   ('part_stick_mount.png',
+                    "п'ята зблизька: щоки, втулка осі B, сідло і вилка H, бобишка осі G")],
+    '3. Ківш': [('part_bucket.png', 'вузол цілком'),
+                ('part_bucket_mount.png',
+                 'кріплення зблизька: два вуха, розпірка осі Q між ними, бобишки осі E зовні')],
 }
 
 TOL = 2.0        # мм: більша різниця вже помітна оком
@@ -133,11 +141,12 @@ def main():
     smap = sheets(ver_dir, here)
     img_dir = os.path.join(os.path.dirname(here), 'docs', 'img')
 
-    def node_img(node):
-        f = NODE_IMG.get(node)
-        if not f or not os.path.isfile(os.path.join(img_dir, f)):
-            return ''
-        return os.path.relpath(os.path.join(img_dir, f), here)
+    def node_imgs(node):
+        out = []
+        for f, cap in NODE_IMG.get(node, []):
+            if os.path.isfile(os.path.join(img_dir, f)):
+                out.append((os.path.relpath(os.path.join(img_dir, f), here), cap))
+        return out
 
     missing = [s['key'] for s in steps if s['key'] not in parts]
     if missing:
@@ -223,9 +232,10 @@ def main():
     for s in steps:
         if s['node'] != last:
             print(f'\n## {s["node"]}\n')
-            img = node_img(s['node'])
-            if img:
+            for img, cap in node_imgs(s['node']):
                 print(f'![{s["node"]}]({img})')
+                print()
+                print(f'*{cap}*')
                 print()
             print('| Крок | Файл | К-сть | Габарит друку, мм | Ескіз | Куди | Як |')
             print('|---|---|---:|---|---|---|---|')
