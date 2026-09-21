@@ -59,6 +59,9 @@
   #hud table { border-collapse: collapse; } #hud td { padding: 1px 0 1px 10px; } #hud td:first-child { padding-left: 0; color: var(--mute); }
   #help { position: absolute; left: 10px; bottom: 8px; color: var(--mute); font-size: 11.5px; pointer-events: none; }
   .note { background: #fff6e6; border: 1px solid #ecd9b0; border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; }
+  /* Згорнуте за замовчуванням: видно рядок-підсумок, решту розкриває сам користувач. */
+  .note > summary { padding: 0; font-weight: 600; }
+  .note > summary + span { display: block; margin-top: 5px; }
   @media (max-width: 760px) { body { flex-direction: column-reverse; } #side { width: 100%; height: 46%; border-right: none; border-top: 1px solid var(--line); } #main { height: 54%; flex: none; } #hud { font-size: 11px; max-width: 60%; } #help { display: none; } }
 </style>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
@@ -67,7 +70,7 @@
 <div id="side">
   <h1>Міні-екскаватор: стріла · рукоять · ківш</h1>
   <div class="sub" id="mode">модель <code>scad/excavator_boom.scad</code></div>
-  <div class="note">⚠ Модель і розрахунки згенеровано ШІ. Інженер їх не перевіряв, машину не збудовано й не випробувано. Використання — на власний ризик; небезпеки конструкції — у <code>SAFETY.md</code>.</div>
+  <details class="note"><summary>⚠ Модель згенеровано ШІ — інженер її не перевіряв</summary><span>Модель і розрахунки згенеровано ШІ. Інженер їх не перевіряв, машину не збудовано й не випробувано. Використання — на власний ризик; небезпеки конструкції — у <code>SAFETY.md</code>.</span></details>
 
   <label class="chk adv-sw" title="Параметри моделі, пристрої та створення ракурсів — потрібні лише тим, хто змінює саму модель"><input type="checkbox" id="adv_on"> Розширені можливості</label>
 

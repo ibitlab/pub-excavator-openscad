@@ -883,8 +883,8 @@ const foldToggle = () => setSheet(sheet > 0 ? 0 : prevSheet);
   let start = 1;
   try { const v = localStorage.getItem('sheet'); if (v !== null) start = +v; } catch (e) { /* немає сховища */ }
   setSheet(Number.isFinite(start) ? start : 1);
-  // На великому екрані попередження про ШІ розгорнуте: місця вдосталь, і воно важливе.
-  if (!matchMedia('(max-width: 900px), (pointer: coarse)').matches) $('warn').open = true;
+  // Попередження згорнуте ВСЮДИ: видно рядок-підсумок, решту користувач розкриває
+  // сам. Розгорнутий абзац на кожному екрані лише відволікає від моделі.
 }
 
 // ------------------------------------------ розширене: параметри моделі та пристрої, сховані
