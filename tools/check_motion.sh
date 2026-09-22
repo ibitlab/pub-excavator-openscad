@@ -18,7 +18,7 @@ sweep() { # назва_параметра "кути" "пари"
       case $what in bucket) v=$(vol "$a" "$b" 10 100 "$x") ;; stick) v=$(vol "$a" "$b" 10 "$x" 60) ;; boom) v=$(vol "$a" "$b" "$x" 100 60) ;; esac
       if python3 -c "import sys; sys.exit(0 if float('$v') > float('$worst') else 1)"; then worst=$v; at=$x; fi
     done
-    if python3 -c "import sys; sys.exit(0 if float('$worst') > 0.05 else 1)"; then echo "ЗІТКНЕННЯ  $a × $b : до $worst см³ (кут $what = $at°)"; bad=1
+    if python3 -c "import sys; sys.exit(0 if float('$worst') > 0.05 else 1)"; then echo "ЗІТКНЕННЯ  $a × $b : до $worst см³ (кут $what = ${at}°)"; bad=1
     else echo "ok          $a × $b : 0 на всьому ході ($what, $(echo $angles | wc -w | tr -d ' ') положень)"; fi
   done
 }
@@ -27,8 +27,8 @@ sweep stick  "0 60 70 80 90 100 110 120 130 140 150 200" "m_scyl:m_boom m_scyl:m
 sweep boom   "-90 -30 -15 0 15 30 45 90" "m_bmcyl:m_boom"
 echo "-- довідково: ківш × стріла / циліндр стріли при складеній рукояті, см³ перетину (0 = не дістає; >0 — у цій позі не підкручувати ківш до упору)"
 for psi in 0 60 70 80; do
-  line="   рукоять $( [ $psi = 0 ] && echo 'складена до упору' || echo "$psi°"):"
-  for om in 200 110 80 40; do v=$(vol m_bucket m_boom 10 "$psi" "$om"); v2=$(vol m_bucket m_bmcyl 10 "$psi" "$om"); line="$line  ківш $( [ $om = 200 ] && echo max || echo "$om°" ) → стріла $v / циліндр стріли $v2;"; done
+  line="   рукоять $( [ $psi = 0 ] && echo 'складена до упору' || echo "${psi}°"):"
+  for om in 200 110 80 40; do v=$(vol m_bucket m_boom 10 "$psi" "$om"); v2=$(vol m_bucket m_bmcyl 10 "$psi" "$om"); line="$line  ківш $( [ $om = 200 ] && echo max || echo "${om}°" ) → стріла $v / циліндр стріли $v2;"; done
   echo "$line"
 done
 rm -rf "$TMP"; [ $bad -eq 0 ] && echo "РЕЗУЛЬТАТ: рухомі пари не зіткаються" || echo "РЕЗУЛЬТАТ: є зіткнення рухомих пар — див. вище"
