@@ -30,7 +30,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Vite 8 вимагає ^20.19.0 || >=22.12.0. Гілка 20 вийшла з підтримки
+          # у квітні 2026, тому беремо 22 — другу, живу гілку цієї вимоги.
+          node-version: '22'
           cache: npm
           cache-dependency-path: tools/viewer-wasm/package-lock.json
 
