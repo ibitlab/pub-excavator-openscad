@@ -92,11 +92,18 @@ RENDER_KEYS = {
 RENDER_TITLE = {'boom': 'стріла', 'stick': 'рукоять', 'bucket': 'ківш', 'rocker': 'коромисло', 'link': 'тяга',
                 'post': 'колона', 'cyl': 'гідроциліндри', 'pins': 'уся машина'}
 RENDER_EXTRA = {'pins': ['-D', 'show_ground=false', '-D', 'show_envelope=false']}
-RENDER_NVIEWS = {'post': 1}          # плиті колони досить одного ракурсу
+# Скільки оглядових ракурсів на вузол: стріла/рукоять/ківш — два, а третій додається сам,
+# якщо якусь деталь на двох майже не видно (ребро губи ковша — лише зсередини). Прості
+# вузли — по одному: другий ракурс дублює картку кроку; колона — жодного (є картка 5.1).
+RENDER_NVIEWS = {'post': 0, 'cyl': 1, 'rocker': 1, 'link': 1}
+# Третій ракурс ЗАРАДИ конкретної деталі — той, де її видно найбільше (ківш зсередини:
+# ребро губи під передньою кромкою накладки на звичайних ракурсах не зрозуміти, де воно).
+RENDER_FOCUS = {'bucket': ('bk_lip_rib', 'зсередини')}
 PIN_CLOSEUP = 700                    # відстань камери крупного плану шарніра, мм моделі (кадр ≈ 280 мм)
-# Кандидати ракурсів (rotx, rotz гімбала OpenSCAD): rotx 55 — згори, 125 — знизу.
-VIEWS = [(55, 25), (55, 115), (55, 205), (55, 295), (125, 25), (125, 115), (125, 205), (125, 295)]
-VIEW_NAME = {55: 'згори', 125: 'знизу'}
+# Кандидати ракурсів (rotx, rotz гімбала OpenSCAD): rotx 55 — згори, 90 — збоку (у пащу ковша), 125 — знизу.
+VIEWS = [(55, 25), (55, 115), (55, 205), (55, 295), (90, 25), (90, 115), (90, 205), (90, 295),
+         (125, 25), (125, 115), (125, 205), (125, 295)]
+VIEW_NAME = {55: 'згори', 90: 'збоку', 125: 'знизу'}
 
 
 # ------------------------------------------------------------------ дані набору
@@ -675,9 +682,11 @@ class View:
         return '\n'.join(out)
 
 
-def choose_views(R, node, keys, size=(900, 675), fat=False):
-    """Два ракурси, за яких видно якнайбільше деталей: перший — згори, другий — той,
-    що додає найбільше до першого. Видимість деталі рахується в пікселях її відтінку."""
+def choose_views(R, node, keys, size=(900, 675), fat=False, n_max=3):
+    """Ракурси, за яких видно якнайбільше деталей: перший — згори, другий — той, що додає
+    найбільше до першого, третій — лише якщо після двох якусь деталь видно менш ніж на
+    половину від найкращого (ребро губи ковша ховається під накладкою). Видимість деталі
+    рахується в пікселях її відтінку на пробному рендері кожного кандидата."""
     n = len(keys)
     counts = {}
     for v in VIEWS:
@@ -686,10 +695,24 @@ def choose_views(R, node, keys, size=(900, 675), fat=False):
     ref = [max(counts[v][i] for v in VIEWS) for i in range(n)]
     vis = lambda c, i: min(1.0, c / max(1, ref[i]))
     score = lambda v: sum(vis(counts[v][i], i) for i in range(n))
-    first = max([v for v in VIEWS if v[0] < 90], key=score)
-    second = max([v for v in VIEWS if v != first],
-                 key=lambda v: sum(max(vis(counts[first][i], i), vis(counts[v][i], i)) for i in range(n)))
-    return [first, second], ref, counts
+    if n_max <= 0:
+        return [], ref, counts
+    chosen = [max([v for v in VIEWS if v[0] < 90], key=score)]
+    if n_max >= 2:
+        chosen.append(max([v for v in VIEWS if v not in chosen],
+                          key=lambda v: sum(max(vis(counts[chosen[0]][i], i), vis(counts[v][i], i)) for i in range(n))))
+    if n_max >= 3:
+        cov = [max(vis(counts[v][i], i) for v in chosen) for i in range(n)]
+        poor = [i for i in range(n) if cov[i] < 0.5 and ref[i] >= 30]
+        focus = RENDER_FOCUS.get(node)
+        if focus and focus[0] in keys:
+            poor = [keys.index(focus[0])]
+        if poor:
+            third = max([v for v in VIEWS if v not in chosen], key=lambda v: sum(vis(counts[v][i], i) for i in poor))
+            if focus or sum(max(0.0, vis(counts[third][i], i) - cov[i]) for i in poor) > 0.3:
+                chosen.append(third)
+                print(f'  {node}: третій ракурс {third} заради ' + ', '.join(keys[i] for i in poor))
+    return chosen, ref, counts
 
 
 def make_view(R, node, keys, view, labels_by_key, ref, size=(1400, 1050), out_dir=None, fat=False):
@@ -785,7 +808,8 @@ svg text {{ font-family: {FONT}; }}
 .card code {{ font: 8.6pt/1.3 "SF Mono", Menlo, Consolas, monospace; background: #eee; padding: 0 0.6mm; border-radius: 0.5mm; white-space: nowrap; }}
 .card .where {{ color: #1f4e9c; font-weight: 600; }}
 .card .how {{ color: #222; }}
-.ov {{ display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 5mm; margin-bottom: 4mm; }}
+.ov {{ display: grid; grid-template-columns: 1fr; gap: 3mm; margin-bottom: 4mm; }}
+.ov svg {{ break-inside: avoid; }}
 .ov svg {{ display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto; border: 0.2pt dashed #bbb; }}
 .note {{ font-size: 8.6pt; color: #333; border: 0.6pt solid #000; padding: 2mm 2.5mm; margin: 0 0 3mm; break-inside: avoid; }}
 """
@@ -863,21 +887,24 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report, schem
     # --- рендери вузлів: спершу по першому ракурсу кожного вузла, потім другі
     views, leftover, covered = [], [], {}
     labels_by_key = {k: parts[k]['file'] + (f" ×{parts[k]['qty']}" if parts[k]['qty'] > 1 else '') for k in keys}
-    node_views, by_rank = {}, {0: [], 1: []}
+    node_views, node_overviews, by_rank = {}, {}, {0: [], 1: [], 2: []}
     for node in sheet['renders']:
         nkeys = [k for k in keys if k in RENDER_KEYS.get(node, keys)]
         fat = node == 'pins'
-        chosen, ref, counts = choose_views(R, node, nkeys, fat=fat)
-        chosen = chosen[:RENDER_NVIEWS.get(node, 2)]
+        chosen, ref, counts = choose_views(R, node, nkeys, fat=fat, n_max=RENDER_NVIEWS.get(node, 3))
         node_views[node] = (nkeys, chosen, ref)
+        node_overviews[node] = []
         for rank, v in enumerate(chosen):
             vw, seen = make_view(R, node, nkeys, v, labels_by_key, ref, fat=fat)
+            if rank == 2 and node in RENDER_FOCUS:
+                vw.title = f"{RENDER_TITLE.get(node, node)}, {RENDER_FOCUS[node][1]} ({v[0]}°/{v[1]}°) — де стоїть {labels_by_key[RENDER_FOCUS[node][0]]}"
             by_rank[rank].append(vw)
+            node_overviews[node].append(vw)
             for k in seen:
                 covered[k] = covered.get(k, 0) + 1
-    views = by_rank[0] + by_rank[1]
+    views = by_rank[0] + by_rank[1] + by_rank[2]
     pinpos = R.pin_positions(keys) if 'pins' in sheet['renders'] else {}
-    missing = [k for k in keys if k not in covered]
+    missing = [k for k in keys if k not in covered and any(k in RENDER_KEYS.get(nd, keys) for nd in sheet['renders'] if RENDER_NVIEWS.get(nd, 3) > 0)]
     if missing:
         print('  УВАГА: без виноски на жодному ракурсі:', ', '.join(missing))
     # --- сторінки розкладки; рендери — у вільне місце (спершу на першій сторінці)
@@ -913,7 +940,9 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report, schem
                     continue
                 s = min(avail_w / vw.pw, (fh - GAP - 3.5) / vw.ph, MAX_IMG_W / vw.pw)
                 bw, bh = vw.box(s)
-                if vw.pw * s < 40 or vw.ph * s < 28 or bh > fh - GAP:
+                # дрібний огляд на аркуші не потрібен: він і так буде на всю ширину на
+                # сторінці кроків; на аркуші лишається лише той, що виходить великим
+                if vw.pw * s < 100 or vw.ph * s < 28 or bh > fh - GAP:
                     continue
                 if best is None or vw.pw * s > best[0]:
                     best = (vw.pw * s, fx, fy, s, bw, bh)
@@ -935,13 +964,22 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report, schem
     step_report = []
     if want_steps:
         parts_html = [f'<section class="steps"><h2>Аркуш {no} · {html.escape(sheet["title"])} — порядок склеювання</h2>']
-        parts_html.append('<p class="lead-p">Сірі деталі вже на місці, помаранчева — ця. Порядок той самий, що й у зварюванні в металі. '
+        parts_html.append('<p class="lead-p">Сірі деталі вже на місці, помаранчева — ця. Порядок той самий, що й у зварюванні. '
                           'Номер кроку стоїть і на контурі деталі на аркуші розкладки.</p>')
+        # Огляди вузла — на всю ширину: на них видно, як усе має бути у фіналі. Ті, що
+        # великими вмістились на аркуші розкладки, тут не повторюються.
         if leftover:
             parts_html.append('<div class="ov">' + ''.join(overview_html(vw) for vw in leftover) + '</div>')
         parts_html.append('<div class="grid">')
         for node in sheet['renders']:
             nkeys, chosen, ref = node_views[node]
+            if node in STEP_GROUPS:
+                # одноманітні кроки (гільза + шток ×3) — одна картка з оглядом і переліком
+                sts = [step_of[k] for k in nkeys]
+                parts_html.append(group_card_html(sts, [parts[k] for k in nkeys], node_overviews[node][0], STEP_GROUPS[node]))
+                for st in sts:
+                    step_report.append(dict(step=st['step'], key=st['key'], view=node_overviews[node][0].view, px=-1))
+                continue
             for i, k in enumerate(nkeys):
                 st = step_of[k]
                 cam = (pinpos[k], PIN_CLOSEUP) if node == 'pins' else None
@@ -974,11 +1012,29 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report, schem
     return page_html, steps_html
 
 
-def overview_html(vw):
-    s = (92 - vw.lw_l - vw.lw_r) / vw.pw
+def overview_html(vw, width=CW - 4, max_h=118):
+    """Огляд вузла на всю ширину сторінки (не вище max_h мм, щоб два вмістились на сторінці)."""
+    s = min((width - vw.lw_l - vw.lw_r) / vw.pw, (max_h - 3.5) / vw.ph)
     bw, bh = vw.box(s)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {bw:.2f} {bh:.2f}" width="{bw:.2f}mm" height="{bh:.2f}mm">'
             + vw.svg(0, 0, s) + '</svg>')
+
+
+# Вузли, чиї кроки одноманітні (гільза + шток, тричі): одна картка замість шести.
+STEP_GROUPS = {'cyl': 'Гідроциліндри: шток у свою гільзу. Шток має ходити — НЕ клеїти. '
+                      'Гільзи різняться довжиною і діаметром — див. розміри на аркуші.'}
+
+
+def group_card_html(sts, parts_, vw, note):
+    """Одна широка картка на групу кроків: огляд з виносками до всіх файлів і перелік."""
+    s = min((CW - 8 - vw.lw_l - vw.lw_r) / vw.pw, 70 / vw.ph)
+    bw, bh = vw.box(s)
+    img = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {bw:.2f} {bh:.2f}" width="{bw:.2f}mm" height="{bh:.2f}mm">'
+           + vw.svg(0, 0, s, with_title=False) + '</svg>')
+    rng = f'{sts[0]["step"]}–{sts[-1]["step"]}'
+    files = ', '.join(f'<code>{html.escape(p["file"])}</code>' for p in parts_)
+    return (f'<div class="card wide">{img}<div class="txt"><b>{html.escape(rng)}</b> &nbsp;{files}<br>'
+            f'<div class="how">{html.escape(note)}</div></div></div>')
 
 
 def printed_text(s, scale=5):
