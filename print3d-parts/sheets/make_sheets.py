@@ -70,14 +70,14 @@ MAX_IMG_W = 125      # рендер на аркуші розкладки не ш
 # ------------------------------------------------------------------ склад аркушів
 # Аркуш = вузли з assembly.tsv (усі деталі вузла — на ньому) + рендери, які його ілюструють.
 SHEETS = [
-    dict(title='Стріла', sub='вузол, що склеюється', nodes=['1. Стріла'], renders=['boom']),
-    dict(title='Рукоять', sub='вузол, що склеюється', nodes=['2. Рукоять'], renders=['stick']),
-    dict(title='Ківш', sub='вузол, що склеюється', nodes=['3. Ківш'], renders=['bucket']),
-    dict(title='Коромисло і тяга', sub='два вузли, що склеюються', nodes=['4. Важільна система'],
+    dict(slug='boom', title='Стріла', sub='вузол, що склеюється', nodes=['1. Стріла'], renders=['boom']),
+    dict(slug='stick', title='Рукоять', sub='вузол, що склеюється', nodes=['2. Рукоять'], renders=['stick']),
+    dict(slug='bucket', title='Ківш', sub='вузол, що склеюється', nodes=['3. Ківш'], renders=['bucket']),
+    dict(slug='linkage', title='Коромисло і тяга', sub='два вузли, що склеюються', nodes=['4. Важільна система'],
          renders=['rocker', 'link']),
-    dict(title='Колона і гідроциліндри', sub='плити колони — стосом; штоки в гільзи НЕ клеїти',
+    dict(slug='post_cyl', title='Колона і гідроциліндри', sub='плити колони — стосом; штоки в гільзи НЕ клеїти',
          nodes=['5. Колона', '6. Гідроциліндри'], renders=['cyl', 'post']),
-    dict(title='Пальці й шайби', sub='з’єднання вузлів — не клеїти; кожен палець лежить окремо',
+    dict(slug='pins', title='Пальці й шайби', sub='з’єднання вузлів — не клеїти; кожен палець лежить окремо',
          nodes=['7. Складання на пальцях'], renders=['pins']),
 ]
 # Які деталі малює кожен рендер (для аркушів з кількома вузлами); решта — всі деталі аркуша.
@@ -173,13 +173,12 @@ def rot_to_down(n):
 
 def lay_down(tri, key):
     """Як деталь лежить на папері. Друкована орієнтація вже кладе найбільшу грань на стіл —
-    крім пальців (друкуються стоячи, на папері лежать) і обичайки ковша (друкується на
-    профілі, лежить дном)."""
+    крім пальців: друкуються стоячи, на папері лежать. Обичайка ковша лишається так, як
+    друкується, — боком, на профілі: дном вона давала б на папері лише прямокутник, а
+    профіль (полиця, дуги, дно) — це і є її форма."""
     if key.startswith('pin_'):
         R = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0.0]])       # +Z → −Y: палець лягає вздовж Y
         tri = tri @ R.T
-    elif key == 'bk_shell':
-        tri = tri @ rot_to_down(largest_face(tri)).T
     tri = tri - tri.reshape(-1, 3).min(0)
     return tri
 
@@ -845,7 +844,7 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
         steps_html = ('<section class="steps"><h2>Аркуш %d · %s — ракурси</h2><div class="ov">%s</div></section>'
                       % (no, html.escape(sheet['title']), ''.join(overview_html(vw) for vw in leftover)))
     report['sheets'].append(dict(
-        no=no, title=sheet['title'], files=len(cells), parts=sum(c.part['qty'] for c in cells),
+        no=no, slug=sheet['slug'], title=sheet['title'], files=len(cells), parts=sum(c.part['qty'] for c in cells),
         cells=[dict(file=c.part['file'], step=c.step['step'], x=round(x, 2), y=round(y + area_y0, 2), w=round(w, 2), h=round(h, 2),
                     rot=rot, outline=[round(c.m['w'], 2), round(c.m['h'], 2), round(c.m['z'], 2)],
                     holes=[round(h_['circle'][2], 2) if h_['circle'] else [round(h_['w'], 2), round(h_['h'], 2)] for h_ in c.m['holes']],
@@ -930,7 +929,7 @@ def main():
             one = os.path.join(a.tmp, f'page_{s["no"]}.html')
             with open(one, 'w', encoding='utf-8') as f:
                 f.write(f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS} body{{padding:{MARGIN}mm;}}</style></head><body>{p}</body></html>')
-            out = os.path.join(png_dir, f'{s["no"]}_{s["title"].split()[0].lower()}.png')
+            out = os.path.join(png_dir, f'{s["no"]}_{s["slug"]}.png')      # латинські назви: на них посилаються README
             subprocess.run([chrome, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
                             '--window-size=794,1123', f'--screenshot={out}', 'file://' + one], capture_output=True)
             print('  прев’ю:', os.path.relpath(out, ROOT))

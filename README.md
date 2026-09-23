@@ -41,6 +41,7 @@ The bucket is welded up from real parts (side plates, shell, cutting edge, teeth
 | `versions/VNNN-date-time/` | **Built versions — everything generated lives only here**: `stl/`, `renders/`, `docs/` (`02-kinematics.md`, `03-strength.md`, `04-bom.md`, the angle ranges, the intersection check), `bom/`, `dxf/`, `drawings/`, `scad/` (a snapshot of the model and the scripts), `VERSION.md`. The current one is the folder with the highest number. |
 | `tools/build_version.sh` | **The version build script**: intersection check → moving-pair check → STL of every part → renders → reports → `VERSION.md`. The version number increments automatically. |
 | `tools/bom_drawings.sh` | **BOM + drawings**: the bill of materials (`bom.md`, `bom.csv`), the outlines of every plate as 1:1 DXF for cutting, and PDF sketches with the main dimensions (`drawings/parts.pdf` + PNG pages). The data comes from the model's echo and from a projection of each plate — there is no separate list of dimensions anywhere. The first run creates `tools/.venv` with matplotlib. |
+| `print3d-parts/` | **The 1:5 printed kit** — every component on its own, the way it is cut from steel (53 files, 76 pieces), glued instead of welded: `make.sh` → STL sorted by slicer job, `BOM.md`, `ASSEMBLY.md`. Separately, `sheets/SHEETS.pdf` — **1:1 sorting sheets** for the pile of printed parts: the outline of every part on the sheet of its own sub-assembly, renders with callouts, gluing step cards. See section 2. |
 | `tools/viewer.sh` → `tools/viewer.py`, `tools/viewer/index.html` | **An interactive 3D page in the browser**: orbit / pan / zoom, the angles change instantly, and any other model parameter is rebuilt through OpenSCAD in ≈ 0.4 s. See section 2. |
 | `tools/viewer-wasm.sh` → `tools/viewer-wasm/` (`package.json`, Vite) | **A second version of the 3D page — with no backend**: OpenSCAD-WASM in a web worker renders the model right in the browser; it builds into a static site in `dist/`. See section 2. |
 | `tools/media/` | Screenshots of the page in headless Chrome (`page_shot.mjs`), collages (`compose.py`) and a full set of images and video for publications (`make_media.sh` → `temp/media/`, which is never committed). |
@@ -170,6 +171,17 @@ The options for issuing drawings, and what was chosen: **DXF 1:1** — the main 
 
 ![boom](docs/img/part_boom.png)
 ![stick](docs/img/part_stick.png)
+
+### The 1:5 printed kit and the sorting sheets
+
+```
+print3d-parts/make.sh                                              # STL of every component, checks, BOM, ASSEMBLY, sorting sheets
+tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png   # the sheets only (≈1.5 min; renders are cached)
+```
+
+A printed kit is a pile of look-alikes: bushings, pins and washers differ by fractions of a millimetre, and sorting them by eye does not work. `print3d-parts/sheets/SHEETS.pdf` sorts the pile on paper: six A4 sheets, one per sub-assembly that gets glued (boom, stick, bucket, rocker with link, column with cylinders) and a separate one for the pins and washers that join the sub-assemblies. Every part is drawn as a **1:1** outline the way it lies on the table: put the part on its outline, and if it fits, that is the one. Next to the outline are the gluing step number, the file name, the overall size, the height, the hole diameters; identical flat parts share one outline as a stack, pins each get their own, and pairs that match in every dimension (A and C, F and H, J and Q) are marked as interchangeable. The free space on the sheet holds renders of the sub-assembly with a callout to every file, followed by gluing step cards: what is already glued is grey, the new part is orange, and for the pins the cards are close-ups of the joints. Nothing here is drawn by hand: outlines and holes are taken from the measured STL, the composition and the steps from `assembly.tsv` and `parts.tsv`, and the views are chosen by how many parts they show. A 100 mm ruler at the bottom of every sheet tells you whether the printer is scaling. How it is done and what was decided — `print3d-parts/sheets/README.md`.
+
+![bucket sorting sheet](print3d-parts/sheets/png/3_bucket.png)
 
 ## 3. The chosen geometry (mm) and why
 
