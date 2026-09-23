@@ -13,6 +13,7 @@ A parametric model of the working equipment of a towable mini excavator — boom
 | The model, building versions, the 3D page with a server | **OpenSCAD** — a nightly build with the Manifold engine (verified on 2025.07 and 2026.09; the stable 2021.01 will not do), `openscad` on the PATH; **Python 3** |
 | PDF sketches, the bucket report | nothing to install: `tools/.venv` (matplotlib, shapely) is created on the first build |
 | The 3D page without a backend (WASM) | **Node.js ≥ 20.19** |
+| The printed kit: the paper instructions and the sorting sheets (`print3d-parts/make.sh`) | **Chrome** (HTML → PDF) and **poppler** (`brew install poppler`: `pdftoppm`, `pdfinfo`, `pdftotext` — previews and page checks from the PDF itself; without it the previews are screenshots of the HTML) |
 | A SpaceMouse 3D mouse (optional) | Chrome / Edge; on macOS the 3Dconnexion driver is switched off for the session — the `:sm` commands do that for you |
 
 ## Core commands

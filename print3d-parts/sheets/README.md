@@ -39,8 +39,10 @@ tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png     # усе, �
 ```
 
 `make.sh` набору запускає генератор сам (після STL, перед розкладкою по завданнях
-друку). Потрібні `tools/.venv` (numpy, shapely, Pillow) і Chrome; номери сторінок
-дає `node` із `puppeteer-core` у `tools/media`.
+друку). Потрібні `tools/.venv` (numpy, shapely, Pillow), Chrome (HTML → PDF) і poppler
+(`brew install poppler`: `pdftoppm` і `pdftotext` роблять прев'ю `png/` із самого PDF,
+`pdfinfo` рахує сторінки; без poppler прев'ю — знімок HTML у Chrome, і це буде сказано
+у виводі). Номери сторінок дає `node` із `puppeteer-core` у `tools/media`.
 
 ## Звідки числа
 

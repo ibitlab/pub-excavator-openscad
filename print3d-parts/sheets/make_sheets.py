@@ -19,7 +19,8 @@
                                  відтінком пікселів, ракурси — за тим, скільки деталей видно)
 
 Виходи: SHEETS.pdf (A4, 1:1), sheets.json (усі числа: комірки, ракурси, виноски —
-перевіряти можна читанням, не відкриваючи PDF), png/ — прев'ю сторінок розкладки.
+перевіряти можна читанням, не відкриваючи PDF), png/ — прев'ю сторінок розкладки,
+відрендерені з самого PDF (poppler: pdftoppm + pdftotext; без нього — знімок HTML у Chrome).
 
     tools/.venv/bin/python print3d-parts/sheets/make_sheets.py            # усе
     … --only 1 --no-steps --png                                          # один аркуш, швидко
@@ -37,6 +38,7 @@ import html
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -574,14 +576,16 @@ svg text {{ font-family: {FONT}; }}
 .steps .lead-p {{ font-size: 9pt; color: #333; margin: 0 0 3mm; }}
 .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 4mm 5mm; }}
 .card {{ break-inside: avoid; border: 0.3pt solid #aaa; border-radius: 1.2mm; padding: 2mm; }}
-.card svg {{ display: block; width: 100%; height: auto; }}
+/* SVG зберігає свій розмір у мм (width/height атрибутами): width:100% розтягував би
+   вузький портретний рендер на всю колонку — картка сідла D виходила 83 мм замість 62 */
+.card svg {{ display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto; }}
 .card .txt {{ font-size: 8.6pt; line-height: 1.3; margin-top: 1.5mm; }}
 .card .txt b {{ font-size: 10pt; }}
 .card code {{ font: 8.6pt/1.3 "SF Mono", Menlo, Consolas, monospace; background: #eee; padding: 0 0.6mm; border-radius: 0.5mm; white-space: nowrap; }}
 .card .where {{ color: #1f4e9c; font-weight: 600; }}
 .card .how {{ color: #222; }}
 .ov {{ display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 5mm; margin-bottom: 4mm; }}
-.ov svg {{ display: block; width: 100%; height: auto; border: 0.2pt dashed #bbb; }}
+.ov svg {{ display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto; border: 0.2pt dashed #bbb; }}
 .note {{ font-size: 8.6pt; color: #333; border: 0.6pt solid #000; padding: 2mm 2.5mm; margin: 0 0 3mm; break-inside: avoid; }}
 """
 
@@ -803,28 +807,71 @@ def main():
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(doc)
     report['renders_made'] = R.n
-    with open(os.path.join(HERE, 'sheets.json'), 'w', encoding='utf-8') as f:
-        json.dump(report, f, ensure_ascii=False, indent=1)
-    print(f'  рендерів зроблено: {R.n}; sheets.json записано')
+    print(f'  рендерів зроблено: {R.n}')
 
     chrome = os.environ.get('CHROME') or next((c for c in CHROME_CANDIDATES if os.path.exists(c)), None)
-    if a.png and chrome:
-        png_dir = os.path.join(HERE, 'png'); os.makedirs(png_dir, exist_ok=True)
-        for p, s in zip(pages, report['sheets']):
-            one = os.path.join(a.tmp, f'page_{s["no"]}.html')
-            with open(one, 'w', encoding='utf-8') as f:
-                f.write(f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS} body{{padding:{MARGIN}mm;}}</style></head><body>{p}</body></html>')
-            out = os.path.join(png_dir, f'{s["no"]}_{s["slug"]}.png')      # латинські назви: на них посилаються README
-            subprocess.run([chrome, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
-                            '--window-size=794,1123', f'--screenshot={out}', 'file://' + one], capture_output=True)
-            print('  прев’ю:', os.path.relpath(out, ROOT))
+    png_dir = os.path.join(HERE, 'png')
     if a.no_pdf:
-        print('  HTML:', html_path); return
-    if not chrome:
-        sys.exit('не знайшов Chrome; вкажіть CHROME=/шлях/до/chrome')
-    how = to_pdf(html_path, os.path.abspath(a.out), chrome, 'Аркуші розкладки 1:1 · print3d-parts', date)
-    n_pages = len(re.findall(rb'/Type\s*/Page[^s]', open(a.out, 'rb').read()))
-    print(f'  {os.path.relpath(a.out, ROOT)}: {n_pages} стор., {os.path.getsize(a.out) // 1024} КБ ({how})')
+        if a.png and chrome:
+            previews_from_html(pages, report, a.tmp, chrome, png_dir)
+        print('  HTML:', html_path)
+    else:
+        if not chrome:
+            sys.exit('не знайшов Chrome; вкажіть CHROME=/шлях/до/chrome')
+        how = to_pdf(html_path, os.path.abspath(a.out), chrome, 'Аркуші розкладки 1:1 · print3d-parts', date)
+        report['pdf_pages'] = pdf_pages(a.out)
+        print(f'  {os.path.relpath(a.out, ROOT)}: {report["pdf_pages"]} стор., {os.path.getsize(a.out) // 1024} КБ ({how})')
+        if a.png:
+            if shutil.which('pdftoppm') and shutil.which('pdftotext'):
+                previews_from_pdf(a.out, report, png_dir)
+            elif chrome:
+                print('  poppler не знайдено (brew install poppler) — прев’ю зі знімка HTML, не з PDF')
+                previews_from_html(pages, report, a.tmp, chrome, png_dir)
+    with open(os.path.join(HERE, 'sheets.json'), 'w', encoding='utf-8') as f:
+        json.dump(report, f, ensure_ascii=False, indent=1)
+    print('  sheets.json записано')
+
+
+def pdf_pages(path):
+    """Кількість сторінок: pdfinfo, якщо є; інакше регулярка по байтах (працює лише на
+    нестиснутих об'єктах, як пише Chrome)."""
+    if shutil.which('pdfinfo'):
+        m = re.search(r'Pages:\s+(\d+)', subprocess.run(['pdfinfo', path], capture_output=True, text=True).stdout)
+        if m:
+            return int(m.group(1))
+    return len(re.findall(rb'/Type\s*/Page[^s]', open(path, 'rb').read()))
+
+
+def previews_from_pdf(pdf, report, png_dir, dpi=192):
+    """Прев'ю аркушів розкладки з САМОГО PDF (poppler): сторінка кожного аркуша
+    знаходиться за текстом його шапки у виводі pdftotext (сторінки розділені \\f).
+    Це перевіряє те, що піде на принтер, а не HTML-проксі."""
+    os.makedirs(png_dir, exist_ok=True)
+    txt = subprocess.run(['pdftotext', '-layout', pdf, '-'], capture_output=True, text=True).stdout
+    pages_txt = txt.split('\f')
+    for s in report['sheets']:
+        marker = f'Аркуш {s["no"]} з '
+        idx = next((i for i, t in enumerate(pages_txt) if marker in t and 'масштаб 1:1' in t), None)
+        if idx is None:
+            print(f'  УВАГА: у PDF не знайшов сторінку аркуша {s["no"]}'); continue
+        out = os.path.join(png_dir, f'{s["no"]}_{s["slug"]}')          # латинські назви: на них посилаються README
+        subprocess.run(['pdftoppm', '-r', str(dpi), '-png', '-f', str(idx + 1), '-l', str(idx + 1), '-singlefile', pdf, out], check=True)
+        s['pdf_page'] = idx + 1
+        print(f'  прев’ю: {os.path.relpath(out + ".png", ROOT)} (стор. {idx + 1} PDF)')
+
+
+def previews_from_html(pages, report, tmp, chrome, png_dir):
+    """Запасний шлях без poppler: знімок HTML однієї сторінки в Chrome (A4 при 96 dpi × 2).
+    Показує розкладку, але не сам PDF."""
+    os.makedirs(png_dir, exist_ok=True)
+    for p, s in zip(pages, report['sheets']):
+        one = os.path.join(tmp, f'page_{s["no"]}.html')
+        with open(one, 'w', encoding='utf-8') as f:
+            f.write(f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS} body{{padding:{MARGIN}mm;}}</style></head><body>{p}</body></html>')
+        out = os.path.join(png_dir, f'{s["no"]}_{s["slug"]}.png')
+        subprocess.run([chrome, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
+                        '--window-size=794,1123', f'--screenshot={out}', 'file://' + one], capture_output=True)
+        print('  прев’ю (знімок HTML):', os.path.relpath(out, ROOT))
 
 
 if __name__ == '__main__':

@@ -85,24 +85,28 @@ node tools/media/probe.mjs URL --set sl_boom=40 --js "__VIEW__().angles" --shot 
 - Телефонна розкладка вмикається умовою `(max-width: 900px), (pointer: coarse)`. Поріг за самою шириною хибний: телефон лежачи — 844, планшет у портреті — 768.
 - Після переходу між розкладками пропорція кадру інша, сторінка робить `setView(null)`; знімок одразу після зміни розміру застає старе вписування.
 
-## Сторінка на папір: PDF і прев'ю без pdftoppm
+## Сторінка на папір: PDF і перевірка його сторінок
 
-У системі **немає** `pdftoppm`, `mutool`, `gs`, ImageMagick — не шукай, є два шляхи, обидва
-через Chrome:
+PDF робить Chrome, перевіряє poppler (`brew install poppler`; є в QUICKSTART). `mutool`,
+`gs`, ImageMagick не потрібні.
 
 - **PDF** — `to_pdf(html, pdf, chrome, підпис, дата)` з `print3d-parts/make_assembly_pdf.py`
   (імпортом, не копією): з `node` + `puppeteer-core` у `tools/media/node_modules` дає
   колонтитул із номерами сторінок, без них — `--print-to-pdf`. `@page { size: A4;
   margin: … }` + `preferCSSPageSize` → CSS-міліметри стають міліметрами паперу без
   масштабу: SVG `width="190mm" viewBox="0 0 190 277"` друкується рівно 1:1.
-- **Прев'ю сторінки** — `chrome --headless=new --disable-gpu --hide-scrollbars
-  --force-device-scale-factor=2 --window-size=794,1123 --screenshot=out.png file://…`
-  (794×1123 = A4 при 96 dpi, dsf 2 → 192 dpi). Знімок бере лише перший екран: для N-ї
-  сторінки збери окремий HTML лише з нею (той самий CSS, `body { padding: поля }`).
+- **Сторінка PDF у картинку** — `pdftoppm -r 192 -png -f N -l N -singlefile файл.pdf out`
+  (→ `out.png`). Перевіряй САМ PDF: розриви сторінок, колонтитули, картки, що не мають
+  рватися, — це видно лише тут. `pdfinfo` дає кількість сторінок і формат
+  (A4 = 595.28×841.89 pt; Chrome пише 594.96×841.92); `pdftotext -layout файл.pdf -`
+  віддає текст зі сторінками через `\f` — так знаходиться сторінка за текстом шапки і
+  перевіряється числом, що всі підписи в PDF є.
+- **Запасний шлях без poppler** — знімок HTML однієї сторінки: `chrome --headless=new
+  --disable-gpu --hide-scrollbars --force-device-scale-factor=2 --window-size=794,1123
+  --screenshot=out.png file://…` (794×1123 = A4 при 96 dpi). Це проксі, не PDF: знімок
+  бере лише перший екран, для N-ї сторінки треба окремий HTML лише з нею.
 - **Масштаб перевіряється числом**: при 192 dpi 100 мм = 755.9 px, 190 мм = 1436 px —
-  знайди у знімку найдовшу темну горизонталь (лінійка, лінія підвалу) і поділи.
-  Розмір сторінок PDF — `grep -a MediaBox`: A4 = 595.28×841.89 pt (Chrome пише
-  594.96×841.92). Кількість сторінок — `re.findall(rb'/Type\s*/Page[^s]', data)`.
+  знайди у картинці найдовшу темну горизонталь (лінійка, лінія підвалу) і поділи.
 - Картинки вбудовуй base64 (`data:image/png;base64,…`): HTML самодостатній, за `file://`
   сусідами Chrome не ходить. `break-inside: avoid` на картках, `break-before: page` на
   розділах, `thead { display: table-header-group }` повторює шапку таблиці.
