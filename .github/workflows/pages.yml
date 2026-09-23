@@ -52,7 +52,10 @@ jobs:
 
       - name: Додати обов'язкові за GPL файли
         run: |
-          cp tools/viewer-wasm/LICENSE tools/viewer-wasm/dist/LICENSE
+          # З розширенням .txt: файл без розширення Pages віддає як
+          # application/octet-stream, і посилання «GPL-2.0» у панелі
+          # завантажувало б файл замість того, щоб показати текст.
+          cp tools/viewer-wasm/LICENSE tools/viewer-wasm/dist/LICENSE.txt
           cp THIRD-PARTY.md            tools/viewer-wasm/dist/THIRD-PARTY.md
           ls -lh tools/viewer-wasm/dist/
 
