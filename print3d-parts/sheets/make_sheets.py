@@ -32,28 +32,27 @@
 import argparse
 import base64
 import datetime
+import hashlib
 import html
-import io
 import json
-import math
 import os
 import re
-import struct
 import subprocess
 import sys
 import tempfile
 
 import numpy as np
-from PIL import Image
-from shapely.geometry import Polygon, MultiPolygon, LineString
-from shapely.ops import unary_union
+from shapely.geometry import LineString
 from shapely import affinity
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KIT = os.path.dirname(HERE)
 ROOT = os.path.dirname(KIT)
 sys.path.insert(0, KIT)
-from make_assembly_pdf import to_pdf, CHROME_CANDIDATES          # noqa: E402
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+from make_assembly_pdf import to_pdf, CHROME_CANDIDATES                              # noqa: E402
+from stl_mesh import read_stl, silhouette, as_circle                                 # noqa: E402
+from hue_callouts import classify, anchors, finish_image, spread_rows                # noqa: E402
 
 SCAD = os.path.join(HERE, 'sheets.scad')
 
@@ -137,40 +136,7 @@ def short_name(desc):
     return s if len(s) <= 34 else s[:33] + '…'
 
 
-# ------------------------------------------------------------------ STL → силует
-def read_stl(path):
-    d = open(path, 'rb').read()
-    n = struct.unpack('<I', d[80:84])[0]
-    a = np.frombuffer(d[84:84 + n * 50], dtype=np.dtype([('n', '<f4', 3), ('v', '<f4', (3, 3)), ('a', '<u2')]))
-    return a['v'].astype(float)
-
-
-def largest_face(tri):
-    """Нормаль найбільшої плоскої грані (сумарна площа трикутників за напрямком)."""
-    e1, e2 = tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]
-    n = np.cross(e1, e2)
-    a = np.linalg.norm(n, axis=1) / 2
-    ok = a > 1e-9
-    n = n[ok] / (2 * a[ok])[:, None]
-    q = np.round(n * 50).astype(int)
-    acc = {}
-    for k, ar in zip(map(tuple, q), a[ok]):
-        acc[k] = acc.get(k, 0) + ar
-    k = max(acc, key=acc.get)
-    v = np.array(k, float)
-    return v / np.linalg.norm(v)
-
-
-def rot_to_down(n):
-    """Матриця повороту, що переводить n у (0,0,−1)."""
-    t = np.array([0, 0, -1.0])
-    v = np.cross(n, t); s = np.linalg.norm(v); c = float(np.dot(n, t))
-    if s < 1e-9:
-        return np.eye(3) if c > 0 else np.diag([1, -1, -1.0])
-    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-    return np.eye(3) + vx + vx @ vx * ((1 - c) / s ** 2)
-
-
+# ------------------------------------------------------------------ STL → силует (tools/stl_mesh.py)
 def lay_down(tri, key):
     """Як деталь лежить на папері. Друкована орієнтація вже кладе найбільшу грань на стіл —
     крім пальців: друкуються стоячи, на папері лежать. Обичайка ковша лишається так, як
@@ -181,26 +147,6 @@ def lay_down(tri, key):
         tri = tri @ R.T
     tri = tri - tri.reshape(-1, 3).min(0)
     return tri
-
-
-def silhouette(tri):
-    e1, e2 = tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]
-    nz = e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0]
-    u = unary_union([Polygon(t[:, :2]) for t in tri[np.abs(nz) > 1e-6]])
-    u = u.buffer(0.02).buffer(-0.02)
-    if u.geom_type == 'MultiPolygon':                     # лишаємо найбільше тіло — решта дрібні артефакти
-        u = max(u.geoms, key=lambda g: g.area)
-    return u
-
-
-def as_circle(coords):
-    pts = np.array(coords[:-1])
-    if len(pts) < 12:
-        return None
-    c = pts.mean(0); r = np.linalg.norm(pts - c, axis=1)
-    if r.max() - r.min() > 0.02 * r.mean() + 0.05:
-        return None
-    return (float(c[0]), float(c[1]), float(2 * r.mean()))
 
 
 def width_at(poly, x):
@@ -452,7 +398,10 @@ class Renders:
     def png(self, node, keys, view, size, hi='', upto=-1, fat=False, camera=None):
         """camera = (центр xyz, відстань) — крупний план без --viewall; інакше вся сцена в кадрі."""
         cam = '' if camera is None else '_' + '_'.join(f'{v:.0f}' for v in camera[0]) + f'_{camera[1]:.0f}'
-        name = f"{node}_{view[0]}_{view[1]}_{size[0]}_{hi or 'all'}_{upto}{'_fat' if fat else ''}{cam}.png"
+        # Хеш списку ключів у назві: відтінок деталі = її позиція у списку, і кеш без хешу
+        # після перестановки рядків у assembly.tsv мовчки поміняв би виноски місцями.
+        kh = hashlib.md5(','.join(keys).encode()).hexdigest()[:6]
+        name = f"{node}_{kh}_{view[0]}_{view[1]}_{size[0]}_{hi or 'all'}_{upto}{'_fat' if fat else ''}{cam}.png"
         out = os.path.join(self.tmp, name)
         if self.fresh or not os.path.exists(out):
             if camera is None:
@@ -486,64 +435,7 @@ class Renders:
         return {k: v for k, v in json.loads(m.group(1))}
 
 
-def classify(path, n, hi_mode=False):
-    """Мітка кожного пікселя: −1 тло, −2 сіра деталь, i — деталь i (за відтінком)."""
-    im = Image.open(path).convert('RGB')
-    a = np.asarray(im).astype(np.uint8)
-    hsv = np.asarray(im.convert('HSV')).astype(float)
-    H, S, V = hsv[..., 0] * 360 / 255, hsv[..., 1] / 255, hsv[..., 2] / 255
-    bg = np.abs(a.astype(int) - a[0, 0].astype(int)).sum(-1) < 10
-    lab = np.full(H.shape, -2, int)
-    lab[bg] = -1
-    sat = (S > 0.35) & (V > 0.15) & ~bg
-    if hi_mode:
-        lab[sat] = 0
-    else:
-        for i in range(n):
-            d = np.abs((H - i * 360 / n + 180) % 360 - 180)
-            lab[sat & (d < 180 / n)] = i
-    return a, lab
-
-
-def anchors(lab, n):
-    """Для кожної деталі: кількість пікселів і точка НА деталі, найближча до її центроїда."""
-    out = []
-    for i in range(n):
-        ys, xs = np.nonzero(lab == i)
-        if len(xs) == 0:
-            out.append((0, None)); continue
-        cx, cy = xs.mean(), ys.mean()
-        j = np.argmin((xs - cx) ** 2 + (ys - cy) ** 2)
-        out.append((int(len(xs)), (int(xs[j]), int(ys[j]))))
-    return out
-
-
-def finish_image(a, lab, out_path, edge_mm=0.14, pad_frac=0.05):
-    """Тло — біле, межі між деталями — темні (на папері без кольору форма читається
-    лише по них), кадр обрізаний до вмісту."""
-    ys, xs = np.nonzero(lab != -1)
-    if len(xs) == 0:
-        sys.exit('порожній рендер: ' + out_path)
-    x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
-    edge = np.zeros(lab.shape, bool)
-    edge[:, 1:] |= lab[:, 1:] != lab[:, :-1]
-    edge[1:, :] |= lab[1:, :] != lab[:-1, :]
-    # товщина лінії у пікселях — від масштабу кадру (≈ 12 px/мм при 1400 px на 120 мм)
-    k = max(1, round(edge_mm * (x1 - x0) / 110))
-    for _ in range(k - 1):
-        e2 = edge.copy()
-        e2[:, 1:] |= edge[:, :-1]; e2[1:, :] |= edge[:-1, :]
-        edge = e2
-    out = a.copy()
-    out[lab == -1] = 255
-    out[edge] = (45, 45, 45)
-    px, py = int((x1 - x0) * pad_frac) + k + 2, int((y1 - y0) * pad_frac) + k + 2
-    X0, X1 = max(0, x0 - px), min(out.shape[1], x1 + px + 1)
-    Y0, Y1 = max(0, y0 - py), min(out.shape[0], y1 + py + 1)
-    Image.fromarray(out[Y0:Y1, X0:X1]).save(out_path, optimize=True)
-    return (X0, Y0, X1 - X0, Y1 - Y0)
-
-
+# classify / anchors / finish_image — tools/hue_callouts.py (спільні з media-kit)
 def data_uri(path):
     return 'data:image/png;base64,' + base64.b64encode(open(path, 'rb').read()).decode()
 
@@ -574,15 +466,8 @@ class View:
             if not items:
                 continue
             items = sorted(items, key=lambda l: l[1][1])
-            ys_ = [iy + p[1] * s for _, p in items]
             # розсунути підписи, щоб не наїжджали, і не вилазити за блок
-            for i in range(1, len(ys_)):
-                ys_[i] = max(ys_[i], ys_[i - 1] + LABEL_ROW)
-            over = ys_[-1] - (y + bh - 4.5)
-            if over > 0:
-                ys_ = [v - over for v in ys_]
-            for i in range(len(ys_) - 2, -1, -1):
-                ys_[i] = min(ys_[i], ys_[i + 1] - LABEL_ROW)
+            ys_ = spread_rows([iy + p[1] * s for _, p in items], LABEL_ROW, y + bh - 4.5)
             for (t, p), ly in zip(items, ys_):
                 ax, ay = ix + p[0] * s, iy + p[1] * s
                 if side == 'l':
