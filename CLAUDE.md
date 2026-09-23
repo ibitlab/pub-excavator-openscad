@@ -27,4 +27,4 @@
 - **Друкований набір** — `print3d-parts/` (окремі компоненти під зварювання, 1:5), генерується своїм `print3d-parts/make.sh`; обгортка підключає модель як бібліотеку з `part="none"` і **не змінює її жодним рядком**. Набір самодостатній: `check_print.py` і `make_bom.py` лежать у ньому ж. Нова деталь у моделі — рядок у `print3d-parts/parts.tsv`.
 - **Теки `*_deprecated` — заморожені, не чіпати.** Наразі це `print3d_deprecated/` (зварні вузли 1:7). Не оновлювати, не перезапускати, не правити під зміни моделі, не шукати там прикладів і не читати «щоб звіритися» — це марно витрачений контекст. Вони існують лише як архів. Розвивається тільки `print3d-parts/`.
 
-Skills проєкту: `scad-mechanism`, `new-assembly`, `build-version`, `part-drawings`, `browser-verify`, `web-safety`, `media-kit`, `print-kit`, `publish`, `design-review`, `research-sweep`, `agent-analytics`.
+Skills проєкту: `scad-mechanism`, `new-assembly`, `build-version`, `part-drawings`, `browser-verify`, `web-safety`, `media-kit`, `print-kit`, `print-sheets`, `publish`, `design-review`, `research-sweep`, `agent-analytics`.

@@ -51,7 +51,7 @@
 | `tools/agent_analytics.py` | Аналітика агентної роботи за журналами Claude Code (токени, хвилини, ролі). |
 | `tools/git-hooks/pre-commit` | Git-хук: перед комітом змін у `scad/` перевіряє перекриття пластин. Увімкнути один раз: `git config core.hooksPath tools/git-hooks`. |
 | `CLAUDE.md` | Правила проєкту для Claude Code (мова, коміти, де що лежить). |
-| `.claude/skills/` | Skills проєкту: `scad-mechanism` (правила моделі й чеклист), `new-assembly` (рецепт нового вузла), `build-version`, `part-drawings`, `browser-verify` (перевірка сторінок у headless Chrome), `media-kit` (матеріали для публікацій), `design-review`, `research-sweep`, `agent-analytics`. Усе локально в репозиторії, у `~/.claude` нічого не ставиться. |
+| `.claude/skills/` | Skills проєкту: `scad-mechanism` (правила моделі й чеклист), `new-assembly` (рецепт нового вузла), `build-version`, `part-drawings`, `browser-verify` (перевірка сторінок у headless Chrome), `media-kit` (матеріали для публікацій), `print-kit` (друкований набір 1:5), `print-sheets` (аркуші розкладки 1:1), `design-review`, `research-sweep`, `agent-analytics`. Усе локально в репозиторії, у `~/.claude` нічого не ставиться. |
 | `.claude/workflows/` | Збережені багатоагентні workflow: `design-review` (рецензенти + спростування) і `research-sweep` (дослідники + критик). Кожен агент одразу пише результат у `docs/reviews/…` або `docs/research/…`, щоб нічого не губилось при збої ліміту. |
 
 Перевірка збігу двох незалежних реалізацій (OpenSCAD ↔ Python): діапазони кутів збігаються з точністю 0.1°, гілка важільної системи ковша — 0.000 мм.
