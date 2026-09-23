@@ -36,6 +36,7 @@ import datetime
 import hashlib
 import html
 import json
+import math
 import os
 import re
 import shutil
@@ -55,6 +56,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from make_assembly_pdf import to_pdf, CHROME_CANDIDATES                              # noqa: E402
 from stl_mesh import read_stl, silhouette, as_circle                                 # noqa: E402
 from hue_callouts import classify, anchors, finish_image, spread_rows                # noqa: E402
+from caliper_dims import dims_for, bounds_with                                       # noqa: E402
 
 SCAD = os.path.join(HERE, 'sheets.scad')
 
@@ -62,8 +64,7 @@ SCAD = os.path.join(HERE, 'sheets.scad')
 PAGE_W, PAGE_H, MARGIN = 210, 297, 10
 CW, CH = PAGE_W - 2 * MARGIN, PAGE_H - 2 * MARGIN      # 190 × 277
 HEAD_H, FOOT_H = 9.0, 9.0
-PAD = 1.6            # відступ контуру від рамки комірки
-DIM_B, DIM_R = 4.6, 4.6   # місце під розмірну лінію знизу і праворуч
+PAD = 1.6            # відступ контуру (разом з розмірами) від рамки комірки
 GAP = 1.2            # проміжок між комірками
 LABEL_ROW = 4.0      # крок виносок на рендері
 MAX_IMG_W = 125      # рендер на аркуші розкладки не ширший за це
@@ -215,7 +216,9 @@ class Cell:
         elif m['pin']:
             dims = f"Ø{fmt(m['pin']['d'])} × {fmt(m['pin']['L'])} · голівка Ø{fmt(m['pin']['head'])}"
         else:
-            dims = f"{fmt(m['w'])} × {fmt(m['h'])} · h {fmt(m['z'])}"
+            # Габарит за осями сторінки тут НЕ пишеться: для повернутої чи клиноподібної
+            # деталі його не зняти штангенциркулем. Розміри — на кресленні (caliper_dims).
+            dims = f"h {fmt(m['z'])}"
             small = [h for h in m['holes'] if h['circle'] and h['circle'][2] < 8]
             if small:
                 ds = sorted({round(h['circle'][2], 1) for h in small})
@@ -231,74 +234,82 @@ class Cell:
         self.lines = lines
         self.band = sum(s * 1.28 for _, s, _ in lines) + 1.0
         self.text_w = max(text_w(t, s) for t, s, _ in lines)
-        self.has_dims = not (m['ring'] or m['pin']) and min(m['w'], m['h']) >= 4
-        self.pin_dim = bool(m['pin'])
+        # Розміри — лише ті, що знімаються штангенциркулем (tools/caliper_dims.py);
+        # кільця обходяться Ø у підписі. Габарит комірки рахується разом з ними.
+        self.dims = dims_for(m['poly']) if not m['ring'] and min(m['w'], m['h']) >= 3 else []
+        self.gb = bounds_with(m['poly'], self.dims)          # (x0, y0, x1, y1) деталь + розміри
 
     def size(self, rot):
-        ow, oh = (self.m['h'], self.m['w']) if rot else (self.m['w'], self.m['h'])
-        dr = DIM_R if self.has_dims else 0
-        db = DIM_B if (self.has_dims or self.pin_dim) else 0
-        w = max(ow + 2 * PAD + dr, self.text_w + 2 * PAD)
-        h = self.band + oh + 2 * PAD + db
+        gw, gh = self.gb[2] - self.gb[0], self.gb[3] - self.gb[1]
+        if rot:
+            gw, gh = gh, gw
+        w = max(gw + 2 * PAD, self.text_w + 2 * PAD)
+        h = self.band + gh + 2 * PAD
         return w, h
 
     def svg(self, x, y, rot):
         m = self.m
         w, h = self.size(rot)
-        poly = m['poly']
-        if rot:
-            poly = affinity.rotate(poly, -90, origin=(0, 0))
-            b = poly.bounds
-            poly = affinity.translate(poly, -b[0], -b[1])
-        ow, oh = (m['h'], m['w']) if rot else (m['w'], m['h'])
+        gx0, gy0, gx1, gy1 = self.gb
+        # поворот комірки на −90°: (px, py) → (py, −px); зсув — щоб мінімум габариту став у (0, 0)
+        mx, my = (gy0, -gx1) if rot else (gx0, gy0)
         ox, oy = x + PAD, y + self.band + PAD
+
+        def T(p):
+            px, py = float(p[0]), float(p[1])
+            if rot:
+                px, py = py, -px
+            return ox + px - mx, oy + py - my
+
+        def D(v):                                            # напрямок після повороту
+            return (v[1], -v[0]) if rot else (v[0], v[1])
+
         out = [f'<rect class="cell" x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}" rx="1.2"/>']
         ty = y + 1.0
         for t, s, st in self.lines:
             ty += s * 1.28
             cls = {'b': 'tt', 'i': 'tn', 'w': 'tw', 'n': 'tx'}.get(st, 'td')
             out.append(f'<text class="{cls}" x="{x + PAD:.2f}" y="{ty - s * 0.28:.2f}" font-size="{s}">{html.escape(t)}</text>')
-        out.append(f'<path class="part" d="{svg_path(poly, ox, oy)}"/>')
+        out.append(f'<path class="part" d="{svg_path(m["poly"], T)}"/>')
         # діаметри великих отворів — усередині
         for hole in m['holes']:
             c = hole['circle']
             if c and c[2] >= 8:
-                cx, cy = (c[0], c[1])
-                if rot:                                   # той самий поворот на −90°, що й у контуру
-                    cx, cy = c[1] - b[0], -c[0] - b[1]
-                out.append(f'<text class="th" x="{ox + cx:.2f}" y="{oy + cy + 0.75:.2f}" font-size="2.1" text-anchor="middle">Ø{fmt(c[2])}</text>')
-        if self.has_dims:
-            out.append(dim_line(ox, oy + oh + 2.2, ox + ow, oy + oh + 2.2, fmt(ow), vertical=False))
-            out.append(dim_line(ox + ow + 2.2, oy, ox + ow + 2.2, oy + oh, fmt(oh), vertical=True))
-        elif self.pin_dim:
-            L = m['pin']['L']
-            if ow >= oh:
-                out.append(dim_line(ox, oy + oh + 2.2, ox + ow, oy + oh + 2.2, fmt(ow), vertical=False))
-            else:
-                out.append(dim_line(ox + ow + 2.2, oy, ox + ow + 2.2, oy + oh, fmt(oh), vertical=True))
+                cx, cy = T((c[0], c[1]))
+                out.append(f'<text class="th" x="{cx:.2f}" y="{cy + 0.75:.2f}" font-size="2.1" text-anchor="middle">Ø{fmt(c[2])}</text>')
+        for d in self.dims:
+            out.append(dim_svg(d, T, D))
         return '\n'.join(out)
 
 
-def svg_path(poly, dx, dy):
+def svg_path(poly, T):
     def ring(coords):
-        return 'M' + ' L'.join(f'{px + dx:.2f},{py + dy:.2f}' for px, py in coords) + ' Z'
+        return 'M' + ' L'.join('{:.2f},{:.2f}'.format(*T(p)) for p in coords) + ' Z'
     parts = [ring(poly.exterior.coords)] + [ring(r.coords) for r in poly.interiors]
     return ' '.join(parts)
 
 
-def dim_line(x0, y0, x1, y1, txt, vertical):
-    t = 0.9
-    if vertical:
-        s = (f'<line class="dim" x1="{x0:.2f}" y1="{y0:.2f}" x2="{x1:.2f}" y2="{y1:.2f}"/>'
-             f'<line class="dim" x1="{x0 - t:.2f}" y1="{y0:.2f}" x2="{x0 + t:.2f}" y2="{y0:.2f}"/>'
-             f'<line class="dim" x1="{x0 - t:.2f}" y1="{y1:.2f}" x2="{x0 + t:.2f}" y2="{y1:.2f}"/>'
-             f'<text class="tm" font-size="2.0" text-anchor="middle" transform="translate({x0 + 2.4:.2f},{(y0 + y1) / 2:.2f}) rotate(-90)">{txt}</text>')
-    else:
-        s = (f'<line class="dim" x1="{x0:.2f}" y1="{y0:.2f}" x2="{x1:.2f}" y2="{y1:.2f}"/>'
-             f'<line class="dim" x1="{x0:.2f}" y1="{y0 - t:.2f}" x2="{x0:.2f}" y2="{y0 + t:.2f}"/>'
-             f'<line class="dim" x1="{x1:.2f}" y1="{y0 - t:.2f}" x2="{x1:.2f}" y2="{y0 + t:.2f}"/>'
-             f'<text class="tm" font-size="2.0" text-anchor="middle" x="{(x0 + x1) / 2:.2f}" y="{y0 + 2.6:.2f}">{txt}</text>')
-    return s
+def dim_svg(d, T, D):
+    """Розмірна лінія довільного напрямку: лінія з рисками на кінцях, виносні лінії від
+    точок дотику, текст уздовж лінії (читається знизу або зліва, як на кресленнях)."""
+    (x0, y0), (x1, y1) = T(d.line[0]), T(d.line[1])
+    ux, uy = D(d.text_dir)
+    nx, ny = -uy * 0.9, ux * 0.9
+    s = [f'<line class="dim" x1="{x0:.2f}" y1="{y0:.2f}" x2="{x1:.2f}" y2="{y1:.2f}"/>',
+         f'<line class="dim" x1="{x0 - nx:.2f}" y1="{y0 - ny:.2f}" x2="{x0 + nx:.2f}" y2="{y0 + ny:.2f}"/>',
+         f'<line class="dim" x1="{x1 - nx:.2f}" y1="{y1 - ny:.2f}" x2="{x1 + nx:.2f}" y2="{y1 + ny:.2f}"/>']
+    for a, b in d.exts:
+        (ax, ay), (bx, by) = T(a), T(b)
+        s.append(f'<line class="ext" x1="{ax:.2f}" y1="{ay:.2f}" x2="{bx:.2f}" y2="{by:.2f}"/>')
+    tx, ty = T(d.text_pos)
+    ang = math.degrees(math.atan2(uy, ux))
+    while ang >= 90:
+        ang -= 180
+    while ang < -90:
+        ang += 180
+    s.append(f'<text class="tm" font-size="2.0" text-anchor="middle" dominant-baseline="middle" '
+             f'transform="translate({tx:.2f},{ty:.2f}) rotate({ang:.1f})">{html.escape(d.text)}</text>')
+    return ''.join(s)
 
 
 # ------------------------------------------------------------------ пакування (MaxRects, зверху-ліворуч)
@@ -355,7 +366,9 @@ class MaxRects:
 
 def pack_best(cells, w, h):
     """Пакує комірки кожною евристикою і кількома порядками; повертає розкладку, де все
-    вмістилось і лишився найбільший суцільний вільний прямокутник (туди стануть рендери)."""
+    вмістилось і лишився найбільший суцільний вільний прямокутник (туди стануть рендери).
+    Якщо все не вміщається — ту, що вмістила найбільше (за площею); решта піде на
+    сторінку-продовження."""
     orders = {
         'long': sorted(cells, key=lambda c: -max(c.m['w'], c.m['h'])),
         'area': sorted(cells, key=lambda c: -c.size(False)[0] * c.size(False)[1]),
@@ -365,22 +378,21 @@ def pack_best(cells, w, h):
     for heur in ('bssf', 'baf', 'tl'):
         for oname, order in orders.items():
             P = MaxRects(w, h, heur)
-            placed, ok = [], True
+            placed, left = [], []
             for c in order:
                 w0, h0 = c.size(False); w1, h1 = c.size(True)
                 r = P.insert([(w0, h0, False), (w1, h1, True)], tag=c.part['file'])
                 if r is None:
-                    ok = False; break
-                placed.append((c, r))
-            if not ok:
-                continue
-            key = (P.largest_free(), sum(f[2] * f[3] for f in P.free))
+                    left.append(c)
+                else:
+                    placed.append((c, r))
+            key = (not left, sum(r[2] * r[3] for _, r in placed), P.largest_free(), sum(f[2] * f[3] for f in P.free))
             if best is None or key > best[0]:
-                best = (key, P, placed, heur, oname)
-    if best is None:
-        return None, None
-    print(f'  пакування: {best[3]}/{best[4]}, найбільший вільний прямокутник {best[0][0]:.0f} мм²')
-    return best[1], best[2]
+                best = (key, P, placed, left, heur, oname)
+    _, P, placed, left, heur, oname = best
+    print(f'  пакування: {heur}/{oname}, найбільший вільний прямокутник {P.largest_free():.0f} мм²'
+          + (f'; НЕ вмістилось {len(left)}: ' + ', '.join(c.part['file'] for c in left) if left else ''))
+    return P, placed, left
 
 
 # ------------------------------------------------------------------ рендери
@@ -560,6 +572,7 @@ svg text {{ font-family: {FONT}; }}
 .th {{ fill: #1f4e9c; }}
 .tm {{ fill: #1f4e9c; }}
 .dim {{ stroke: #1f4e9c; stroke-width: 0.18; }}
+.ext {{ stroke: #1f4e9c; stroke-width: 0.12; }}
 .lead {{ stroke: #222; stroke-width: 0.22; }}
 .dot {{ fill: #222; }}
 .tl {{ fill: #000; font-weight: 600; }}
@@ -590,8 +603,8 @@ svg text {{ font-family: {FONT}; }}
 """
 
 
-def head_svg(no, total, sheet, nparts, nfiles, ver, date):
-    t = f'Аркуш {no} з {total} · {sheet["title"].upper()}'
+def head_svg(no, total, sheet, nparts, nfiles, ver, date, cont=0):
+    t = f'Аркуш {no} з {total} · {sheet["title"].upper()}' + (f' · продовження {cont}' if cont else '')
     return (f'<text class="head" font-size="5.0" x="0" y="4.6">{html.escape(t)}</text>'
             f'<text class="hsub" font-size="2.5" x="{CW}" y="4.6" text-anchor="end">print3d-parts · {html.escape(ver)} · {date}</text>'
             f'<text class="hsub" font-size="2.5" x="0" y="7.9">{html.escape(sheet["sub"])} · деталей {nparts} у {nfiles} файлах · '
@@ -648,11 +661,16 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
     for c in cells:
         if c.part['file'] in notes:
             c.__init__(c.part, c.step, c.m, notes[c.part['file']])
-    # --- пакування комірок
+    # --- пакування комірок: один аркуш; що не вмістилось — на сторінку-продовження
     area_y0 = HEAD_H + 1.0
-    packer, placed = pack_best(cells, CW, CH - area_y0 - FOOT_H - 1.0)
-    if packer is None:
-        sys.exit(f'аркуш {no}: комірки не вміщаються на A4 — треба ділити аркуш')
+    pages_cells, rest = [], cells
+    while rest:
+        packer, placed, rest = pack_best(rest, CW, CH - area_y0 - FOOT_H - 1.0)
+        if not placed:
+            sys.exit(f'аркуш {no}: комірка {rest[0].part["file"]} більша за сторінку')
+        pages_cells.append((packer, placed))
+    if len(pages_cells) > 1:
+        print(f'  УВАГА: аркуш {no} не вмістився на одній сторінці — сторінок {len(pages_cells)}')
     # --- рендери вузлів: спершу по першому ракурсу кожного вузла, потім другі
     views, leftover, covered = [], [], {}
     labels_by_key = {k: parts[k]['file'] + (f" ×{parts[k]['qty']}" if parts[k]['qty'] > 1 else '') for k in keys}
@@ -673,40 +691,46 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
     missing = [k for k in keys if k not in covered]
     if missing:
         print('  УВАГА: без виноски на жодному ракурсі:', ', '.join(missing))
-    # --- рендери у вільне місце
-    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{CW}mm" height="{CH}mm" viewBox="0 0 {CW} {CH}">']
-    svg.append(head_svg(no, len(SHEETS), sheet, sum(c.part['qty'] for c in cells), len(cells), ver, date))
-    svg.append(f'<g transform="translate(0,{area_y0})">')
-    for c, (x, y, w, h, rot) in placed:
-        svg.append(c.svg(x, y, rot))
-    render_boxes = []
-    for vw in views:
-        best = None
-        for f in sorted(packer.free, key=lambda f: -f[2] * f[3]):
-            fx, fy, fw, fh = f
-            avail_w = fw - GAP - vw.lw_l - vw.lw_r
-            if avail_w < 40:
-                continue
-            s = min(avail_w / vw.pw, (fh - GAP - 3.5) / vw.ph, MAX_IMG_W / vw.pw)
-            bw, bh = vw.box(s)
-            if vw.pw * s < 40 or vw.ph * s < 28 or bh > fh - GAP:
-                continue
-            if best is None or vw.pw * s > best[0]:
-                best = (vw.pw * s, fx, fy, s, bw, bh)
-        if best is None:
-            leftover.append(vw); continue
-        _, fx, fy, s, bw, bh = best
-        packer.place(fx, fy, bw, bh, tag='render:' + vw.title)
-        svg.append(f'<rect class="rbox" x="{fx:.2f}" y="{fy:.2f}" width="{bw:.2f}" height="{bh:.2f}"/>')
-        svg.append(vw.svg(fx, fy, s))
-        render_boxes.append(dict(view=vw.title, x=fx, y=fy + area_y0, w=bw, h=bh, img_w=vw.pw * s, labels=len(vw.labels)))
-    svg.append('</g>')
+    # --- сторінки розкладки; рендери — у вільне місце (спершу на першій сторінці)
     note = (['Пальці й шайби НЕ клеїти. Куди який — у виносках', 'на рендері й у кроках на наступній сторінці.']
             if sheet['renders'] == ['pins'] else
             ['Розкладіть надруковане по контурах, потім клейте', 'у порядку кроків на наступній сторінці.'])
-    svg.append(foot_svg(note))
-    svg.append('</svg>')
-    page_html = f'<div class="page">{"".join(svg)}</div>'
+    page_html, render_boxes, cells_report = '', [], []
+    leftover = list(views)
+    for pi, (packer, placed) in enumerate(pages_cells):
+        svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{CW}mm" height="{CH}mm" viewBox="0 0 {CW} {CH}">']
+        svg.append(head_svg(no, len(SHEETS), sheet, sum(c.part['qty'] for c, _ in placed), len(placed), ver, date, cont=pi))
+        svg.append(f'<g transform="translate(0,{area_y0})">')
+        for c, (x, y, w, h, rot) in placed:
+            svg.append(c.svg(x, y, rot))
+            cells_report.append((pi + 1, c, (x, y, w, h, rot)))
+        still = []
+        for vw in leftover:
+            best = None
+            for f in sorted(packer.free, key=lambda f: -f[2] * f[3]):
+                fx, fy, fw, fh = f
+                avail_w = fw - GAP - vw.lw_l - vw.lw_r
+                if avail_w < 40:
+                    continue
+                s = min(avail_w / vw.pw, (fh - GAP - 3.5) / vw.ph, MAX_IMG_W / vw.pw)
+                bw, bh = vw.box(s)
+                if vw.pw * s < 40 or vw.ph * s < 28 or bh > fh - GAP:
+                    continue
+                if best is None or vw.pw * s > best[0]:
+                    best = (vw.pw * s, fx, fy, s, bw, bh)
+            if best is None:
+                still.append(vw); continue
+            _, fx, fy, s, bw, bh = best
+            packer.place(fx, fy, bw, bh, tag='render:' + vw.title)
+            svg.append(f'<rect class="rbox" x="{fx:.2f}" y="{fy:.2f}" width="{bw:.2f}" height="{bh:.2f}"/>')
+            svg.append(vw.svg(fx, fy, s))
+            render_boxes.append(dict(view=vw.title, page=pi + 1, x=fx, y=fy + area_y0, w=bw, h=bh, img_w=vw.pw * s, labels=len(vw.labels)))
+        leftover = still
+        svg.append('</g>')
+        svg.append(foot_svg(note))
+        svg.append('</svg>')
+        page_html += f'<div class="page">{"".join(svg)}</div>'
+    free_area = sum(f[2] * f[3] for P, _ in pages_cells for f in P.free)
     # --- сторінки кроків
     steps_html = ''
     step_report = []
@@ -734,16 +758,18 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
                       % (no, html.escape(sheet['title']), ''.join(overview_html(vw) for vw in leftover)))
     report['sheets'].append(dict(
         no=no, slug=sheet['slug'], title=sheet['title'], files=len(cells), parts=sum(c.part['qty'] for c in cells),
-        cells=[dict(file=c.part['file'], step=c.step['step'], x=round(x, 2), y=round(y + area_y0, 2), w=round(w, 2), h=round(h, 2),
+        layout_pages=len(pages_cells),
+        cells=[dict(file=c.part['file'], step=c.step['step'], page=pg, x=round(x, 2), y=round(y + area_y0, 2), w=round(w, 2), h=round(h, 2),
                     rot=rot, outline=[round(c.m['w'], 2), round(c.m['h'], 2), round(c.m['z'], 2)],
+                    dims=[dict(kind=d.kind, value=round(d.value, 2), text=d.text) for d in c.dims],
                     holes=[round(h_['circle'][2], 2) if h_['circle'] else [round(h_['w'], 2), round(h_['h'], 2)] for h_ in c.m['holes']],
                     ring=c.m['ring'], pin=c.m['pin'], note=notes.get(c.part['file'], ''))
-               for c, (x, y, w, h, rot) in placed],
+               for pg, c, (x, y, w, h, rot) in cells_report],
         renders_on_sheet=render_boxes,
         renders_overflow=[vw.title for vw in leftover],
         views={node: dict(keys=nk, chosen=ch, ref_px=rf) for node, (nk, ch, rf) in node_views.items()},
         uncovered=missing, steps=step_report,
-        free_area=round(sum(f[2] * f[3] for f in packer.free), 0)))
+        free_area=round(free_area, 0)))
     return page_html, steps_html
 
 
