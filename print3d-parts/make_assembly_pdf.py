@@ -37,6 +37,8 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+from author import line as author_line       # noqa: E402  авторство по центру колонтитула (AUTHORS у корені)
 CHROME_CANDIDATES = [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
@@ -356,19 +358,20 @@ def to_pdf(html_path, pdf_path, chrome, footer_title, date):
         with open(js, 'w') as f:
             f.write("""
 import puppeteer from 'puppeteer-core';
-const [chrome, src, out, title, date] = process.argv.slice(2);
+const [chrome, src, out, title, date, author] = process.argv.slice(2);
 const b = await puppeteer.launch({ executablePath: chrome, headless: 'new' });
 const p = await b.newPage();
 await p.goto('file://' + src, { waitUntil: 'load' });
-const style = 'font:7pt -apple-system,Helvetica,Arial,sans-serif;color:#555;width:100%;padding:0 12mm;';
+const style = 'font:7pt -apple-system,Helvetica,Arial,sans-serif;color:#555;width:100%;padding:0 12mm;position:relative;';
 await p.pdf({ path: out, format: 'A4', printBackground: true, preferCSSPageSize: true,
   displayHeaderFooter: true, headerTemplate: '<div></div>',
   footerTemplate: `<div style="${style}"><span>${title}</span>` +
+    `<span style="position:absolute;left:0;right:0;text-align:center;color:#888">${author}</span>` +
     `<span style="float:right">${date} · с. <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>` });
 await b.close();
 """)
         try:
-            r = subprocess.run(['node', js, chrome, html_path, pdf_path, footer_title, date],
+            r = subprocess.run(['node', js, chrome, html_path, pdf_path, footer_title, date, author_line()],
                                cwd=media, capture_output=True, text=True)
         finally:
             os.remove(js)

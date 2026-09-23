@@ -19,6 +19,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tools'))
+from author import md_footer                  # noqa: E402  авторство внизу BOM.md (AUTHORS у корені)
+
 PLA = 1.24          # г/см³
 VOL = "об'єм, см³"  # ключ із апострофом — окремою змінною, щоб не лізти в f-рядок
 
@@ -132,3 +135,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    print(md_footer())

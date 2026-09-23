@@ -19,6 +19,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from make_bom import sheet, sheets           # noqa: E402  (лежить поруч, у цій же теці)
+from author import md_footer                 # noqa: E402  (tools/ уже в sys.path завдяки make_bom)
 
 # Рендери готового вузла на початку розділу. Два ракурси: загальний вигляд і
 # КРІПЛЕННЯ зблизька — на загальному виді вуха ковша, вежа F і вилка D ховаються
@@ -270,3 +271,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    print(md_footer())

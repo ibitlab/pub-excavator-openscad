@@ -10,6 +10,8 @@ SCAD=scad/excavator_boom.scad
 # Звіти й VERSION.md читають окремо від README — застереження має бути в кожному з них.
 WARN='> **УВАГА:** згенеровано штучним інтелектом. Кваліфікований інженер не перевіряв, машину за цією моделлю не збудовано й не випробувано.
 > Використання — на власний ризик і відповідальність; відомі недоробки конструкції — у `SAFETY.md`.'
+# Авторство — дрібно внизу кожного згенерованого документа; джерело — AUTHORS у корені
+AUTHOR="$(head -1 AUTHORS)"
 GIT_BASE="$(git rev-parse --short HEAD) ($(git log -1 --pretty=%s))"
 [ -n "$(git status --porcelain)" ] && GIT_BASE="$GIT_BASE + незакомічені зміни робочого дерева"
 mkdir -p versions
@@ -98,6 +100,7 @@ tools/.venv/bin/python tools/trim_png.py "$DIR"/renders/part_*.png \
 (cd tools && python3 kinematics.py > "../$DIR/docs/02-kinematics.md" && python3 strength.py --boom 120x80x5 --stick 100x60x5 > "../$DIR/docs/03-strength.md")
 for f in "$DIR/docs/02-kinematics.md" "$DIR/docs/03-strength.md"; do   # позначка "згенеровано" з номером версії
   printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+  printf '\n---\n<sub>%s</sub>\n' "$AUTHOR" >> "$f"
 done
 openscad -o "$DIR/docs/ranges.echo" "$SCAD" >/dev/null 2>&1
 # Вихідні дані пишуться вручну і можуть бути відсутні (їх немає у публічній копії) — не зупиняти через це збирання
@@ -141,6 +144,7 @@ cp "$DIR"/drawings/png/*_cheek.png docs/img/sketch_cheek.png
   echo "## BOM і креслення"; echo "- bom/bom.md, bom/bom.csv — специфікація; dxf/*.dxf — контури пластин 1:1; drawings/parts.pdf (+ png/) — ескізи з основними розмірами."; echo
   echo "## Перетини пластин"; echo '```'; tail -1 "$DIR/docs/overlaps.txt"; echo '```'
   echo "## Рухомі пари"; echo '```'; grep РЕЗУЛЬТАТ "$DIR/docs/motion.txt"; echo '```'
+  echo; echo '---'; echo "<sub>$AUTHOR</sub>"
 } > "$DIR/VERSION.md"
 echo "== готово: $DIR"
 if [ $COMMIT -eq 1 ]; then

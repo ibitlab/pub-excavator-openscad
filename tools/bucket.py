@@ -10,6 +10,7 @@ bucket.py — ківш міні-екскаватора: профіль, міст
 """
 import math, sys, argparse
 import kinematics as K
+from author import credit, md_footer
 from shapely.geometry import Polygon, Point, LineString
 from shapely.ops import unary_union
 from shapely import affinity
@@ -342,7 +343,7 @@ def plot(b, g, fn):
         ax.plot(*zip((0, 0), (g['qx'], g['qy'])), 'k.', ms=6)
         ax.set_aspect('equal'); ax.set_title(f'omega = {om:.0f}°, L цил. = {ss["Lc"]:.0f}'); ax.grid(alpha=0.3)
         ax.set_xlim(-520, 560); ax.set_ylim(-420, 560)
-    fig.tight_layout(); fig.savefig(fn, dpi=70)
+    fig.tight_layout(); credit(fig); fig.savefig(fn, dpi=70)
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -354,5 +355,6 @@ if __name__ == '__main__':
         tgt[k] = float(v) if '.' in v else int(v)
     bad = report(b, g)
     print(); strength_report(b, g)
+    print(md_footer())
     if a.png: plot(b, g, a.png)
     sys.exit(1 if bad else 0)

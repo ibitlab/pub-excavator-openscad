@@ -10,6 +10,7 @@ bom_drawings.py — специфікація (BOM), DXF 1:1 та PDF-ескіз�
 Запуск: tools/bom_drawings.sh [--out ТЕКА]
 """
 import subprocess, json, re, os, sys, math, argparse, csv, tempfile, datetime, textwrap
+from author import credit, md_footer          # авторство на кожному аркуші й у bom.md (AUTHORS у корені)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCAD = os.path.join(ROOT, 'scad', 'excavator_boom.scad')
@@ -160,6 +161,7 @@ def make_pdf(path, bom, flats, tubes, version):
     WARN = 'УВАГА: згенеровано ШІ, інженером не перевірено, машину не випробувано — використання на власний ризик; див. SAFETY.md'
     png_dir = os.path.join(os.path.dirname(path), 'png'); os.makedirs(png_dir, exist_ok=True); cnt = [0]
     def save(pdf, fig, name):
+        credit(fig)                          # авторство — дрібно в куті кожного аркуша
         cnt[0] += 1; pdf.savefig(fig); fig.savefig(os.path.join(png_dir, f'{cnt[0]:02d}_{name}.png'), dpi=90); plt.close(fig)
     def page(title, sub=''):
         fig = plt.figure(figsize=A4); ax = fig.add_axes([0.06, 0.10, 0.88, 0.66]); ax.set_aspect('equal'); ax.axis('off')
@@ -376,7 +378,7 @@ def main():
            '- Маслянки М6/М8 — 8 шт (осі A, B, E, R, J, Q, G + запас); стопорні пластини/шплінти пальців — 12 к-тів.', '',
            '## 7. Підсумок маси', '', f'| Труби | Пластини (зі Ст3-деталями ковша) | Зносостійкі деталі ковша | Втулки | Пальці | **Разом (стріла + рукоять + важелі + ківш; без циліндрів і колони)** |', '|---|---|---|---|---|---|',
            f'| {tot_tube:.1f} кг | {tot_plate:.1f} кг | {tot_wear:.1f} кг | {tot_round:.1f} кг | {tot_pin:.1f} кг | **{tot_tube + tot_plate + tot_wear + tot_round + tot_pin:.1f} кг** |', '']
-    open(os.path.join(out, 'bom', 'bom.md'), 'w', encoding='utf-8').write('\n'.join(md))
+    open(os.path.join(out, 'bom', 'bom.md'), 'w', encoding='utf-8').write('\n'.join(md) + md_footer())
     with open(os.path.join(out, 'bom', 'bom.csv'), 'w', newline='', encoding='utf-8') as fcsv:
         w = csv.writer(fcsv)
         w.writerow([f'# {version}: згенеровано ШІ, інженером не перевірено, машину не випробувано — на власний ризик; див. SAFETY.md'])
