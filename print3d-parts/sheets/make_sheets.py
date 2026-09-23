@@ -54,9 +54,10 @@ ROOT = os.path.dirname(KIT)
 sys.path.insert(0, KIT)
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from make_assembly_pdf import to_pdf, CHROME_CANDIDATES                              # noqa: E402
+from make_pos_drawing import compute as compute_positions                            # noqa: E402
 from stl_mesh import read_stl, silhouette, as_circle                                 # noqa: E402
 from hue_callouts import classify, anchors, finish_image, spread_rows                # noqa: E402
-from caliper_dims import dims_for, bounds_with                                       # noqa: E402
+from caliper_dims import dims_for, bounds_with, PlacedDim                            # noqa: E402
 
 SCAD = os.path.join(HERE, 'sheets.scad')
 
@@ -134,8 +135,11 @@ def find_stl(file):
 
 
 def short_name(desc):
-    """«Щока перелому стріли, лист 8 мм» → «Щока перелому стріли»."""
+    """«Щока перелому стріли, лист 8 мм» → «Щока перелому стріли». Розміри в металі
+    («Ніж ковша 300×100×12») з назви прибираються: на аркуші — лише друковані."""
     s = re.split(r' — |, | \(', desc)[0].strip()
+    s = re.sub(r'\s*\d+(?:\.\d+)?(?:×\d+(?:\.\d+)?)+\s*', ' ', s).strip()
+    s = re.sub(r'\s*Ø\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)?', '', s).strip()     # «Гільза циліндра стріли Ø63» — Ø у металі
     return s if len(s) <= 34 else s[:33] + '…'
 
 
@@ -310,6 +314,179 @@ def dim_svg(d, T, D):
     s.append(f'<text class="tm" font-size="2.0" text-anchor="middle" dominant-baseline="middle" '
              f'transform="translate({tx:.2f},{ty:.2f}) rotate({ang:.1f})">{html.escape(d.text)}</text>')
     return ''.join(s)
+
+
+# ------------------------------------------------------------------ схеми «де саме стає накладна деталь»
+def mkdim(A, B, P0, P1, text, tdir, toff):
+    """Розмір між точками A і B з розмірною лінією P0–P1 (паралельною tdir), виносними від
+    A і B, підписом посередині зі зсувом toff. Той самий вигляд, що й розміри в комірках."""
+    A, B, P0, P1 = (np.array(p, float) for p in (A, B, P0, P1))
+    exts = []
+    for F, P in ((A, P0), (B, P1)):
+        d = P - F
+        L = np.hypot(*d)
+        if L > 0.8:
+            u = d / L
+            exts.append((tuple(F + u * 0.5), tuple(P + u * 0.6)))
+    tp = (P0 + P1) / 2 + np.array(toff, float)
+    pts = [P0, P1, tp + np.array(tdir) * len(text) * 0.6, tp - np.array(tdir) * len(text) * 0.6, A, B]
+    return PlacedDim('scheme', 0.0, (tuple(P0), tuple(P1)), exts, tuple(tp), tuple(tdir), text, pts)
+
+
+class Scheme:
+    """Схема «де саме стає накладна деталь» — та сама, що в img/positions.png, але у стилі
+    аркуша: вид збоку у масштабі 1:1 (як і контури поруч — деталь можна прикласти) і
+    переріз з торця; усі числа — друковані мм, про метал ані слова. Контури й відступи —
+    з make_pos_drawing.compute(): слід деталі на базі виміряний із перерізу моделі."""
+
+    def __init__(self, d, files, scale):
+        sp, up, s = d['spec'], d['spec']['up'], 1.0 / scale
+        self.key, self.up = sp['key'], up
+        fpart, fbase = files.get(sp['key'], sp['key']), files.get(sp['base'], sp['base'])
+        self.fpart, self.fbase = fpart, fbase
+        P = lambda p: (p[0] * s, -p[1] * s)                       # мм моделі → друковані, вісь Y униз
+        self.part = [[P(p) for p in loop] for loop in d['part']]
+        self.base = [[P(p) for p in loop] for loop in d['base']]
+        surf = -d['surf'] * s
+        bx0, bx1 = d['bx'][0] * s, d['bx'][1] * s
+        px0, px1 = d['px'][0] * s, d['px'][1] * s
+        x0 = d['x0'] * s
+        bend = sp.get('front_is_bend')
+        fx1 = 0.0 if bend else bx1
+        bt = d['base_t'] * s
+        allp = [p for loop in self.part + self.base for p in loop]
+        xmin, xmax = min(p[0] for p in allp), max(p[0] for p in allp)
+        ymin, ymax = min(p[1] for p in allp), max(p[1] for p in allp)
+        pxs = [p for loop in self.part for p in loop]
+        p_xmin, p_xmax = min(p[0] for p in pxs), max(p[0] for p in pxs)
+        p_edge = min(p[1] for p in pxs) if up > 0 else max(p[1] for p in pxs)   # дальня від бази кромка деталі
+        # у SVG вісь Y униз: деталь «над» базою (up > 0) має менші Y; знак «від бази» = up
+        away = -up
+        self.dims, self.notes = [], []
+        # відступи сліду від кромок бази — з іншого боку бази, двома рівнями
+        y1 = surf - away * (bt + 3.0)
+        y2 = y1 - away * 3.6
+        rear = px0 - bx0
+        if rear > 0.05:
+            self.dims.append(mkdim((bx0, surf), (px0, surf), (bx0, y1), (px0, y1), fmt(rear), (1, 0), (0, -away * 1.2)))
+        else:
+            self.notes.append(((bx0, y1 - away * 0.6), 'врівень із задньою кромкою', 'start' if up > 0 else 'start'))
+        front = fx1 - px1
+        ftxt = fmt(front) + (' до лінії перелому' if bend else '')
+        self.dims.append(mkdim((px1, surf), (fx1, surf), (px1, y2), (fx1, y2), ftxt, (1, 0), (0, -away * 1.2)))
+        # отвори: відстань уздовж — за дальньою кромкою деталі, висота — ліворуч від усього
+        self.holes = [(n, P(h)) for n, h in d['holes']]
+        lx = xmin - 3.0
+        for j, (n, (hx, hy)) in enumerate(self.holes):
+            ya = p_edge + away * (3.0 + 3.6 * j)
+            self.dims.append(mkdim((x0, ya), (hx, ya), (x0, ya), (hx, ya), f'{n} {fmt(abs(hx - x0))}', (1, 0), (0, away * 1.2)))
+            xa = lx - 3.6 * j
+            self.dims.append(mkdim((xa, surf), (xa, hy), (xa, surf), (xa, hy), f'{n} {fmt(abs(hy - surf))}', (0, -1), (-1.2, 0)))
+        self.ref = (x0, surf, p_edge + away * (3.0 + 3.6 * len(self.holes)) )   # червона штрихова: x, від, до
+        self.ref_text = sp.get('front_note') or f'задня кромка {fbase}'
+        self.surf_line = ((xmin - 3, surf), (xmax + 3, surf))
+        self.label_part = ((p_xmax + 1.5, (surf + p_edge) / 2), fpart)
+        self.label_base = ((bx1 + 1.5 if not bend or bx1 > p_xmax else xmax + 1.5, surf - away * bt / 2), fbase)
+        # --- переріз з торця: вузька база — 2:1, широка (накладка ковша 60 мм) — 1:1
+        bw, g, t = d['base_w'] * s, d['gap'] * s, d['t'] * s
+        k = 2 if bw <= 30 else 1
+        H = min((abs(p_edge - surf)) * k, 26.0)
+        self.sec = dict(k=k, bw=bw * k, bt=bt * k, g=g * k, t=t * k, H=H, gap_txt=fmt(g), edge_txt=fmt((bw - g) / 2 - t),
+                        cap=f'переріз з торця · {k}:1', sizes=f'{fbase} {fmt(bw)} × {fmt(bt)} · пластина {fmt(t)}')
+        # --- габарити виду збоку (з розмірами) і перерізу
+        xs = [xmin, xmax, lx - 3.6 * max(0, len(self.holes) - 1) - 4, p_xmax + 1.5 + text_w(fpart, 2.3),
+              x0 + 1.2 + text_w(self.ref_text, 1.9), self.label_base[0][0] + text_w(fbase, 2.0)]
+        ys = [ymin, ymax, y2 - away * 2.5, self.ref[2] + away * 4.6]      # + підпис нуля за кінцем лінії (away — від бази)
+        for dm in self.dims:
+            for p in dm.pts:
+                xs.append(float(p[0])); ys.append(float(p[1]))
+        self.side_box = (min(xs) - 1.5, min(ys) - 1.5, max(xs) + 1.5, max(ys) + 1.5)
+        sw = self.sec['bw'] + 2 * max(4.0, text_w(self.sec['edge_txt'], 2.0))
+        sh = self.sec['H'] + self.sec['bt'] + 2 * 5.5 + 7
+        sw = max(sw, text_w(self.sec['cap'], 2.0) + 2, text_w(self.sec['sizes'], 1.9) + 2)
+        self.sec_box = (sw, sh)
+        self.title = f'Де стає {fpart} на {fbase}'
+        self.sub = f"{sp['sub']} · 1:1, розміри друковані (мм)"
+        self.band = 6.4
+        side_w = self.side_box[2] - self.side_box[0]
+        side_h = self.side_box[3] - self.side_box[1]
+        self.w = max(side_w + 6 + sw, text_w(self.title, 2.5) + 4, text_w(self.sub, 1.9) + 4) + 2 * PAD
+        self.h = self.band + max(side_h, sh) + 2 * PAD
+
+    def svg(self, x, y):
+        out = [f'<rect class="sbox" x="{x:.2f}" y="{y:.2f}" width="{self.w:.2f}" height="{self.h:.2f}" rx="1.2"/>',
+               f'<text class="tt" x="{x + PAD:.2f}" y="{y + 3.2:.2f}" font-size="2.5">{html.escape(self.title)}</text>',
+               f'<text class="tn" x="{x + PAD:.2f}" y="{y + 5.9:.2f}" font-size="1.9">{html.escape(self.sub)}</text>']
+        ox, oy = x + PAD - self.side_box[0], y + self.band + PAD - self.side_box[1]
+        T = lambda p: (ox + float(p[0]), oy + float(p[1]))
+        D = lambda v: (v[0], v[1])
+        (a, b) = self.surf_line
+        out.append(f'<line class="surf" x1="{T(a)[0]:.2f}" y1="{T(a)[1]:.2f}" x2="{T(b)[0]:.2f}" y2="{T(b)[1]:.2f}"/>')
+        for loop in self.base:
+            out.append(f'<path class="sbase" d="{loop_path(loop, T)}"/>')
+        for loop in sorted(self.part, key=lambda l: -abs(_area(l))):
+            out.append(f'<path class="spart" d="{loop_path(loop, T)}"/>')
+        rx, ry0, ry1 = self.ref
+        (X, Y0), (_, Y1) = T((rx, ry0)), T((rx, ry1))
+        out.append(f'<line class="ref" x1="{X:.2f}" y1="{Y0:.2f}" x2="{X:.2f}" y2="{Y1:.2f}"/>')
+        out.append(f'<text class="tr" x="{X + 1.2:.2f}" y="{Y1 - self.up * 1.3 + (0.9 if self.up < 0 else 0):.2f}" font-size="1.9">{html.escape(self.ref_text)}</text>')
+        for n, (hx, hy) in self.holes:
+            cx, cy = T((hx, hy))
+            out.append(f'<circle class="hole" cx="{cx:.2f}" cy="{cy:.2f}" r="1.1"/>'
+                       f'<line class="hole" x1="{cx - 1.7:.2f}" y1="{cy:.2f}" x2="{cx + 1.7:.2f}" y2="{cy:.2f}"/>'
+                       f'<line class="hole" x1="{cx:.2f}" y1="{cy - 1.7:.2f}" x2="{cx:.2f}" y2="{cy + 1.7:.2f}"/>')
+        for dm in self.dims:
+            out.append(dim_svg(dm, T, D))
+        for (p, txt, anc) in self.notes:
+            px, py = T(p)
+            out.append(f'<text class="tm" x="{px:.2f}" y="{py:.2f}" font-size="2.0" text-anchor="{anc}">{html.escape(txt)}</text>')
+        (p, txt) = self.label_part
+        px, py = T(p)
+        out.append(f'<text class="tl" x="{px:.2f}" y="{py:.2f}" font-size="2.3" dominant-baseline="middle" fill="#1f4e9c">{html.escape(txt)}</text>')
+        (p, txt) = self.label_base
+        px, py = T(p)
+        out.append(f'<text class="tn" x="{px:.2f}" y="{py:.2f}" font-size="2.0" dominant-baseline="middle">{html.escape(txt)}</text>')
+        # --- переріз
+        sc = self.sec
+        sx = x + PAD + (self.side_box[2] - self.side_box[0]) + 6 + self.sec_box[0] / 2   # центр по X
+        sy = y + self.band + PAD + 5.5 + (sc['H'] if self.up > 0 else sc['bt'])         # поверхня бази
+        up = self.up
+        bw, bt, g, t, H = sc['bw'], sc['bt'], sc['g'], sc['t'], sc['H']
+        yb0, yb1 = sorted([sy, sy + up * bt])
+        out.append(f'<rect class="sbase" x="{sx - bw / 2:.2f}" y="{yb0:.2f}" width="{bw:.2f}" height="{bt:.2f}"/>')
+        for sgn in (-1, 1):
+            px0 = sx + (g / 2 if sgn > 0 else -g / 2 - t)
+            yp0, yp1 = sorted([sy, sy - up * H])
+            out.append(f'<rect class="spart" x="{px0:.2f}" y="{yp0:.2f}" width="{t:.2f}" height="{H:.2f}"/>')
+        yg = sy - up * (H + 3.0)
+        out.append(dim_svg(mkdim((sx - g / 2, sy - up * H), (sx + g / 2, sy - up * H), (sx - g / 2, yg), (sx + g / 2, yg),
+                                 'проміжок ' + sc['gap_txt'], (1, 0), (0, -up * 1.2)), lambda p: p, D))
+        ye = sy + up * (bt + 3.0)
+        out.append(dim_svg(mkdim((sx - bw / 2, sy + up * bt), (sx - g / 2 - t, sy + up * bt), (sx - bw / 2, ye), (sx - g / 2 - t, ye),
+                                 sc['edge_txt'] + ' від кромки', (1, 0), (0, up * 1.2)), lambda p: p, D))
+        ycap = y + self.h - PAD - 2.8
+        out.append(f'<text class="tn" x="{sx:.2f}" y="{ycap:.2f}" font-size="2.0" text-anchor="middle">{html.escape(sc["cap"])}</text>')
+        out.append(f'<text class="tn" x="{sx:.2f}" y="{ycap + 2.6:.2f}" font-size="1.9" text-anchor="middle">{html.escape(sc["sizes"])}</text>')
+        return '\n'.join(out)
+
+    def html(self, max_w=None):
+        w = self.w
+        s = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w:.2f} {self.h:.2f}" width="{w:.2f}mm" height="{self.h:.2f}mm">'
+        return s + self.svg(0, 0) + '</svg>'
+
+
+def loop_path(loop, T):
+    return 'M' + ' L'.join('{:.2f},{:.2f}'.format(*T(p)) for p in loop) + ' Z'
+
+
+def _area(pts):
+    return 0.5 * sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
+
+
+def build_schemes():
+    """Схеми для чотирьох накладних деталей, ключ → Scheme."""
+    data, rows, files = compute_positions()
+    return {d['spec']['key']: Scheme(d, files, 5) for d in data}
 
 
 # ------------------------------------------------------------------ пакування (MaxRects, зверху-ліворуч)
@@ -583,6 +760,17 @@ svg text {{ font-family: {FONT}; }}
 .ruler {{ stroke: #000; stroke-width: 0.3; }}
 .tf {{ fill: #333; }}
 .rbox {{ fill: none; stroke: #bbb; stroke-width: 0.2; stroke-dasharray: 1 0.8; }}
+.sbox {{ fill: none; stroke: #9a9a9a; stroke-width: 0.25; }}
+.sbase {{ fill: #e6e6e6; stroke: #777; stroke-width: 0.3; }}
+.spart {{ fill: #cfe0f5; stroke: #1f4e9c; stroke-width: 0.4; fill-rule: evenodd; }}
+.surf {{ stroke: #999; stroke-width: 0.18; stroke-dasharray: 1.2 0.9; }}
+.ref {{ stroke: #b03030; stroke-width: 0.25; stroke-dasharray: 1.6 0.9; }}
+.tr {{ fill: #b03030; }}
+.hole {{ fill: none; stroke: #b03030; stroke-width: 0.3; }}
+.card.wide {{ grid-column: 1 / -1; }}
+.card.wide .row {{ display: flex; gap: 4mm; align-items: flex-start; }}
+.card.wide .row > svg:first-child {{ flex: 0 0 auto; max-width: 42%; }}
+.card.wide .row > svg:last-child {{ flex: 1 1 auto; min-width: 0; max-width: 100%; height: auto; }}
 
 .steps {{ break-before: page; }}
 .steps h2 {{ font-size: 14pt; margin: 0 0 2mm; padding-bottom: 1.2mm; border-bottom: 1pt solid #000; }}
@@ -649,10 +837,11 @@ def same_size_notes(cells):
     return {f: '; '.join(v) for f, v in notes.items()}
 
 
-def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
+def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report, schemes):
     keys = [s['key'] for s in steps if s['node'] in sheet['nodes']]
     step_of = {s['key']: s for s in steps}
     print(f'== аркуш {no}: {sheet["title"]} — {len(keys)} файлів')
+    sheet_schemes = [schemes[k] for k in keys if k in schemes]      # «де саме стає» — для накладних деталей цього аркуша
     cells = []
     for k in keys:
         p = parts.get(k) or sys.exit(f'assembly.tsv: ключа {k} немає в parts.tsv')
@@ -695,8 +884,9 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
     note = (['Пальці й шайби НЕ клеїти. Куди який — у виносках', 'на рендері й у кроках на наступній сторінці.']
             if sheet['renders'] == ['pins'] else
             ['Розкладіть надруковане по контурах, потім клейте', 'у порядку кроків на наступній сторінці.'])
-    page_html, render_boxes, cells_report = '', [], []
+    page_html, render_boxes, cells_report, scheme_boxes = '', [], [], []
     leftover = list(views)
+    schemes_left = list(sheet_schemes)
     for pi, (packer, placed) in enumerate(pages_cells):
         svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{CW}mm" height="{CH}mm" viewBox="0 0 {CW} {CH}">']
         svg.append(head_svg(no, len(SHEETS), sheet, sum(c.part['qty'] for c, _ in placed), len(placed), ver, date, cont=pi))
@@ -704,6 +894,15 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
         for c, (x, y, w, h, rot) in placed:
             svg.append(c.svg(x, y, rot))
             cells_report.append((pi + 1, c, (x, y, w, h, rot)))
+        # схеми — раніше за рендери: вони 1:1, як і контури, і потрібніші при склеюванні
+        for sc in list(schemes_left):
+            r = packer.insert([(sc.w, sc.h, False)], tag='scheme:' + sc.key)
+            if r is None:
+                continue
+            sx_, sy_, _, _, _ = r
+            svg.append(sc.svg(sx_, sy_))
+            scheme_boxes.append(dict(key=sc.key, page=pi + 1, x=round(sx_, 2), y=round(sy_ + area_y0, 2), w=round(sc.w, 2), h=round(sc.h, 2)))
+            schemes_left.remove(sc)
         still = []
         for vw in leftover:
             best = None
@@ -750,7 +949,7 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
                 step_report.append(dict(step=st['step'], key=k, view=vw.view, px=int(cnt)))
                 if cnt < 60:
                     print(f'  УВАГА: крок {st["step"]} ({k}) — деталь майже не видно ({cnt} px)')
-                parts_html.append(card_html(st, parts[k], vw))
+                parts_html.append(card_html(st, parts[k], vw, schemes.get(k)))
         parts_html.append('</div></section>')
         steps_html = ''.join(parts_html)
     elif leftover:
@@ -767,6 +966,8 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report):
                for pg, c, (x, y, w, h, rot) in cells_report],
         renders_on_sheet=render_boxes,
         renders_overflow=[vw.title for vw in leftover],
+        schemes_on_sheet=scheme_boxes,
+        schemes_overflow=[sc.key for sc in schemes_left],
         views={node: dict(keys=nk, chosen=ch, ref_px=rf) for node, (nk, ch, rf) in node_views.items()},
         uncovered=missing, steps=step_report,
         free_area=round(free_area, 0)))
@@ -780,17 +981,42 @@ def overview_html(vw):
             + vw.svg(0, 0, s) + '</svg>')
 
 
-def card_html(st, part, vw):
+def printed_text(s, scale=5):
+    """Текст кроку з assembly.tsv написано для металу («12 мм (2.4 друкованих)», «отвір
+    Ø66», «R55»); на аркушах — лише друковані міліметри. Кути (°) не чіпаються,
+    порівняння пальців у дужках («Ø30×182 проти Ø30×74») прибирається зовсім: точні
+    друковані розміри пальців стоять на самому аркуші."""
+    def mm(v):
+        return fmt(float(v) / scale)
+    s = re.sub(r'\d+(?:\.\d+)? мм \((\d+(?:\.\d+)?)(?: друкованих)?\)', lambda m: m.group(1) + ' мм', s)
+    s = re.sub(r'\s*\(Ø\d+×\d+ проти Ø\d+×\d+\)', '', s)
+    s = re.sub(r'палець Ø\d+', 'палець', s)                   # точний друкований Ø пальця — на аркуші пальців
+    s = re.sub(r'(Гільза циліндра \S+) Ø\d+', r'\1', s)       # Ø63 — це діаметр поршня, друкована гільза його не має
+    s = re.sub(r'Ø(\d+(?:\.\d+)?)', lambda m: 'Ø' + mm(m.group(1)), s)
+    s = re.sub(r'\bR(\d+(?:\.\d+)?)', lambda m: 'R' + mm(m.group(1)), s)
+    s = re.sub(r'(\d+(?:\.\d+)?) мм', lambda m: mm(m.group(1)) + ' мм', s)
+    s = re.sub(r'(?:вилкою|пакетом) (\d+)', lambda m: m.group(0).split()[0] + ' ' + mm(m.group(1)), s)
+    s = s.replace(' мм', ' мм')
+    s = s.replace('розділ «Де саме стають накладні деталі»', 'схема поруч')
+    return s
+
+
+def card_html(st, part, vw, scheme=None):
+    """Картка кроку. Для накладної деталі — на всю ширину: рендер ліворуч, схема «де саме
+    стає» праворуч (та сама, що на аркуші розкладки, якщо там знайшлося місце)."""
     s = (90 - vw.lw_l - vw.lw_r) / vw.pw
     s = min(s, 62 / vw.ph)
     bw, bh = vw.box(s)
     img = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {bw:.2f} {bh:.2f}" width="{bw:.2f}mm" height="{bh:.2f}mm">'
            + vw.svg(0, 0, s, with_title=False) + '</svg>')
     qty = f" ×{part['qty']}" if part['qty'] > 1 else ''
-    where = '' if st['where'] in ('—', '-', '') else f'<span class="where">{html.escape(st["where"])}</span>'
-    how = '' if st['how'] in ('—', '-', '') else f'<div class="how">{html.escape(st["how"])}</div>'
-    return (f'<div class="card">{img}<div class="txt"><b>{html.escape(st["step"])}</b> &nbsp;<code>{html.escape(part["file"])}</code>{qty} '
-            f'— {html.escape(short_name(part["desc"]))}<br>{where}{how}</div></div>')
+    where = '' if st['where'] in ('—', '-', '') else f'<span class="where">{html.escape(printed_text(st["where"]))}</span>'
+    how = '' if st['how'] in ('—', '-', '') else f'<div class="how">{html.escape(printed_text(st["how"]))}</div>'
+    txt = (f'<div class="txt"><b>{html.escape(st["step"])}</b> &nbsp;<code>{html.escape(part["file"])}</code>{qty} '
+           f'— {html.escape(short_name(part["desc"]))}<br>{where}{how}</div>')
+    if scheme is None:
+        return f'<div class="card">{img}{txt}</div>'
+    return f'<div class="card wide"><div class="row">{img}{scheme.html()}</div>{txt}</div>'
 
 
 # ------------------------------------------------------------------ головне
@@ -812,11 +1038,13 @@ def main():
     date = datetime.date.today().isoformat()
     R = Renders(a.tmp, a.fresh)
     report = dict(version=ver, date=date, sheets=[])
+    schemes = build_schemes()
+    print(f'  схем «де саме стає»: {len(schemes)} ({", ".join(schemes)})')
     pages, tails = [], []
     for no, sheet in enumerate(SHEETS, 1):
         if a.only and no != a.only:
             continue
-        p, t = build_sheet(no, sheet, parts, steps, R, ver, date, not a.no_steps, report)
+        p, t = build_sheet(no, sheet, parts, steps, R, ver, date, not a.no_steps, report, schemes)
         pages.append(p); tails.append(t)
     # усі деталі набору мають бути на якомусь аркуші
     on_sheets = {c['file'] for s in report['sheets'] for c in s['cells']}

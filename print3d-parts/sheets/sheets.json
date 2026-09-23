@@ -397,6 +397,11 @@
     "стріла, згори (55°/25°)",
     "стріла, знизу (125°/295°)"
    ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [
+    "F_tower",
+    "D_clevis"
+   ],
    "views": {
     "boom": {
      "keys": [
@@ -892,6 +897,10 @@
    "renders_overflow": [
     "рукоять, згори (55°/25°)"
    ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [
+    "H_clevis"
+   ],
    "views": {
     "stick": {
      "keys": [
@@ -1024,7 +1033,7 @@
     }
    ],
    "free_area": 12192.0,
-   "pdf_page": 4
+   "pdf_page": 5
   },
   {
    "no": 3,
@@ -1366,21 +1375,22 @@
      "note": ""
     }
    ],
-   "renders_on_sheet": [
-    {
-     "view": "ківш, згори (55°/205°)",
-     "page": 1,
-     "x": 0.0,
-     "y": 156.73186547741568,
-     "w": 149.72495873795302,
-     "h": 85.27042328632804,
-     "img_w": 107.936958737953,
-     "labels": 8
-    }
-   ],
+   "renders_on_sheet": [],
    "renders_overflow": [
+    "ківш, згори (55°/205°)",
     "ківш, знизу (125°/295°)"
    ],
+   "schemes_on_sheet": [
+    {
+     "key": "bk_ear",
+     "page": 1,
+     "x": 0.0,
+     "y": 184.63,
+     "w": 149.46,
+     "h": 61.3
+    }
+   ],
+   "schemes_overflow": [],
    "views": {
     "bucket": {
      "keys": [
@@ -1512,8 +1522,8 @@
      "px": 11729
     }
    ],
-   "free_area": 10528.0,
-   "pdf_page": 7
+   "free_area": 20967.0,
+   "pdf_page": 8
   },
   {
    "no": 4,
@@ -1673,6 +1683,8 @@
     "коромисло, згори (55°/115°)",
     "тяга, знизу (125°/205°)"
    ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [],
    "views": {
     "rocker": {
      "keys": [
@@ -1755,7 +1767,7 @@
     }
    ],
    "free_area": 24632.0,
-   "pdf_page": 10
+   "pdf_page": 12
   },
   {
    "no": 5,
@@ -1911,7 +1923,7 @@
      "page": 1,
      "x": 0.0,
      "y": 129.32,
-     "w": 39.08,
+     "w": 39.4,
      "h": 132.49,
      "rot": true,
      "outline": [
@@ -1957,7 +1969,7 @@
      "file": "30_cyl_stick_rod",
      "step": "6.4",
      "page": 1,
-     "x": 40.28,
+     "x": 40.6,
      "y": 129.32,
      "w": 30.85,
      "h": 126.49,
@@ -2000,7 +2012,7 @@
      "file": "31_cyl_bucket_body",
      "step": "6.5",
      "page": 1,
-     "x": 72.33,
+     "x": 72.65,
      "y": 158.19,
      "w": 105.3,
      "h": 41.39,
@@ -2048,7 +2060,7 @@
      "file": "32_cyl_bucket_rod",
      "step": "6.6",
      "page": 1,
-     "x": 72.33,
+     "x": 72.65,
      "y": 200.78,
      "w": 97.3,
      "h": 33.51,
@@ -2099,6 +2111,8 @@
     "колона, згори (55°/25°)",
     "гідроциліндри, знизу (125°/205°)"
    ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [],
    "views": {
     "cyl": {
      "keys": [
@@ -2209,8 +2223,8 @@
      "px": 137369
     }
    ],
-   "free_area": 16836.0,
-   "pdf_page": 12
+   "free_area": 17659.0,
+   "pdf_page": 14
   },
   {
    "no": 6,
@@ -2711,6 +2725,8 @@
    "renders_overflow": [
     "уся машина, знизу (125°/115°)"
    ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [],
    "views": {
     "pins": {
      "keys": [
@@ -2865,9 +2881,9 @@
     }
    ],
    "free_area": 19472.0,
-   "pdf_page": 15
+   "pdf_page": 17
   }
  ],
  "renders_made": 0,
- "pdf_pages": 18
+ "pdf_pages": 20
 }

@@ -168,12 +168,14 @@ def frame(spec, geo, loops):
     return -90.0, 0.0, 0.0        # ківш: вісь x (до зуба) стає вертикаллю
 
 
-def main():
-    out_png, out_json = sys.argv[1], sys.argv[2]
-    rep = open(sys.argv[3], encoding='utf-8').read() if len(sys.argv) > 3 else ''
-    m = re.search(r'=== друк компонентів 1:(\d+)', rep)
-    scale = int(m.group(1)) if m else 5
+def compute():
+    """Контури й числа для всіх чотирьох деталей — те, з чого малюється positions.png
+    і пишеться positions.json. Окремою функцією, бо ті самі схеми малюють ще аркуші
+    розкладки (sheets/make_sheets.py) — у своєму стилі, але з цих самих чисел.
 
+    Повертає (data, rows, files): data — по деталі контури part/base у системі, де база
+    горизонтальна (surf — її поверхня, bx/px — кромки бази й слід деталі, x0 — нуль
+    відліку, holes — центри отворів), rows — рядки для positions.json (мм у металі)."""
     files = part_files()
     with tempfile.TemporaryDirectory() as tmp:
         run(os.path.join(tmp, 'g.echo'), k='""')
@@ -230,6 +232,16 @@ def main():
 
     # Округлення: контур приходить багатокутником, звідси 11.999 замість 12
     rows = [[a, b, round(v, 1)] for a, b, v in rows]
+    return data, rows, files
+
+
+def main():
+    out_png, out_json = sys.argv[1], sys.argv[2]
+    rep = open(sys.argv[3], encoding='utf-8').read() if len(sys.argv) > 3 else ''
+    m = re.search(r'=== друк компонентів 1:(\d+)', rep)
+    scale = int(m.group(1)) if m else 5
+
+    data, rows, files = compute()
     bases = {sp['key']: files.get(sp['base'], sp['base']) for sp in SPECS}
     json.dump({'scale': scale, 'rows': rows, 'bases': bases}, open(out_json, 'w', encoding='utf-8'),
               ensure_ascii=False, indent=1)
@@ -253,6 +265,7 @@ def main():
         head(fig, 0.055, (top_in - 0.24) / FH,
              f'{sp["title"]}  —  {fpart} на {fbase}', sp['sub'])
         surf, (bx0, bx1), (px0, px1), x0 = d['surf'], d['bx'], d['px'], d['x0']
+        by0, by1 = span(d['base'])[2:]
         w = max(bx1 - bx0, px1 - px0)
 
         ax = fig.add_axes([0.05, (top_in - ROW + 0.30) / FH, 0.60, (ROW - 1.05) / FH])
