@@ -46,6 +46,51 @@ description: Правила й чеклист для роботи з парам�
 5. Якщо змінились сили чи перерізи — `python3 tools/strength.py --boom … --stick …` і перевірити найменший запас.
 6. Зібрати версію (skill `build-version`). Поки цього не зроблено, не кажи «готово».
 
+## Коли модель треба лише ЧИТАТИ — карта замість файлу
+
+Рендер, експорт чи підпис деталей не потребують читання `excavator_boom.scad`
+(1000+ рядків ≈ 15 тис. токенів). Сталі факти, яких вистачає:
+
+- **Системи координат вузлів**: стріла — A = 0, хорда A→B уздовж +X, +Z угору; рукоять —
+  B = 0, B→E уздовж +X, +Z — зовнішній бік; ківш — E = 0, x до вістря зуба; `v_rocker` —
+  R = 0, J на +X; `v_link` — J = 0, Q на +X; `v_cyl_*` — вушко бази в нулі, вісь +X;
+  `post` і `m_*` — світова система в поточній позі (`th_eff`, `psi_eff`, `om_eff`).
+  Товщина всіх пластин — уздовж Y, усі осі шарнірів ∥ Y (`plate_xz`, `bushing`, `pin`).
+- **Вибір деталі**: `$sel = "ключ"` лишає одну деталь вузла, `$one = true` — одну з
+  дзеркальної пари (`sides()`); присвоювати всередині блоку (див. пастку нижче). Ключі =
+  аргументи `sel("…")`: `tube`, `gusset`, `cover`, `D_clevis`, `D_saddle`, `F_tower`,
+  `A_bushing`, `A_doubler`, `B_fork`, `cheek`, `B_bushing`, `G_boss`, `heel_rib`, `H_clevis`,
+  `H_saddle`, `E_bushing`, `R_bushing`, `tip_plate`, `rocker_plate`, `J_boss`, `link_plate`,
+  `link_boss`, `bk_side`, `bk_shell`, `bk_top`, `bk_lip_rib`, `bk_edge`, `bk_tooth`, `bk_ear`,
+  `bk_boss_E`, `bk_spacer_Q`, `bk_wear`. Без ключа: `washers_B()`, пальці (`pin()` у
+  `assembly()`, `post_schematic()`, `rocker_link_pts()` — останні лише при `$sel == ""`),
+  плити колони (`post_schematic()`); сегменти труби стріли — окремі `boom_seg1()`,
+  `boom_seg2()` під спільним `sel("tube")`.
+- **`part_by_name(n)`**: вузли `boom`, `stick`, `bucket`, `rocker`, `link`, `post` і підгрупи
+  `boom_tubes`, `boom_gussets`, `boom_bracket_D`, `boom_bracket_F`, `boom_foot_boss`,
+  `boom_fork_B`, `stick_tube`, `stick_cheeks`, `stick_bracket_H`, `stick_tip`, `bucket_sides`,
+  `bucket_shell`, `bucket_top`, `bucket_edge`, `bucket_ears`, `bucket_wear`; `v_*` — у
+  власних системах; `m_*` — у світовій. `part="none"` нічого не малює і завжди друкує
+  `!!! невідома деталь: none` — не помилка, фільтрувати.
+- **Точки шарнірів** (2D, `p3()` робить 3D): `pt_B(th)`, `pt_D(th)`, `pt_F(th)`,
+  `pt_E(th,psi)`, `pt_G(th,psi)`, `pt_H(th,psi)`, `pt_R(th,psi)`, `pt_J(th,psi,om)`,
+  `pt_Q(th,psi,om)`, стала `C_w`, A — початок; локальні `B_l`, `D_l`, `F_l` (стріла),
+  `E_s`, `G_s`, `H_s`, `R_s` (рукоять), `bucket_ear` (ківш).
+- **Довжини пальців** — лише з викликів `pin(p, d, len)` або `echo(VIEW)`→`pins`;
+  `BOM_PINS` бреше про C (skill `print-kit`).
+- **`echo`-блоки**: `VIEW`, `BOM_PARAMS`, `BOM_FLAT`, `BOM_STRIPS`, `BOM_WEAR`, `BOM_SHELL`,
+  `BOM_TUBES`, `BOM_ROUND`, `BOM_PINS`; `GEO` — з `print3d-parts/pos_cut.scad`. Читати:
+  `openscad -o x.echo -D 'part="none"' …`, рядок `ECHO: NAME = [...]` — JSON після
+  заміни `undef` → `null`.
+- **Кольори**: `pin()`, `hyd_cyl_part()` і кожна `sel(...)`-гілка мають власний `color()`;
+  у прев'ю ЗОВНІШНІЙ `color()` перекриває їх — деталі перефарбовуються обгорткою, модель
+  не чіпається (skill `print-sheets`). Змінні моделі (`show_*`, кути) з обгортки НЕ
+  перекрити — тільки `-D`. Видимість: `show_boom`, `show_stick`, `show_cylinders`,
+  `show_bucket_linkage`, `show_bucket`, `show_post`, `show_ground`, `show_envelope`.
+- **Обгортки-приклади**, з яких копіювати: `print3d-parts/parts.scad` (одна деталь на
+  стіл), `print3d-parts/sheets/sheets.scad` (вузол по деталях у кольорах, пальці в
+  світовій системі), `print3d-parts/pos_cut.scad` (переріз крізь вузол).
+
 ## Рендер ≠ геометрія
 
 `openscad -o x.png` без `--render` малює прев'ю, і в прев'ю поверхні деталей, що
