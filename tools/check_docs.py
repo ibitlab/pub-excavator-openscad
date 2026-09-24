@@ -3,7 +3,7 @@
 
   * кожне відносне посилання й картинка в .md веде на файл, що існує; `#якір` — на справжній
     заголовок (правило GitHub: нижній регістр, пробіли → «-», решта розділових знаків геть);
-  * двійники (README, TECHNICAL, QUICKSTART, SAFETY — .md / .uk.md) мають однаковий кістяк:
+  * двійники (README, TECHNICAL, QUICKSTART, SAFETY, STORY — .md / .uk.md) мають однаковий кістяк:
     та сама послідовність заголовків, таблиць (з кількістю рядків), картинок, блоків коду й
     цитат. Номери рядків не звіряються — один перенос рядка ще не розбіжність структури.
 
@@ -17,7 +17,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TWINS = ['README', 'TECHNICAL', 'QUICKSTART', 'SAFETY']
+TWINS = ['README', 'TECHNICAL', 'QUICKSTART', 'SAFETY', 'STORY']
 SKIP = ('_deprecated/', 'versions/', 'node_modules/', '.claude/')
 
 

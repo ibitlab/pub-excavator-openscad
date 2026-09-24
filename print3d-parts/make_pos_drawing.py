@@ -30,7 +30,7 @@ ROOT = os.path.dirname(HERE)
 CUT = os.path.join(HERE, 'pos_cut.scad')
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from bom_drawings import parse_svg_loops                      # noqa: E402
-from author import credit                                     # noqa: E402
+from author import credit, made_with                          # noqa: E402
 
 BLUE, GREY, RED = '#1f4e9c', '0.45', '#c0392b'
 
@@ -356,7 +356,7 @@ def main():
              f'надрукованій деталі (1:{scale}). Контури — з моделі перерізом, відступи '
              'ВИМІРЯНІ з них: слід деталі на базі, а не габарит контуру.',
              fontsize=8.5, color='0.4', va='top')
-    fig.text(0.055, 0.17 / FH, 'УВАГА: згенеровано ШІ, інженер не перевіряв, метал не '
+    fig.text(0.055, 0.17 / FH, f'УВАГА: {made_with()} Інженер не перевіряв, метал не '
              'різаний. Див. SAFETY.md', fontsize=8.5, color='0.45', va='top')
     credit(fig)
     fig.savefig(out_png, dpi=110)

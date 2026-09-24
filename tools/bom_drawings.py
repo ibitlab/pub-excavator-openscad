@@ -10,7 +10,7 @@ bom_drawings.py — специфікація (BOM), DXF 1:1 та PDF-ескіз�
 Запуск: tools/bom_drawings.sh [--out ТЕКА]
 """
 import subprocess, json, re, os, sys, math, argparse, csv, tempfile, datetime, textwrap
-from author import line as author_line, md_footer   # авторство в підвалі кожного аркуша й у bom.md (AUTHORS у корені)
+from author import line as author_line, md_footer, made_with   # авторство в підвалі кожного аркуша, у застереженні й у bom.md (AUTHORS у корені)
 import page_style as ps                        # шапка й підвал — той самий вигляд, що в SHEETS.pdf
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -195,7 +195,7 @@ def make_pdf(path, bom, flats, tubes, version):
     META = f'ескізи деталей · {version} · {date}'                        # як «print3d-parts · версія · дата» в аркушах
     FOOT = 'Ескізи деталей у металі · стріла, рукоять, ківш'
     # Аркуші й DXF фізично йдуть у цех різання окремо від репозиторію — застереження має бути на них самих.
-    WARN = 'УВАГА: згенеровано ШІ, інженером не перевірено, машину не випробувано — використання на власний ризик; див. SAFETY.md'
+    WARN = f'УВАГА: {made_with()} Інженером не перевірено, машину не випробувано — використання на власний ризик; див. SAFETY.md'
     png_dir = os.path.join(os.path.dirname(path), 'png'); os.makedirs(png_dir, exist_ok=True)
     figs = []                                                          # (фігура, назва) — підвал «с. N / M» ставиться, коли відомо M
     def save(pdf, fig, name):
@@ -387,7 +387,7 @@ def main():
             tubes.append(dict(key=key, h=h, w=w, t=th, L=ln, note=note, faces=faces, X1=max(f['x1'] for f in faces.values())))
             print(f"  труба {key:<10} стінки: " + ', '.join(f"{k} {v['x0']:.0f}…{v['x1']:.0f}" for k, v in faces.items()))
     # --- Markdown + CSV
-    rows = []; md = [f'# Специфікація (BOM) — {version}', '', '> **УВАГА:** цю специфікацію, як і всю модель, згенеровано штучним інтелектом. Кваліфікований інженер її не перевіряв, '
+    rows = []; md = [f'# Специфікація (BOM) — {version}', '', f'> **УВАГА:** {made_with()} Кваліфікований інженер цю специфікацію не перевіряв, '
      'машину за цією моделлю не збудовано й не випробувано. Використання — на власний ризик і відповідальність; '
      'відомі недоробки конструкції — у `SAFETY.md`.', '',
      'Згенеровано `tools/bom_drawings.sh` з моделі `scad/excavator_boom.scad`. Розміри в мм, маса — за ρ = 7.85 г/см³.', '']
@@ -435,7 +435,7 @@ def main():
     open(os.path.join(out, 'bom', 'bom.md'), 'w', encoding='utf-8').write('\n'.join(md) + md_footer())
     with open(os.path.join(out, 'bom', 'bom.csv'), 'w', newline='', encoding='utf-8') as fcsv:
         w = csv.writer(fcsv)
-        w.writerow([f'# {version}: згенеровано ШІ, інженером не перевірено, машину не випробувано — на власний ризик; див. SAFETY.md'])
+        w.writerow([f'# {version}: {made_with()} Інженером не перевірено, машину не випробувано — на власний ризик; див. SAFETY.md'])
         w.writerow(['тип', 'деталь', 'к-сть', 'розмір1', 'розмір2', 'розмір3', 'отвори', 'маса_кг', 'примітка']); w.writerows(rows)
     make_pdf(os.path.join(out, 'drawings', 'parts.pdf'), bom, flats, tubes, version)
     if problems:

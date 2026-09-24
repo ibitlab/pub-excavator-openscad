@@ -7,11 +7,12 @@ cd "$(dirname "$0")/.."
 COMMIT=0; DESC=""
 for a in "$@"; do case "$a" in --commit) COMMIT=1 ;; -h|--help) sed -n '2,4p' "$0"; exit 0 ;; *) DESC="$a" ;; esac; done
 SCAD=scad/excavator_boom.scad
-# Звіти й VERSION.md читають окремо від README — застереження має бути в кожному з них.
-WARN='> **УВАГА:** згенеровано штучним інтелектом. Кваліфікований інженер не перевіряв, машину за цією моделлю не збудовано й не випробувано.
-> Використання — на власний ризик і відповідальність; відомі недоробки конструкції — у `SAFETY.md`.'
 # Авторство — дрібно внизу кожного згенерованого документа; джерело — AUTHORS у корені
 AUTHOR="$(head -1 AUTHORS)"
+# Звіти й VERSION.md читають окремо від README — застереження (з авторством, як tools/author.py made_with) має бути в кожному з них.
+WHO="${AUTHOR% · *} (${AUTHOR#* · })"; [ "$WHO" = "$AUTHOR ($AUTHOR)" ] && WHO="$AUTHOR"   # «Ім'я · @нік» → «Ім'я (@нік)»
+WARN="> **УВАГА:** автор — ${WHO}: ідея, задачі, рішення; виконання — ШІ (Claude Code). Кваліфікований інженер не перевіряв, машину за цією моделлю не збудовано й не випробувано.
+> Використання — на власний ризик і відповідальність; відомі недоробки конструкції — у \`SAFETY.md\`."
 GIT_BASE="$(git rev-parse --short HEAD) ($(git log -1 --pretty=%s))"
 [ -n "$(git status --porcelain)" ] && GIT_BASE="$GIT_BASE + незакомічені зміни робочого дерева"
 mkdir -p versions
@@ -55,7 +56,7 @@ render max_reach -5 155 -16
 render dig_deep -38 90 60
 render max_height 58 155 0
 # --viewall --autocenter обов'язкові: з фіксованою камерою кадр обрізав ківш і колону при зміні геометрії
-openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow --render=cgal -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 "$SCAD" >/dev/null 2>&1
+openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow --render=cgal -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 -D show_ground=false "$SCAD" >/dev/null 2>&1   # без землі: площина 9 м з --viewall лишала машині ~10 % кадру
 # ground_span менший за типовий: із --viewall площина 9000 мм ужимає машину вдвічі
 openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true -D ground_span=3000 "$SCAD" >/dev/null 2>&1
 for p in boom stick bucket; do
@@ -104,7 +105,7 @@ fi
 
 # 4б. Картинки для README (єдине згенероване, що лежить поза versions/)
 mkdir -p docs/img
-cp "$DIR/renders/side_default.png" "$DIR/renders/envelope.png" "$DIR/renders/part_boom.png" "$DIR/renders/part_stick.png" "$DIR/renders/part_bucket.png" "$DIR/renders/bucket_motion_2d.png" docs/img/
+cp "$DIR/renders/side_default.png" "$DIR/renders/iso_default.png" "$DIR/renders/envelope.png" "$DIR/renders/part_boom.png" "$DIR/renders/part_stick.png" "$DIR/renders/part_bucket.png" "$DIR/renders/bucket_motion_2d.png" docs/img/
 cp "$DIR/renders/work-range.png" "$DIR/renders/work-range.en.png" docs/img/
 cp "$DIR"/drawings/png/*_cheek.png docs/img/sketch_cheek.png
 # README посилається на ескізи й DXF останньої версії — шлях переписується на нову теку

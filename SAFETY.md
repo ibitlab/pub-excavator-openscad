@@ -2,7 +2,7 @@
 
 # Safety: the known hazards of this particular design
 
-> ⚠️ **Everything in this repository was generated and computed by AI, none of it has been checked by a qualified engineer, and no machine has ever been built or tested from this model.** The full disclaimer is in [README.md, section Disclaimer](README.md#disclaimer). Whatever you do with this material, you do at your own risk and on your own responsibility.
+> ⚠️ **Ihor Ivaniuk (@IBITLAB) is the originator and product owner: organises the AI's work, sets the tasks, makes the decisions. The execution — geometry, calculations, drawings, code and texts — is done by AI (Claude Code by Anthropic).** None of it has been checked by a qualified engineer, and no machine has ever been built or tested from this model. The full disclaimer is in [README.md, section Disclaimer](README.md#disclaimer). Whatever you do with this material, you do at your own risk and on your own responsibility.
 
 This file is not general advice about being careful. It is a list of **the specific places where this design is currently unfinished or rests on assumptions**. It exists so that you do not find out about them through an injury.
 
