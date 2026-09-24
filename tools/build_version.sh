@@ -133,6 +133,11 @@ cp "$DIR/renders/side_default.png" "$DIR/renders/envelope.png" "$DIR/renders/par
 cp "$DIR/renders/work-range.png" "$DIR/renders/work-range.en.png" docs/img/
 cp "$DIR"/renders/part_*_mount.png docs/img/
 cp "$DIR"/drawings/png/*_cheek.png docs/img/sketch_cheek.png
+# README посилається на ескізи й DXF останньої версії — шлях переписується на нову теку
+for f in README.md README.uk.md; do
+  sed -E -i '' "s#versions/V[0-9]{3}-[0-9-]+/(drawings|dxf)/#$DIR/\1/#g" "$f" 2>/dev/null \
+    || sed -E -i "s#versions/V[0-9]{3}-[0-9-]+/(drawings|dxf)/#$DIR/\1/#g" "$f"
+done
 
 # 5. Опис версії
 {
