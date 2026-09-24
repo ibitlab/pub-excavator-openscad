@@ -19,13 +19,21 @@
 //                 обидві плити стають рівно на відстані втулки A. Клеїти лише
 //                 плити у виїмки. Усі кромки, крім нижніх, скруглені.
 //
+//  І прищепка на циліндр (stand_clip): ступінчаста C-скоба, що защіпається знизу
+//  одразу на голий шток і на кінець гільзи. Рукав на гільзі має отвір під штуцер
+//  масляного входу (він у моделі за 25 мм від торця гільзи) — на гільзі скоба сидить
+//  замком, не тертям; торець переходу впирається в гільзу — від втягування шток тримає
+//  упор, від висунення — натяг рукава на штоку. Одна скоба на циліндр, два розміри:
+//  стріла (шток Ø8, гільза Ø15.2) і рукоять з ковшем (Ø5, Ø12).
+//
 //  Розміри — у ДРУКОВАНИХ мм (на відміну від набору): посадка стрижня, шуруп і
 //  виїмка не масштабуються. Від моделі беруться лише контур плити, відстань між
-//  плитами (втулка A) і висота осі A над землею — через parts.scad, який підключає
-//  модель як бібліотеку; ні модель, ні набір цим файлом не змінюються.
+//  плитами (втулка A), висота осі A над землею і діаметри штоків — через parts.scad,
+//  який підключає модель як бібліотеку; ні модель, ні набір цим файлом не змінюються.
 //
 //  Відкритий у OpenSCAD, файл показує стійку з плитами (what = "view").
 //  STL робить make.sh:   openscad -o stl/stand_post.stl -D 'what="post"' stand.scad
+//                        openscad -o stl/clip_boom.stl -D 'what="clip"' -D CLIP_I=0 stand.scad
 // =============================================================================
 include <../parts.scad>
 part = "none";     // модель — лише бібліотека, її збірку не малювати
@@ -33,8 +41,27 @@ pp = "none";       // і жодного компонента набору
 assert(!is_undef(SC) && !is_undef(C_w) && !is_undef(ground_below_A), "print3d-parts/parts.scad або модель не підключилися");
 
 /* [Що малювати] */
-// view — усе разом з плитами; base / peg / post — одна деталь для STL; fit / seat — перевірки посадки
+// view — стійка з плитами; base / peg / post — одна деталь для STL; clip — прищепка
+// CLIP_I; clips — обидві прищепки і одна на циліндрі стріли (картинка);
+// fit / seat — посадка плит; clip_fit / clip_seat — посадка прищепки на циліндрі
 what = "view";
+
+/* [Прищепка на циліндр] */
+// Який циліндр: 0 — стріли (шток Ø8, гільза Ø15.2), 1 — рукояті й ковша (Ø5, Ø12)
+CLIP_I = 0;
+// Рукав на штоку і на гільзі (стріла / решта), друковані мм; на штоку не довший за голий
+// шток при повному втягуванні (6 мм), на гільзі — щоб накрити штуцер за 5 мм від торця
+CLIP_ROD_L = 5;
+CLIP_BODY_L = [10, 8];
+// Кут обхвату обох рукавів: губки при защіпанні розходяться на ~9 % — PLA витримує
+CLIP_ARC = 225;
+// Стінка рукавів (4 лінії сопла)
+CLIP_WALL = 1.6;
+// Діаметральний зазор рукавів: 0 — у номінал (FDM сам звужує дуги на 0.1–0.2, і сидить
+// з натягом); спадає — поставити −0.1, туго — +0.1
+CLIP_FIT = 0;
+// Зазор отвору під штуцер (по діаметру)
+CLIP_PORT_FIT = 0.4;
 
 /* [Стійка для показу] */
 // Вісь A над столом — як над землею в моделі (650 мм → 130)
@@ -183,6 +210,92 @@ module stand_post() {
     }
 }
 
+// Розміри циліндрів набору, друковані мм: [шток, гільза зовні, рукав на гільзі].
+// Стінки гільз 6.5 (стріла) і 5 — ті самі, що parts.scad передає в hyd_cyl_part().
+function clip_sizes() = [
+    [boom_cyl_rod / SC,  (boom_cyl_bore + 2 * 6.5) / SC, CLIP_BODY_L[0]],
+    [stick_cyl_rod / SC, (stick_cyl_bore + 2 * 5) / SC,  CLIP_BODY_L[1]]];
+// Штуцер масляного входу: Ø16, за 25 мм від торця гільзи — літерали з hyd_cyl_part()
+CLIP_PORT_D = 16 / SC;
+CLIP_PORT_X = 25 / SC;
+
+// Профіль рукава: кільце з вирізом на CLIP_ARC, кінці губок скруглені (offset стискає
+// кільце майже до середньої лінії і роздуває назад — вузькі кінці стають півколами).
+// Круглі губки легко наїжджають на деталь і не дряпають її. Виріз дивиться на +X.
+module clip_ring_2d(ri, ro) {
+    w = ro - ri;
+    g = (360 - CLIP_ARC) / 2;
+    offset(r = 0.45 * w, $fn = 32) offset(delta = -0.45 * w)
+        difference() {
+            circle(r = ro, $fn = 96);
+            circle(r = ri, $fn = 96);
+            polygon([[0, 0], [3 * ro * cos(g), 3 * ro * sin(g)], [3 * ro, 3 * ro * sin(g)],
+                     [3 * ro, -3 * ro * sin(g)], [3 * ro * cos(g), -3 * ro * sin(g)]]);
+        }
+}
+// Висота упорного торця над низом прищепки: рукав штока + конус переходу (45°)
+function clip_step(i) = let(s = clip_sizes()[i]) CLIP_ROD_L + (s[1] - s[0]) / 2;
+
+// Тіло прищепки без отвору під штуцер (перевірка clip_seat звіряє з ним штуцер).
+// Вісь Z, рукав штока внизу (z = 0), виріз на +X, штуцер — з боку −X.
+// Друкується стоячи на рукаві штока: конус переходу 45° назовні — не звис.
+module clip_body(i = CLIP_I) {
+    s = clip_sizes()[i];
+    ri_r = (s[0] + CLIP_FIT) / 2;  ro_r = ri_r + CLIP_WALL;
+    ri_b = (s[1] + CLIP_FIT) / 2;  ro_b = ri_b + CLIP_WALL;
+    z1 = CLIP_ROD_L;
+    z2 = clip_step(i);
+    union() {
+        linear_extrude(z1 + eps) clip_ring_2d(ri_r, ro_r);
+        // перехід: зовні конус від рукава штока до рукава гільзи, всередині отвір штока;
+        // верхній торець (z2) від ri_r до ri_b — упор у торець гільзи
+        translate([0, 0, z1]) rotate([0, 0, (360 - CLIP_ARC) / 2]) rotate_extrude(angle = CLIP_ARC, $fn = 96)
+            polygon([[ri_r, 0], [ro_r, 0], [ro_b, z2 - z1], [ri_r, z2 - z1]]);
+        translate([0, 0, z2 - eps]) linear_extrude(s[2] + eps) clip_ring_2d(ri_b, ro_b);
+    }
+}
+// Отвір під штуцер: крізь спинку рукава гільзи, за CLIP_PORT_X від упорного торця
+module clip_port_hole(i = CLIP_I) {
+    s = clip_sizes()[i];
+    translate([0, 0, clip_step(i) + CLIP_PORT_X]) rotate([0, -90, 0])
+        cylinder(d = CLIP_PORT_D + CLIP_PORT_FIT, h = s[1], $fn = 48);
+}
+module stand_clip(i = CLIP_I) {
+    difference() { clip_body(i); clip_port_hole(i); }
+}
+
+// Циліндр стріли з набору (гільза + шток), 1:SC, шток висунутий на частку ходу f;
+// вісь X, вушко гільзи в початку, штуцери догори — як у hyd_cyl_part() і cyl_part()
+module clip_demo_cyl(f = 0.4) {
+    L = boom_cyl_closed + f * boom_cyl_stroke;
+    body_L = boom_cyl_closed - 2 * 45 - 30;
+    scale(1 / SC) {
+        make_cyl_body(boom_cyl_bore, boom_cyl_rod, boom_cyl_closed, boom_cyl_stroke, boom_cyl_pin, wall = 6.5);
+        translate([L, 0, 0]) hyd_cyl_part("rod", boom_cyl_bore, boom_cyl_rod, boom_cyl_closed, boom_cyl_stroke,
+                                          boom_cyl_pin, wall = 6.5, rod_vis = L - 2 * 45 - body_L + 1);
+    }
+}
+// Прищепка стріли на місці: упорний торець на торці гільзи (x = 45 + body_L), рукав
+// гільзи назад по −X, виріз донизу, отвір під штуцер догори
+module clip_demo_placed(hole = true) {
+    x_end = (45 + boom_cyl_closed - 2 * 45 - 30) / SC;
+    translate([x_end + clip_step(0), 0, 0]) rotate([0, -90, 0]) rotate([0, 0, 180])
+        if (hole) stand_clip(0); else clip_body(0);
+}
+// Картинка: обидві прищепки стоять поруч, далі кінець циліндра стріли (гільза зрізана
+// за 25 мм до торця, шток — за 30 після) з прищепкою на місці і штуцером в отворі
+module stand_clips() {
+    x_end = (45 + boom_cyl_closed - 2 * 45 - 30) / SC;
+    color([0.85, 0.85, 0.88]) { stand_clip(0); translate([22, 0, 0]) stand_clip(1); }
+    translate([50 - x_end + 25, 0, 0]) {
+        color([0.45, 0.45, 0.48]) intersection() {
+            clip_demo_cyl();
+            translate([x_end - 25, -20, -20]) cube([55, 40, 40]);
+        }
+        color([0.95, 0.70, 0.20]) clip_demo_placed();
+    }
+}
+
 // Плити колони так, як вони сидять у виїмках стійки, що стоїть на основі
 module stand_plates() {
     for (s = [-1, 1])
@@ -193,6 +306,12 @@ module stand_plates() {
 if      (what == "base") stand_base();
 else if (what == "peg")  stand_peg();
 else if (what == "post") stand_post();
+else if (what == "clip") stand_clip();
+else if (what == "clips") stand_clips();
+// прищепка на циліндрі стріли: з гільзою і штоком не перетинається (має бути порожньо)…
+else if (what == "clip_fit")  intersection() { clip_demo_placed(); clip_demo_cyl(); }
+// …а без отвору під штуцер перетинається саме зі штуцером (має бути > 0)
+else if (what == "clip_seat") intersection() { clip_demo_placed(hole = false); clip_demo_cyl(); }
 // перетин плит зі стійкою — має бути порожнім (OpenSCAD тоді не пише файл)
 else if (what == "fit")  intersection() { translate([0, 0, STAND_BASE_T]) stand_post(); stand_plates(); }
 // перетин плит із тілом без виїмок — має бути > 0: виїмки саме там, де плити
