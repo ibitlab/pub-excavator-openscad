@@ -1022,7 +1022,7 @@
      "px": 800
     }
    ],
-   "free_area": 36937.0,
+   "free_area": 36938.0,
    "pdf_page": 5
   },
   {
@@ -1869,12 +1869,12 @@
      "dims": [
       {
        "kind": "edge",
-       "value": 90.0,
-       "text": "90"
+       "value": 90.72,
+       "text": "90.7"
       },
       {
        "kind": "flat",
-       "value": 50.0,
+       "value": 49.97,
        "text": "50"
       },
       {
@@ -1889,8 +1889,8 @@
       },
       {
        "kind": "edge",
-       "value": 43.06,
-       "text": "43.1"
+       "value": 42.93,
+       "text": "42.9"
       }
      ],
      "holes": [
