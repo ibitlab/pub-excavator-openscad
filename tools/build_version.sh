@@ -19,6 +19,9 @@ last=$(ls versions 2>/dev/null | sed -n 's/^V\([0-9][0-9][0-9]\)-.*/\1/p' | sort
 N=$(printf "%03d" $((10#${last:-0} + 1)))
 DIR="versions/V${N}-$(date +%Y-%m-%d-%H%M)"
 mkdir -p "$DIR/stl" "$DIR/renders" "$DIR/docs" "$DIR/scad"   # bom/, dxf/, drawings/ створює bom_drawings.sh
+# Проміжне, що цілком іде у VERSION.md (список STL, echo моделі), — у тимчасову теку, не у версію:
+# окремим файлом поруч воно було б лише дублем.
+WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT
 echo "== $DIR"
 
 # 1. Перевірка перетинів пластин (зупиняє збирання, якщо є перекриття)
@@ -32,7 +35,7 @@ PARTS="assembly boom boom_tubes boom_gussets boom_bracket_D boom_bracket_F boom_
 for p in $PARTS; do
   openscad -o "$DIR/stl/$p.stl" --export-format binstl -D "part=\"$p\"" -D show_ground=false -D show_envelope=false -D show_brand=false "$SCAD" >/dev/null 2>&1
   printf "  stl/%-22s %8s байт  об'єм %s см³\n" "$p.stl" "$(wc -c < "$DIR/stl/$p.stl" | tr -d ' ')" "$(python3 tools/stl_volume.py "$DIR/stl/$p.stl")"
-done | tee "$DIR/docs/stl_list.txt"
+done | tee "$WORK/stl_list.txt"
 
 # 3. Рендери: робочі положення + вузли окремо
 # venv потрібен уже тут: ним підрізаються поля рендерів (Pillow)
@@ -76,7 +79,7 @@ for f in "$DIR/docs/02-kinematics.md" "$DIR/docs/03-strength.md"; do   # поз�
   printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$f" > "$f.tmp" && mv "$f.tmp" "$f"
   printf '\n---\n<sub>%s</sub>\n' "$AUTHOR" >> "$f"
 done
-openscad -o "$DIR/docs/ranges.echo" "$SCAD" >/dev/null 2>&1
+openscad -o "$WORK/ranges.echo" "$SCAD" >/dev/null 2>&1
 # Вихідні дані пишуться вручну і можуть бути відсутні (їх немає у публічній копії) — не зупиняти через це збирання
 if [ -f docs/01-design-inputs.md ]; then cp docs/01-design-inputs.md "$DIR/docs/"
 else echo "  docs/01-design-inputs.md немає — пропущено (документ пишеться вручну)"; fi
@@ -90,7 +93,6 @@ cp tools/kinematics.py tools/strength.py tools/bucket.py tools/work_range.py "$D
 
 # 4а. BOM, DXF 1:1 і PDF-ескізи деталей
 ./tools/bom_drawings.sh --out "$DIR" --version "$(basename "$DIR")" | tail -1
-cp "$DIR/bom/bom.md" "$DIR/docs/04-bom.md"
 
 # 4а'. Статична інтерактивна 3D-сторінка цієї версії (кути — у браузері; відкривається подвійним кліком, three.js тягнеться з CDN)
 python3 tools/viewer.py --export "$DIR/viewer.html" | tail -1
@@ -116,8 +118,8 @@ done
   echo "# $(basename "$DIR")"; echo; echo "$WARN"; echo
   echo "- Дата: $(date '+%Y-%m-%d %H:%M')"; echo "- Git (база на момент збирання): $GIT_BASE"
   [ -n "$DESC" ] && echo "- Зміни: $DESC"; echo
-  echo "## Діапазони (echo моделі)"; echo '```'; sed 's/^ECHO: //' "$DIR/docs/ranges.echo"; echo '```'; echo
-  echo "## STL"; echo '```'; cat "$DIR/docs/stl_list.txt"; echo '```'
+  echo "## Діапазони (echo моделі)"; echo '```'; sed 's/^ECHO: //' "$WORK/ranges.echo"; echo '```'; echo
+  echo "## STL"; echo '```'; cat "$WORK/stl_list.txt"; echo '```'
   echo "Вузли стріли — у системі стріли (A = 0, хорда вздовж +X), вузли рукояті — у системі рукояті (B = 0, вісь уздовж +X); вузли ковша — у системі ковша (E = 0, x — до вістря зуба); rocker/link/post/assembly — у позі за замовчуванням."; echo
   echo "## Інтерактивний перегляд"; echo "- viewer.html — 3D-сторінка цієї версії (обертання/масштаб, кути стріли/рукояті/ковша, цикл копання). Зміна геометрії наживо — tools/viewer.sh."; echo
   echo "## BOM і креслення"; echo "- bom/bom.md, bom/bom.csv — специфікація; dxf/*.dxf — контури пластин 1:1; drawings/parts.pdf (+ png/) — ескізи з основними розмірами."; echo
