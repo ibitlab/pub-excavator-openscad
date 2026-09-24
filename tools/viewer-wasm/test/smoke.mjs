@@ -92,6 +92,11 @@ const rc = os.callMain(['/model.scad', '-o', '/out.off', '--backend=manifold', '
 const ms = Math.round(performance.now() - t0);
 const bad = err.filter(l => /^(WARNING|ERROR)/.test(l.trim()));
 rc === 0 && !bad.length ? ok(`OpenSCAD-WASM: код 0, без попереджень, ${ms} мс`) : fail(`OpenSCAD-WASM: код ${rc}; ${bad.slice(0, 3).join(' | ')}`);
+// Сторінка перебудовує модель на КОЖНУ зміну параметра. Нормально ≈ 3.5 с (з лого); лого з сотнями
+// скалок-полігонів колись дало 8.5 с, і помітили це лише ручним заміром. Попередження, не падіння:
+// на іншій машині інший час — але стрибок удвічі видно завжди.
+const SLOW_MS = 6000;
+if (ms > SLOW_MS) console.log(`⚠ OpenSCAD-WASM будує модель ${ms} мс (> ${SLOW_MS}): що нового в моделі? Перевір складність доданої геометрії (tools/brand_merge.py — приклад)`);
 const vm = err.map(l => l.trim().match(/^ECHO: VIEW = (.*)$/)).find(Boolean);
 if (!vm) fail('немає echo(VIEW = …)');
 else {

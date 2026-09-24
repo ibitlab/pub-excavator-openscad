@@ -610,11 +610,24 @@ def pack_best(cells, w, h):
 
 # ------------------------------------------------------------------ рендери
 class Renders:
-    """Кеш рендерів OpenSCAD у робочій теці: назва файлу = усі параметри."""
+    """Кеш рендерів OpenSCAD у робочій теці: назва файлу = усі параметри + хеш джерел.
+
+    Хеш джерел (модель, полігони лого, обгортки) — у назві кожного рендера: раніше ключем
+    були лише аргументи, і після зміни моделі аркуші мовчки брали старі картинки, доки
+    хтось не згадував про --fresh."""
+
+    SOURCES = ['scad/excavator_boom.scad', 'scad/brand', 'print3d-parts/parts.scad',
+               'print3d-parts/brand.scad', 'print3d-parts/sheets/sheets.scad']
 
     def __init__(self, tmp, fresh=False):
         self.tmp, self.fresh, self.n = tmp, fresh, 0
         os.makedirs(tmp, exist_ok=True)
+        h = hashlib.md5()
+        for rel in self.SOURCES:
+            p = os.path.join(ROOT, rel)
+            for f in sorted(os.path.join(p, x) for x in os.listdir(p)) if os.path.isdir(p) else [p]:
+                h.update(open(f, 'rb').read())
+        self.src = h.hexdigest()[:6]
 
     @staticmethod
     def defs(node, keys, hi='', upto=-1, fat=False):
@@ -627,7 +640,7 @@ class Renders:
         cam = '' if camera is None else '_' + '_'.join(f'{v:.0f}' for v in camera[0]) + f'_{camera[1]:.0f}'
         # Хеш списку ключів у назві: відтінок деталі = її позиція у списку, і кеш без хешу
         # після перестановки рядків у assembly.tsv мовчки поміняв би виноски місцями.
-        kh = hashlib.md5(','.join(keys).encode()).hexdigest()[:6]
+        kh = hashlib.md5((self.src + ',' + ','.join(keys)).encode()).hexdigest()[:6]
         name = f"{node}_{kh}_{view[0]}_{view[1]}_{size[0]}_{hi or 'all'}_{upto}{'_fat' if fat else ''}{cam}.png"
         out = os.path.join(self.tmp, name)
         if self.fresh or not os.path.exists(out):
