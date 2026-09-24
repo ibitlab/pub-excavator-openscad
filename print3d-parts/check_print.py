@@ -143,7 +143,9 @@ def analyse(path, bed=BED, max_ang=MAX_OVERHANG):
         warns.append(f"контакт зі столом {a_bottom:.1f} мм² — тримати не буде, потрібен brim")
     # На якій висоті над столом висять полиці: 1–2 мм прибираються підпорою легко,
     # високі означають, що орієнтацію варто міняти або різати деталь площиною симетрії.
-    top = sorted(shelf_z.items(), key=lambda kv: -kv[1])[:3]
+    # рівні з площею < 1 мм² — вироджені трикутники на стиках граней (наприклад, по краю
+    # виїмки бренду), не полиці: у перелік не потрапляють
+    top = sorted(((z, ar) for z, ar in shelf_z.items() if ar >= 1), key=lambda kv: -kv[1])[:3]
     r["рівні полиць"] = [[z, round(ar, 1)] for z, ar in top]
     if a_shelf > 0.02 * a_total:
         lv = ", ".join(f"{z:.1f} мм: {ar:.0f} мм²" for z, ar in top)
