@@ -1,5 +1,10 @@
 [English](README.md) · **Українська**
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/ibitlab-logo-dark.svg">
+  <img src="docs/logo/ibitlab-logo.svg" alt="ibitlab" width="220">
+</picture>
+
 # Стріла, рукоять і ківш міні-екскаватора — параметрична модель OpenSCAD
 
 > ## ⚠️ Згенеровано штучним інтелектом. Використання — на власний ризик
