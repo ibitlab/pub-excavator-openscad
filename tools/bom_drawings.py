@@ -10,7 +10,8 @@ bom_drawings.py — специфікація (BOM), DXF 1:1 та PDF-ескіз�
 Запуск: tools/bom_drawings.sh [--out ТЕКА]
 """
 import subprocess, json, re, os, sys, math, argparse, csv, tempfile, datetime, textwrap
-from author import credit, md_footer          # авторство на кожному аркуші й у bom.md (AUTHORS у корені)
+from author import line as author_line, md_footer   # авторство в підвалі кожного аркуша й у bom.md (AUTHORS у корені)
+import page_style as ps                        # шапка й підвал — той самий вигляд, що в SHEETS.pdf і ASSEMBLY.pdf
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCAD = os.path.join(ROOT, 'scad', 'excavator_boom.scad')
@@ -66,10 +67,41 @@ def analyse(loops):
         c = as_circle(l)
         holes.append(dict(circle=c, pts=l))
     net = abs(area(outer)) - sum(abs(area(l)) for l in inner)
-    return dict(outer=outer, holes=holes, W=max(xs) - x0, H=max(ys) - y0, area=net)
+    return dict(outer=outer, holes=holes, W=max(xs) - x0, H=max(ys) - y0, area=net, shift=(x0, y0))
 
 
 fmt = lambda v: (f'{abs(v):.1f}').rstrip('0').rstrip('.')
+
+def brand_loops(*defs):
+    """Контури логотипа в тій самій 2D-системі, що й контур деталі (part="flatbrand"/"tubebrand"
+    моделі), або [] — на цій деталі/стінці знака немає (OpenSCAD тоді не пише файл)."""
+    with tempfile.TemporaryDirectory() as t:
+        svg = os.path.join(t, 'brand.svg')
+        try: openscad(svg, *defs)
+        except subprocess.CalledProcessError: return []
+        return parse_svg_loops(svg) if os.path.exists(svg) else []
+
+BRAND_NOTE = 'сірим — логотип: НАЛІПКА або фарба після зварювання, НЕ різати (у DXF його немає)'
+
+def brand_patch(ax, loops, shift=(0, 0), far=False):
+    """Логотип на ескізі: видима грань — сіра заливка; грань, яку на ескізі видно зсередини
+    (знак там дзеркальний), — штрихова лінія, як заведено для зворотного боку деталі."""
+    from matplotlib.path import Path
+    from matplotlib.patches import PathPatch
+    from shapely.geometry import Polygon as SPolygon
+    from shapely.geometry.polygon import orient
+    g = SPolygon()
+    for l in loops:                                  # контури OpenSCAD не перетинаються: even-odd
+        g = g.symmetric_difference(SPolygon([(x - shift[0], y - shift[1]) for x, y in l]).buffer(0))
+    verts, codes = [], []
+    for part in ([g] if g.geom_type == 'Polygon' else list(g.geoms)):
+        part = orient(part)
+        for ring in [part.exterior, *part.interiors]:
+            c = list(ring.coords)
+            verts += c; codes += [Path.MOVETO] + [Path.LINETO] * (len(c) - 2) + [Path.CLOSEPOLY]
+    if not verts: return
+    ax.add_patch(PathPatch(Path(verts, codes), fc='none' if far else '0.62', ec='0.45' if far else 'none',
+                           lw=0.5, ls='--' if far else '-', zorder=4))
 
 def dim(ax, p0, p1, text, color='tab:blue'):
     """Розмірна лінія довільного напрямку з підписом уздовж неї."""
@@ -157,16 +189,23 @@ def make_pdf(path, bom, flats, tubes, version):
     from matplotlib.patches import Polygon, Circle
     P = dict(bom['BOM_PARAMS'])
     A4 = (11.69, 8.27)
+    ps.mpl_setup(); plt.rcParams['figure.max_open_warning'] = 0       # сторінки нумеруються наприкінці — усі фігури живі до кінця
+    LX = ps.MARGIN / (A4[0] * 25.4)                                    # лівий край поля — як у шапки
+    date = datetime.date.today().isoformat()
+    META = f'ескізи деталей · {version} · {date}'                        # як «print3d-parts · версія · дата» в аркушах
+    FOOT = 'Ескізи деталей у металі · стріла, рукоять, ківш'
     # Аркуші й DXF фізично йдуть у цех різання окремо від репозиторію — застереження має бути на них самих.
     WARN = 'УВАГА: згенеровано ШІ, інженером не перевірено, машину не випробувано — використання на власний ризик; див. SAFETY.md'
-    png_dir = os.path.join(os.path.dirname(path), 'png'); os.makedirs(png_dir, exist_ok=True); cnt = [0]
+    png_dir = os.path.join(os.path.dirname(path), 'png'); os.makedirs(png_dir, exist_ok=True)
+    figs = []                                                          # (фігура, назва) — підвал «с. N / M» ставиться, коли відомо M
     def save(pdf, fig, name):
-        credit(fig)                          # авторство — дрібно в куті кожного аркуша
-        cnt[0] += 1; pdf.savefig(fig); fig.savefig(os.path.join(png_dir, f'{cnt[0]:02d}_{name}.png'), dpi=90); plt.close(fig)
+        figs.append((fig, name))
+    def foot_note(fig, text):
+        fig.text(LX, (ps.FOOT_Y + 4.0) / (A4[1] * 25.4), f'{text}\n{WARN}', fontsize=7.5, color='0.35', va='bottom')
     def page(title, sub=''):
         fig = plt.figure(figsize=A4); ax = fig.add_axes([0.06, 0.10, 0.88, 0.66]); ax.set_aspect('equal'); ax.axis('off')
-        fig.text(0.06, 0.93, title, fontsize=15, weight='bold'); fig.text(0.06, 0.895, sub, fontsize=10)
-        fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі, розміри в мм; для різання пластин — DXF 1:1\n{WARN}', fontsize=8, color='0.35')
+        ps.mpl_header(fig, title, META, sub)
+        foot_note(fig, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі, розміри в мм; для різання пластин — DXF 1:1')
         return fig, ax
     def dim_h(ax, x0, x1, y, text, off=0):
         ax.annotate('', (x0, y), (x1, y), arrowprops=dict(arrowstyle='<->', lw=0.8, color='tab:blue'))
@@ -186,9 +225,9 @@ def make_pdf(path, bom, flats, tubes, version):
         pages = [wrapped[i:i + per_page] for i in range(0, len(wrapped), per_page)] or [[]]
         for n, chunk in enumerate(pages, 1):
             fig = plt.figure(figsize=A4)
-            fig.text(0.06, 0.93, title if len(pages) == 1 else f'{title} ({n}/{len(pages)})', fontsize=15, weight='bold')
-            fig.text(0.06, 0.88, '\n'.join(chunk), fontsize=8.5, family='DejaVu Sans Mono', va='top')
-            fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version}\n{WARN}', fontsize=8, color='0.35')
+            y0 = ps.mpl_header(fig, title if len(pages) == 1 else f'{title} ({n}/{len(pages)})', META)
+            fig.text(LX, y0, '\n'.join(chunk), fontsize=8.5, family='DejaVu Sans Mono', va='top')
+            foot_note(fig, f'Стріла міні-екскаватора · {version}')
             save(pdf, fig, 'bom' if len(pages) == 1 else f'bom{n}')
 
     with PdfPages(path) as pdf:
@@ -212,10 +251,9 @@ def make_pdf(path, bom, flats, tubes, version):
         for tb in tubes:
             nom = dict(h=tb['h'], w=tb['w'])
             fig = plt.figure(figsize=A4)
-            fig.text(0.06, 0.93, f"{tb['key']} — труба {tb['h']:g}×{tb['w']:g}×{tb['t']:g}, заготовка {tb['L']:g} мм: розгортка з 4 боків", fontsize=15, weight='bold')
-            fig.text(0.06, 0.895, tb['note'], fontsize=9.5)
-            fig.text(0.06, 0.872, f'{TUBE_MAT}. База розмірів по довжині — крайній задній торець труби (x = 0), однакова для всіх чотирьох стінок.\nСірі числа — відступ початку/кінця стінки від бази та від протилежного торця; отвори — ланцюжком від бази і від нижньої кромки своєї стінки.', fontsize=8.5, color='0.25', va='top')
-            fig.text(0.06, 0.04, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі між аркушами, розміри в мм\n{WARN}', fontsize=8, color='0.35')
+            y0 = ps.mpl_header(fig, f"{tb['key']} — труба {tb['h']:g}×{tb['w']:g}×{tb['t']:g}, заготовка {tb['L']:g} мм: розгортка з 4 боків", META, tb['note'])
+            fig.text(LX, y0, f'{TUBE_MAT}. База розмірів по довжині — крайній задній торець труби (x = 0), однакова для всіх чотирьох стінок.\nСірі числа — відступ початку/кінця стінки від бази та від протилежного торця; отвори — ланцюжком від бази і від нижньої кромки своєї стінки.', fontsize=8.5, color='0.25', va='top')
+            foot_note(fig, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі між аркушами, розміри в мм')
             # один спільний масштаб на аркуш: k мм/дюйм — за довжиною АБО за сумарною висотою стінок + місце під підписи
             X1 = tb['X1']; W_in, H_in, S_in, L_in = 0.86 * A4[0], 0.70 * A4[1], 0.66, 0.55
             k = max(X1 / (W_in - L_in - 0.35), sum(nom[hk] for _, _, hk in FACES) / (H_in - S_in * len(FACES)))
@@ -225,6 +263,10 @@ def make_pdf(path, bom, flats, tubes, version):
                 Hn = nom[hk]; F = tb['faces'][face]; xs, xe = F['x0'], F['x1']
                 ytitle = ycur - 0.10 * k; oy = ycur - 0.27 * k - Hn; ydim = oy - 0.20 * k; ycur = oy - 0.39 * k
                 ax.add_patch(Polygon([(x, y + oy) for x, y in F['outer']], fill=True, fc='0.93', ec='k', lw=1.3))
+                if F.get('brand'):
+                    brand_patch(ax, F['brand'], (0, -oy), far=face == 'left')
+                    ax.text(X1, oy + Hn + 0.03 * k, 'логотип — наліпка, не різати' + (' (штрихом: знак на зовнішній грані, тут видно зсередини)' if face == 'left' else ''),
+                            fontsize=7.5, color='0.35', ha='right', va='bottom')
                 ax.text(-L_in * k, ytitle, title, fontsize=9, weight='bold', va='top')
                 # відступи < 2 мм — артефакт заокруглених кутів труби у вирізаному шарі стінки, не показуємо
                 if xs > 2: dim(ax, (0, ydim), (xs, ydim), fmt(round(xs)), 'tab:gray')
@@ -244,7 +286,7 @@ def make_pdf(path, bom, flats, tubes, version):
             w_in, t_sh, segs = bom['BOM_SHELL']; total = sum(v for _, v in segs)
             fig, ax = page(f'bk_shell — обичайка ковша: розгортка {total:.0f} × {w_in:g} мм, t = {t_sh:g}',
                            f'{PLATE_MAT}. База — кромка губи (x = 0). Довжини — по нейтральній лінії (середина товщини).')
-            fig.text(0.06, 0.865, 'Гнути/вальцювати всередину (до порожнини ковша) за шаблоном-боковиною; зони гнуття зафарбовано. Потім обварити з боковинами суцільним швом.', fontsize=8.5, color='0.25')
+            fig.text(LX, 0.865, 'Гнути/вальцювати всередину (до порожнини ковша) за шаблоном-боковиною; зони гнуття зафарбовано. Потім обварити з боковинами суцільним швом.', fontsize=8.5, color='0.25')
             ax.add_patch(Polygon([(0, 0), (total, 0), (total, w_in), (0, w_in)], fill=True, fc='0.93', ec='k', lw=1.4))
             x = 0.0
             for i, (nm, ln) in enumerate(segs):
@@ -262,6 +304,8 @@ def make_pdf(path, bom, flats, tubes, version):
             fig, ax = page(f"{f['key']} — {f['name']}", f"{f['qty']} шт · t = {f['t']} мм · {PLATE_MAT} · габарит {f['W']:.1f} × {f['H']:.1f} мм · маса {f['mass']:.2f} кг/шт · DXF: dxf/{f['key']}.dxf")
             ax.add_patch(Polygon(f['outer'], fill=True, fc='0.93', ec='k', lw=1.4))
             W, H = f['W'], f['H']; pad = max(W, H) * 0.06
+            if f.get('brand'):
+                brand_patch(ax, f['brand'], f['shift'])
             for hle in f['holes']:
                 if not hle['circle']: ax.add_patch(Polygon(hle['pts'], fc='w', ec='k', lw=1.0))
             for c in f['circ']:
@@ -284,8 +328,15 @@ def make_pdf(path, bom, flats, tubes, version):
                 R['table'] = ['Контур = зовнішня поверхня обичайки (боковина — шаблон для гнуття). Від губи за годинниковою стрілкою:',
                               '  ' + ' → '.join(f'{nm} {ln:.0f}' for nm, ln in bom['BOM_SHELL'][2]) + ' → уступ під ніж → передня кромка до губи.',
                               '  Довжини ділянок — по нейтральній лінії обичайки; радіуси — внутрішні (зовнішній = + товщина обичайки).']
-            fig.text(0.06, 0.865, '\n'.join(R['table']), fontsize=8.2, va='top', family='DejaVu Sans Mono')
+            if f.get('brand'):
+                R['table'] = R['table'] + [BRAND_NOTE + '.', '  Показано знак правої деталі (на видимій грані); на лівій — на протилежній грані, у тому самому місці.']
+            fig.text(LX, 0.865, '\n'.join(R['table']), fontsize=8.2, va='top', family='DejaVu Sans Mono')
             ax.set_xlim(-pad * 3.2, W + pad); ax.set_ylim(-pad * 3.4, H + pad * 1.5); save(pdf, fig, f['key'])
+
+        # --- підвал з номерами сторінок (як у SHEETS.pdf / ASSEMBLY.pdf) і запис
+        for n, (fig, name) in enumerate(figs, 1):
+            ps.mpl_footer(fig, FOOT, date, author_line(), n, len(figs))
+            pdf.savefig(fig); fig.savefig(os.path.join(png_dir, f'{n:02d}_{name}.png'), dpi=90); plt.close(fig)
 
 # ---------------------------------------------------------------- BOM
 def tube_kg_m(h, w, t):
@@ -311,6 +362,7 @@ def main():
             if any(abs(area(l)) < 20 for l in lp): problems.append(f'пластина {key}: скалка в контурі (петля площею < 20 мм²)')
             g = analyse(lp)
             g.update(key=key, qty=qty, t=th, name=name, mass=g['area'] * th * RHO); g['refs'] = hole_refs(g)
+            g['brand'] = brand_loops('part="flatbrand"', f'flat_name="{key}"')
             flats.append(g); print(f"  {key:<13} {g['W']:.0f}×{g['H']:.0f}  отворів {len(g['holes'])}  {g['mass']:.2f} кг")
     tubes = []
     with tempfile.TemporaryDirectory() as t:
@@ -320,7 +372,8 @@ def main():
                 svg = os.path.join(t, f'{key}_{face}.svg')
                 openscad(svg, 'part="tubeface"', f'tube_name="{key}"', f'tube_face="{face}"')
                 loops = sorted(parse_svg_loops(svg), key=lambda l: -abs(area(l)))
-                faces[face] = dict(outer=loops[0], circ=[c for c in (as_circle(l) for l in loops[1:]) if c])
+                faces[face] = dict(outer=loops[0], circ=[c for c in (as_circle(l) for l in loops[1:]) if c],
+                                   brand=brand_loops('part="tubebrand"', f'tube_name="{key}"', f'tube_face="{face}"'))
                 if len(loops[0]) > 12: problems.append(f'труба {key}, стінка {face}: зовнішній контур із {len(loops[0])} точок — отвір злився з контуром?')
                 if any(not as_circle(l) for l in loops[1:]): problems.append(f'труба {key}, стінка {face}: некруглий внутрішній контур (скалка або виріз, якого скрипт не вміє показати)')
             xmin = min(p[0] for f in faces.values() for p in f['outer'])
@@ -329,6 +382,7 @@ def main():
                 Hn = h if f is faces['left'] or f is faces['right'] else w
                 sh = lambda p: (p[0] - xmin, p[1] - ymid + Hn / 2)
                 f['outer'] = [sh(p) for p in f['outer']]; f['circ'] = [(c[0] - xmin, c[1] - ymid + Hn / 2, c[2]) for c in f['circ']]
+                f['brand'] = [[sh(p) for p in l] for l in f['brand']]
                 f['x0'] = min(p[0] for p in f['outer']); f['x1'] = max(p[0] for p in f['outer'])
             tubes.append(dict(key=key, h=h, w=w, t=th, L=ln, note=note, faces=faces, X1=max(f['x1'] for f in faces.values())))
             print(f"  труба {key:<10} стінки: " + ', '.join(f"{k} {v['x0']:.0f}…{v['x1']:.0f}" for k, v in faces.items()))

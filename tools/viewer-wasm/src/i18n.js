@@ -136,6 +136,7 @@ export const UI = {
     'st.engine': 'Завантажую рушій OpenSCAD-WASM (≈11 МБ, один раз)…',
     'load.engine': 'Завантажую рушій OpenSCAD — 11 МБ, один раз',
     'load.build': 'Будую модель…',
+    'load.elapsed': 'минуло {s} с — перша побудова триває кілька секунд',
     'tip.drag': 'Потягніть ківш — за ним іде вся стріла. За зуби — ківш підвертається.',
     'howto.h': 'Як керувати',
     'howto': 'Потягніть ківш — за ним іде вся стріла; за зуби — ківш підвертається. Обертання — перетягуванням по вільному місцю, масштаб — щипком або коліщатком. Кнопка «Не крутити камеру» вимикає обертання, щоб тягнути звідусіль.',
@@ -293,6 +294,7 @@ export const UI = {
     'st.engine': 'Loading the OpenSCAD-WASM engine (≈11 MB, once)…',
     'load.engine': 'Loading the OpenSCAD engine — 11 MB, once',
     'load.build': 'Building the model…',
+    'load.elapsed': '{s} s so far — the first build takes a few seconds',
     'tip.drag': 'Drag the bucket — the whole arm follows. Drag the teeth to curl it.',
     'howto.h': 'How to control it',
     'howto': 'Drag the bucket and the whole arm follows; drag the teeth and the bucket curls. Orbit by dragging empty space, zoom by pinching or with the wheel. The “Lock the camera” button turns orbiting off so you can drag from anywhere.',
@@ -423,6 +425,7 @@ export const PARAMS_EN = {
   link_boss_od: 'Link bosses on axes J and Q (welded outside the link plates): pin bearing length 10 + 25 = 35 mm per side → pressure < 30 MPa',
   cyl_eye_w_25: 'Width of the cylinder eyes (for the drawing only)',
 
+  show_brand: 'Logo on the boom and stick tubes, the post plates and the bucket sides (a decal: not cut in steel)',
   show_envelope: 'Show the work envelope (cutting edge points over a grid of angles)',
   ground_below_A: 'Height of axis A above the ground, mm',
   ground_span: 'Side of the ground plane, mm (9000 matches the 3D page; views rendered with --viewall get a smaller one). The page draws its own ground and ignores this',

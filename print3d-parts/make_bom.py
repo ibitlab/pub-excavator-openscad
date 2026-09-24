@@ -46,8 +46,11 @@ def sheets(ver_dir, base):
 
 
 def sheet(smap, key):
-    """`tube_stick` у наборі — це аркуш `stick`: труби названі без префікса."""
-    return smap.get(key) or smap.get(key.replace("tube_", "")) or ""
+    """`tube_stick` у наборі — це аркуш `stick`: труби названі без префікса.
+    `bk_side_L` / `bk_side_R` — аркуш `bk_side`: у металі це одна деталь ×2, розділені
+    вони лише в наборі (логотип на зовнішній грані кожної)."""
+    return (smap.get(key) or smap.get(key.replace("tube_", ""))
+            or smap.get(re.sub(r"_[LR]$", "", key)) or "")
 
 
 def main():

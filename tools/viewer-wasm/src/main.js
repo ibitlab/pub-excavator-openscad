@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import scadDefault from '../../../scad/excavator_boom.scad?raw';
+// Полігони логотипа: модель підключає їх `include <brand/…>`, тож воркер кладе їх поруч із
+// /model.scad. Вшиваються збіркою так само, як модель, — інших джерел файлів сторінка не має.
+const scadBrand = Object.fromEntries(Object.entries(
+  import.meta.glob('../../../scad/brand/*.scad', { query: '?raw', import: 'default', eager: true }))
+  .map(([p, text]) => ['brand/' + p.split('/').pop(), text]));
 import repoViewsFile from '../../../views.json';                 // ракурси з репозиторію; Vite вшиває JSON у dist/      // модель вшивається у сторінку; у dev правка .scad перезавантажує сторінку
 import { readSchema, scadLiteral } from './schema.js';
 import workerUrl from './scad-worker.js?worker&url';
@@ -456,6 +461,9 @@ async function makeWorker() {
       loadNote('load.engine', {}, Math.min(99, Math.round(got / total * 100)),
                `${(got / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(0)} ${t('hud.mb')}`);
     }
+    // файл уже тут, але далі ще кілька секунд — компіляція wasm і перша побудова моделі;
+    // без цього смужка так і стояла б на 99 % «завантаження», ніби сторінка зависла
+    loadNote('load.build', {}, null);
     return new Worker(URL.createObjectURL(new Blob(chunks, { type: 'text/javascript' })), { type: 'module' });
   } catch (e) {
     return plain();                                           // не вийшло — хай тягне браузер, як раніше
@@ -472,19 +480,26 @@ async function runOpenSCAD(defs) {                            // один зап
       if (!noBlob) { noBlob = true; resolve(runOpenSCAD(defs)); return; }   // Blob не завівся — пробуємо звичайним шляхом
       reject(new Error(e.message || t('st.worker')));
     };
-    worker.postMessage({ id, source: scadSource, defs });
+    worker.postMessage({ id, source: scadSource, files: scadBrand, defs });
   });
 }
 async function rebuild() {
   if (inflight) { again = true; return; } inflight = true;
   status(engineReady ? 'st.build' : 'st.engine', {}, 'busy');
   if (!engineReady) loadNote('load.engine', {}, null); else if (!$('load').hidden) loadNote('load.build', {}, null);
+  // Поки смужка біжуча (без відсотків), під нею йдуть секунди — видно, що робота триває
+  const tStart = performance.now(), tick = setInterval(() => {
+    const box = $('load');
+    if (!box.hidden && box.classList.contains('busy'))
+      box.querySelector('.sub').textContent = t('load.elapsed', { s: Math.round((performance.now() - tStart) / 1000) });
+  }, 500);
   try {
     const ch = changed(), defs = Object.keys(ch).sort().map(k => `${k}=${scadLiteral(byName[k], ch[k])}`);
     const t0 = performance.now(), d = await runOpenSCAD(defs);
     if (d.error) { status('st.err', { msg: d.error }, 'err'); lastLog = d.log || []; }
     else { engineReady = true; $('load').hidden = true; showTip(); applyBuild(d); status('st.done', { ms: (d.ms / 1000).toFixed(2), total: ((performance.now() - t0) / 1000).toFixed(2), n: Object.keys(ch).length }); }
   } catch (e) { status('st.err', { msg: e.message }, 'err'); }
+  clearInterval(tick);
   inflight = false; if (again) { again = false; rebuild(); }
 }
 let lastStatus = null;                                        // останній рядок стану — щоб перемалювати його новою мовою

@@ -183,7 +183,10 @@ def main():
         print('|---|---|---|---|---:|---|')
         for rel, best, k1, p1, d1, k2, p2, d2 in pairs:
             name, a, b = best
-            if abs(a - b) < SAME:
+            # ліва й права (`…_L` / `…_R`) мають ті самі габарити, але дзеркальні
+            if re.sub(r'_[LR]$', '', k1) == re.sub(r'_[LR]$', '', k2) and k1 != k2:
+                note, dtxt = '**дзеркальні — ліва й права, логотип назовні**', '—'
+            elif abs(a - b) < SAME:
                 note, dtxt = '**однакові — взаємозамінні**', '—'
             else:
                 note = f'{name}: {a:.1f} проти {b:.1f}'

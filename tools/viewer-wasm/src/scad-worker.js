@@ -3,12 +3,18 @@
 import { createOpenSCAD } from 'openscad-wasm-prebuilt';
 import { splitOff } from './offmesh.js';
 
-self.onmessage = async ({ data: { id, source, defs } }) => {
+// files — файли, які модель підключає (`include <brand/…>`): шлях відносно /model.scad → текст.
+self.onmessage = async ({ data: { id, source, files = {}, defs } }) => {
   const t0 = performance.now(), err = [];
   try {
     const w = await createOpenSCAD({ noInitialRun: true, print: s => err.push(s), printErr: s => err.push(s) });
     const os = w.getInstance();
     os.FS.writeFile('/model.scad', source);
+    for (const [path, text] of Object.entries(files)) {
+      const dir = path.includes('/') ? '/' + path.slice(0, path.lastIndexOf('/')) : '';
+      if (dir) try { os.FS.mkdir(dir); } catch (e) { /* уже є */ }
+      os.FS.writeFile('/' + path, text);
+    }
     const args = ['/model.scad', '-o', '/out.off', '--backend=manifold', '-D', 'part="view_all"'];
     for (const d of defs) args.push('-D', d);
     let rc; try { rc = os.callMain(args); } catch (e) { rc = String(e); }

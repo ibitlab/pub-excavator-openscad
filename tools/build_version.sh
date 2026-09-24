@@ -26,10 +26,11 @@ echo "== $DIR"
 # 1а. Перевірка рухомих пар на всьому ході циліндрів (ківш/коромисло/тяга/рукоять/циліндри ↔ кронштейни)
 ./tools/check_motion.sh | tee "$DIR/docs/motion.txt"
 
-# 2. STL: збірка + зварні вузли + кожна група деталей
+# 2. STL: збірка + зварні вузли + кожна група деталей. Логотип — наліпка, не метал:
+#    у STL (і в їхніх об'ємах) його немає, на рендерах нижче — є.
 PARTS="assembly boom boom_tubes boom_gussets boom_bracket_D boom_bracket_F boom_foot_boss boom_fork_B stick stick_tube stick_cheeks stick_bracket_H stick_tip rocker link bucket bucket_sides bucket_shell bucket_top bucket_edge bucket_ears bucket_wear post"
 for p in $PARTS; do
-  openscad -o "$DIR/stl/$p.stl" --export-format binstl -D "part=\"$p\"" -D show_ground=false -D show_envelope=false "$SCAD" >/dev/null 2>&1
+  openscad -o "$DIR/stl/$p.stl" --export-format binstl -D "part=\"$p\"" -D show_ground=false -D show_envelope=false -D show_brand=false "$SCAD" >/dev/null 2>&1
   printf "  stl/%-22s %8s байт  об'єм %s см³\n" "$p.stl" "$(wc -c < "$DIR/stl/$p.stl" | tr -d ' ')" "$(python3 tools/stl_volume.py "$DIR/stl/$p.stl")"
 done | tee "$DIR/docs/stl_list.txt"
 
@@ -111,7 +112,8 @@ else echo "  docs/01-design-inputs.md немає — пропущено (док�
 tools/.venv/bin/python tools/work_range.py --out "$DIR/renders/work-range.png" | tail -1
 tools/.venv/bin/python tools/work_range.py --lang en --out "$DIR/renders/work-range.en.png" >/dev/null
 printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$DIR/docs/05-bucket.md" > "$DIR/docs/05-bucket.md.tmp" && mv "$DIR/docs/05-bucket.md.tmp" "$DIR/docs/05-bucket.md"
-cp "$SCAD" "$DIR/scad/"; cp tools/kinematics.py tools/strength.py tools/bucket.py tools/work_range.py "$DIR/scad/"
+cp "$SCAD" "$DIR/scad/"; cp -R scad/brand "$DIR/scad/"   # модель підключає include <brand/…> — без них копія не збереться
+cp tools/kinematics.py tools/strength.py tools/bucket.py tools/work_range.py "$DIR/scad/"
 
 # 4а. BOM, DXF 1:1 і PDF-ескізи деталей
 ./tools/bom_drawings.sh --out "$DIR" --version "$(basename "$DIR")" | tail -1

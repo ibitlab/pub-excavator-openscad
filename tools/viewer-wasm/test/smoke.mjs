@@ -5,7 +5,7 @@
 //  4) поза з JavaScript збігається з echo самої моделі ("ЗУБ КОВША: x=… z=…");
 //  5) переклад повний: обидві мови мають однакові ключі, усі групи й описані параметри моделі є у словнику,
 //     і кожен ключ, який викликає main.js, у словнику існує.
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createOpenSCAD } from 'openscad-wasm-prebuilt';
@@ -83,6 +83,11 @@ miss('зайві записи у словнику параметрів', Object.
 const err = [], t0 = performance.now();
 const os = (await createOpenSCAD({ noInitialRun: true, print: s => err.push(s), printErr: s => err.push(s) })).getInstance();
 os.FS.writeFile('/model.scad', source);
+// модель підключає полігони логотипа `include <brand/…>` — сторінка кладе їх поруч так само (main.js → воркер)
+os.FS.mkdir('/brand');
+for (const f of readdirSync(path.join(root, 'scad/brand'))) os.FS.writeFile('/brand/' + f, readFileSync(path.join(root, 'scad/brand', f), 'utf8'));
+if (!/import\.meta\.glob\('\.\.\/\.\.\/\.\.\/scad\/brand\/\*\.scad'/.test(mainJs) || !/files: scadBrand/.test(mainJs))
+  fail('main.js не передає воркеру scad/brand/*.scad — модель без них не збереться');
 const rc = os.callMain(['/model.scad', '-o', '/out.off', '--backend=manifold', '-D', 'part="view_all"']);
 const ms = Math.round(performance.now() - t0);
 const bad = err.filter(l => /^(WARNING|ERROR)/.test(l.trim()));
@@ -96,6 +101,10 @@ else {
   empty.length ? fail('порожні деталі: ' + empty.join(', ')) : ok(`деталей: ${V.parts.length}, вершин: ${Object.values(parts).reduce((s, p) => s + p.pos.length / 3, 0)}`);
   const wide = Object.entries(parts).filter(([, p]) => { let m = 0; for (let i = 1; i < p.pos.length; i += 3) m = Math.max(m, Math.abs(p.pos[i])); return m > V.spacing / 2; });
   wide.length ? fail('деталь ширша за view_spacing/2 — розрізання за Y зламається: ' + wide.map(w => w[0])) : ok('розрізання за Y коректне');
+  // логотип (show_brand, BRAND_ON_YELLOW / BRAND_ON_DARK моделі) має дійти до сторінки своїм кольором
+  const brandCol = c => c.every(v => v <= 20) || c.every(v => v >= 240);
+  const noBrand = ['boom', 'v_stick', 'bucket', 'post'].filter(n => !parts[n] || !parts[n].groups.some(g => brandCol(g.color) && g.idx.length));
+  noBrand.length ? fail('немає граней логотипа у: ' + noBrand.join(', ')) : ok('логотип на стрілі, рукояті, ковші й колоні');
   const { pose } = await import('data:text/javascript,' + encodeURIComponent(p1 + '\nexport { pose };'));
   // Зворотна задача мусить бути точним оберненням прямої: ставимо зуб туди, де він
   // щойно був, і кути мають повернутися ті самі. Без цього перетягування за ківш

@@ -34,6 +34,9 @@ module node_part(k) {
     else if (k == "tube_stick")     stick_body();
     else if (k == "post_plate")     for (s = [-1, 1]) translate([0, s*((boom_foot_boss_len + 2)/2 + 6), 0]) make_post_plate();
     else if (k == "washer_B")       { $sel = ""; $one = false; washers_B(); }
+    // боковини ковша в наборі — два файли (логотип назовні), у моделі — один ключ bk_side
+    else if (k == "bk_side_L")      bk_side_one();
+    else if (k == "bk_side_R")      mirror([0, 1, 0]) bk_side_one();
     else if (k == "cyl_boom_body")   cyl_part("boom", "body");
     else if (k == "cyl_boom_rod")    cyl_part("boom", "rod");
     else if (k == "cyl_stick_body")  cyl_part("stick", "body");
@@ -97,3 +100,15 @@ if (node == "pins") color(GREY) assembly();
 if (node == "post") color(GREY) { machine_pin("pin_A"); machine_pin("pin_C"); }   // пальці лише як контекст
 for (i = [0 : len(keys) - 1]) if (visible(i)) color(col_of(i))
     if (node == "pins") machine_pin(keys[i]); else node_part(keys[i]);
+
+// Логотип — наліпка моделі (brand_marks) на тих самих деталях і в тих самих системах, що
+// node_part(). Малюється ПОЗА color() деталі: зовнішній колір перефарбував би його в
+// колір деталі, і знак зник би. Чорне/біле (S ≈ 0) у маски виносок не потрапляє.
+module node_brand(k) {
+    if      (k == "tube_boom_seg1") rotate([0, -boom_alpha1, 0]) brand_decal("boom_seg1");
+    else if (k == "tube_stick")     brand_decal("stick");
+    else if (k == "post_plate")     for (s = [-1, 1]) translate([0, s*((boom_foot_boss_len + 2)/2 + 6), 0]) brand_decal("post_plate");
+    else if (k == "bk_side_L")      brand_decal("bk_side", 1);
+    else if (k == "bk_side_R")      brand_decal("bk_side", -1);
+}
+if (node != "pins") for (i = [0 : len(keys) - 1]) if (visible(i)) node_brand(keys[i]);

@@ -45,7 +45,8 @@ import sys
 import tempfile
 
 import numpy as np
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Polygon
+from shapely.ops import unary_union
 from shapely import affinity
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -62,9 +63,10 @@ from caliper_dims import dims_for, bounds_with, PlacedDim                       
 SCAD = os.path.join(HERE, 'sheets.scad')
 
 # ------------------------------------------------------------------ сторінка, мм
-PAGE_W, PAGE_H, MARGIN = 210, 297, 10
+import page_style as ps                     # noqa: E402  шапка/підвал — один вигляд для всіх PDF (tools/page_style.py)
+PAGE_W, PAGE_H, MARGIN = 210, 297, ps.MARGIN
 CW, CH = PAGE_W - 2 * MARGIN, PAGE_H - 2 * MARGIN      # 190 × 277
-HEAD_H, FOOT_H = 9.0, 9.0
+HEAD_H, FOOT_H = ps.HEAD_H, 9.0
 PAD = 1.6            # відступ контуру (разом з розмірами) від рамки комірки
 GAP = 1.2            # проміжок між комірками
 LABEL_ROW = 4.0      # крок виносок на рендері
@@ -99,7 +101,10 @@ RENDER_NVIEWS = {'post': 0, 'cyl': 1, 'rocker': 1, 'link': 1}
 # Третій ракурс ЗАРАДИ конкретної деталі — той, де її видно найбільше (ківш зсередини:
 # ребро губи під передньою кромкою накладки на звичайних ракурсах не зрозуміти, де воно).
 RENDER_FOCUS = {'bucket': ('bk_lip_rib', 'зсередини')}
-PIN_CLOSEUP = 700                    # відстань камери крупного плану шарніра, мм моделі (кадр ≈ 280 мм)
+# Картка кроку лишається на основному ракурсі, якщо нову деталь там видно хоча б на цю
+# частку від її найкращого вигляду (і не менше 400 px) — інакше береться кращий кандидат.
+STEP_MIN_SHARE = 0.2
+PIN_CLOSEUP = 700                   # відстань камери крупного плану шарніра, мм моделі (кадр ≈ 280 мм)
 # Кандидати ракурсів (rotx, rotz гімбала OpenSCAD): rotx 55 — згори, 90 — збоку (у пащу ковша), 125 — знизу.
 VIEWS = [(55, 25), (55, 115), (55, 205), (55, 295), (90, 25), (90, 115), (90, 205), (90, 295),
          (125, 25), (125, 115), (125, 205), (125, 295)]
@@ -163,6 +168,23 @@ def lay_down(tri, key):
     return tri
 
 
+BRAND_DEPTH = 0.4       # виїмка логотипа, друковані мм (print3d-parts/brand.scad)
+
+
+def brand_recess(tri):
+    """Логотип на верхній грані так, як він лежить на папері: дно виїмки — грані, що
+    дивляться вгору рівно на BRAND_DEPTH нижче верху. Береться з того самого STL, що йде
+    на друк, тому на аркуші знак той самий, що вийде з принтера. Немає — None."""
+    e1, e2 = tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]
+    nz = e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0]
+    zc = tri[:, :, 2].mean(1)
+    sel = (nz > 1e-9) & (np.abs(zc - (tri[:, :, 2].max() - BRAND_DEPTH)) < 1e-3)
+    if not sel.any():
+        return None
+    g = unary_union([Polygon(t[:, :2]) for t in tri[sel]]).buffer(0.003).buffer(-0.003)
+    return g if g.area > 10 else None                 # знак — десятки мм²; дрібні сходинки — не він
+
+
 def width_at(poly, x):
     """Ширина силуету на вертикалі x (для діаметра стрижня пальця)."""
     b = poly.bounds
@@ -176,8 +198,11 @@ def measure(key, path):
     poly = affinity.scale(poly, 1, -1, origin=(0, 0))      # погляд згори: у SVG вісь Y униз
     b = poly.bounds
     poly = affinity.translate(poly, -b[0], -b[1])
+    logo = brand_recess(tri)
+    if logo is not None:                                     # ті самі перетворення, що й контур
+        logo = affinity.translate(affinity.scale(logo, 1, -1, origin=(0, 0)), -b[0], -b[1])
     b = poly.bounds
-    m = dict(w=b[2], h=b[3], z=float(tri[:, :, 2].max()), poly=poly, holes=[], ring=None, pin=None)
+    m = dict(w=b[2], h=b[3], z=float(tri[:, :, 2].max()), poly=poly, holes=[], ring=None, pin=None, logo=logo)
     for ring in poly.interiors:
         c = as_circle(list(ring.coords))
         rb = ring.bounds
@@ -282,6 +307,10 @@ class Cell:
             cls = {'b': 'tt', 'i': 'tn', 'w': 'tw', 'n': 'tx'}.get(st, 'td')
             out.append(f'<text class="{cls}" x="{x + PAD:.2f}" y="{ty - s * 0.28:.2f}" font-size="{s}">{html.escape(t)}</text>')
         out.append(f'<path class="part" d="{svg_path(m["poly"], T)}"/>')
+        if m.get('logo') is not None:                        # логотип — виїмка на верхній грані
+            lg = m['logo']
+            for g in ([lg] if lg.geom_type == 'Polygon' else lg.geoms):
+                out.append(f'<path class="logo" d="{svg_path(g, T)}"/>')
         # діаметри великих отворів — усередині
         for hole in m['holes']:
             c = hole['circle']
@@ -733,11 +762,15 @@ def make_view(R, node, keys, view, labels_by_key, ref, size=(1400, 1050), out_di
     return View(node, view, out, crop, labels), [keys[i] for i in range(n) if anc[i][1] is not None and anc[i][0] >= 25 * scale2]
 
 
-def make_step_view(R, node, keys, idx, views, label, size=(1000, 750), camera=None):
+def make_step_view(R, node, keys, idx, views, label, size=(1000, 750), camera=None, ref_px=0):
     """Крок складання: деталі 0..idx, остання помаранчева. Ракурс — основний, а якщо на
     ньому нову деталь майже не видно, той із кандидатів, де її видно найбільше.
+    «Майже не видно» — менше 400 px АБО менше STEP_MIN_SHARE від її найкращого вигляду
+    (ref_px — найбільше з 12 оглядових кандидатів, розмір 1400×1050): права боковина ковша
+    з лівого боку видна лише ребром — 2401 px проти 92 тисяч, і 400 px цього не ловить.
     camera — крупний план (центр, відстань) для пальців: на плані всієї машини їх не видно."""
     hi = keys[idx]
+    need = max(400, STEP_MIN_SHARE * ref_px * (size[0] / 1400) ** 2)
     best = None
     for v in list(views) + [v for v in VIEWS if v not in views]:
         src = R.png(node, keys, v, size, hi=hi, upto=idx, camera=camera)
@@ -745,7 +778,7 @@ def make_step_view(R, node, keys, idx, views, label, size=(1000, 750), camera=No
         c, p = anchors(lab, 1)[0]
         if best is None or c > best[0]:
             best = (c, v, src, a, lab, p)
-        if v in views and c >= 400:        # основний ракурс годиться — далі не шукаємо
+        if v in views and c >= need:       # основний ракурс годиться — далі не шукаємо
             break
     c, v, src, a, lab, p = best
     out = os.path.join(R.tmp, f'step_{node}_{idx:02d}.png')
@@ -764,6 +797,7 @@ body {{ margin: 0; font-family: {FONT}; color: #000; background: #fff; -webkit-p
 svg text {{ font-family: {FONT}; }}
 .cell {{ fill: none; stroke: #9a9a9a; stroke-width: 0.25; }}
 .part {{ fill: #e9eef5; stroke: #1a1a1a; stroke-width: 0.35; fill-rule: evenodd; stroke-linejoin: round; }}
+.logo {{ fill: #3a3a3a; stroke: none; fill-rule: evenodd; }}
 .tt {{ font-weight: 700; }}
 .tn {{ font-style: italic; fill: #333; }}
 .td {{ fill: #000; }}
@@ -779,7 +813,7 @@ svg text {{ font-family: {FONT}; }}
 .tv {{ fill: #555; font-style: italic; }}
 .head {{ font-weight: 700; }}
 .hsub {{ fill: #333; }}
-.hr {{ stroke: #000; stroke-width: 0.5; }}
+.hr {{ stroke: #000; stroke-width: {ps.RULE_W}; }}
 .ruler {{ stroke: #000; stroke-width: 0.3; }}
 .tf {{ fill: #333; }}
 .rbox {{ fill: none; stroke: #bbb; stroke-width: 0.2; stroke-dasharray: 1 0.8; }}
@@ -817,11 +851,11 @@ svg text {{ font-family: {FONT}; }}
 
 def head_svg(no, total, sheet, nparts, nfiles, ver, date, cont=0):
     t = f'Аркуш {no} з {total} · {sheet["title"].upper()}' + (f' · продовження {cont}' if cont else '')
-    return (f'<text class="head" font-size="5.0" x="0" y="4.6">{html.escape(t)}</text>'
-            f'<text class="hsub" font-size="2.5" x="{CW}" y="4.6" text-anchor="end">print3d-parts · {html.escape(ver)} · {date}</text>'
-            f'<text class="hsub" font-size="2.5" x="0" y="7.9">{html.escape(sheet["sub"])} · деталей {nparts} у {nfiles} файлах · '
+    return (f'<text class="head" font-size="{ps.TITLE}" x="0" y="{ps.TITLE_Y}">{html.escape(t)}</text>'
+            f'<text class="hsub" font-size="{ps.SMALL}" x="{CW}" y="{ps.TITLE_Y}" text-anchor="end">print3d-parts · {html.escape(ver)} · {date}</text>'
+            f'<text class="hsub" font-size="{ps.SMALL}" x="0" y="{ps.SUB_Y}">{html.escape(sheet["sub"])} · деталей {nparts} у {nfiles} файлах · '
             f'масштаб 1:1 — кладіть деталь на її контур</text>'
-            f'<line class="hr" x1="0" y1="{HEAD_H - 0.5:.1f}" x2="{CW}" y2="{HEAD_H - 0.5:.1f}"/>')
+            f'<line class="hr" x1="0" y1="{ps.RULE_Y}" x2="{CW}" y2="{ps.RULE_Y}"/>')
 
 
 def foot_svg(note):
@@ -841,8 +875,12 @@ def foot_svg(note):
 
 def same_size_notes(cells):
     """Деталі, що збігаються всіма трьома габаритами (у межах 0.3 мм): напис «= файл».
-    Пари, що різняться менше ніж на 1 мм, — «схожа: файл (чим різниться)»."""
+    Пари, що різняться менше ніж на 1 мм, — «схожа: файл (чим різниться)».
+    Ліва й права (ключі `…_L` / `…_R`) — не «однакові», а дзеркальні: контури на аркуші
+    віддзеркалені, і кладеться кожна лише на свій."""
     dims = {c.part['file']: (round(c.m['w'], 1), round(c.m['h'], 1), round(c.m['z'], 1)) for c in cells}
+    key = {c.part['file']: c.part['key'] for c in cells}
+    twin = lambda f, g: key[f][:-2] == key[g][:-2] and {key[f][-2:], key[g][-2:]} == {'_L', '_R'}
     notes = {}
     files = list(dims)
     for i, f in enumerate(files):
@@ -852,7 +890,9 @@ def same_size_notes(cells):
                 continue
             b = dims[g]
             d = [abs(x - y) for x, y in zip(a, b)]
-            if max(d) <= 0.3:
+            if twin(f, g):
+                notes.setdefault(f, []).append(f'дзеркальна до {g}')
+            elif max(d) <= 0.3:
                 notes.setdefault(f, []).append(f'= {g} (однакові)')
             elif max(d) < 1.0:
                 j = max(range(3), key=lambda k: d[k])
@@ -983,7 +1023,8 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report, schem
             for i, k in enumerate(nkeys):
                 st = step_of[k]
                 cam = (pinpos[k], PIN_CLOSEUP) if node == 'pins' else None
-                vw, cnt = make_step_view(R, node, nkeys, i, chosen, labels_by_key[k], camera=cam)
+                vw, cnt = make_step_view(R, node, nkeys, i, chosen, labels_by_key[k], camera=cam,
+                                         ref_px=0 if cam else ref[i])
                 step_report.append(dict(step=st['step'], key=k, view=vw.view, px=int(cnt)))
                 if cnt < 60:
                     print(f'  УВАГА: крок {st["step"]} ({k}) — деталь майже не видно ({cnt} px)')
@@ -1000,7 +1041,8 @@ def build_sheet(no, sheet, parts, steps, R, ver, date, want_steps, report, schem
                     rot=rot, outline=[round(c.m['w'], 2), round(c.m['h'], 2), round(c.m['z'], 2)],
                     dims=[dict(kind=d.kind, value=round(d.value, 2), text=d.text) for d in c.dims],
                     holes=[round(h_['circle'][2], 2) if h_['circle'] else [round(h_['w'], 2), round(h_['h'], 2)] for h_ in c.m['holes']],
-                    ring=c.m['ring'], pin=c.m['pin'], note=notes.get(c.part['file'], ''))
+                    ring=c.m['ring'], pin=c.m['pin'], note=notes.get(c.part['file'], ''),
+                    logo_mm2=round(c.m['logo'].area, 1) if c.m.get('logo') is not None else None)
                for pg, c, (x, y, w, h, rot) in cells_report],
         renders_on_sheet=render_boxes,
         renders_overflow=[vw.title for vw in leftover],

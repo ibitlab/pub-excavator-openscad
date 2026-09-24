@@ -39,9 +39,10 @@ pre = 0;         // попередній поворот навколо Y мод�
 eps = 0.01;
 function P(x) = x * SC;          // друковані мм → мм моделі
 
-// Бренд на деталях — після SC: таблиця місць у brand.scad рахує z граней через нього.
+// Бренд на деталях — після SC: глибина виїмки задана в друкованих мм і переводиться через P().
+// Місця знаків — у моделі (brand_marks), тут лише виїмка.
 include <brand.scad>
-assert(!is_undef(brand_marks), "print3d-parts/brand.scad не підключився");
+assert(!is_undef(BRAND_DEPTH) && !is_undef(brand_marks), "print3d-parts/brand.scad або розділ «ЛОГОТИП» моделі не підключився");
 
 // Орієнтація на столі: деталь кладеться найменшим розміром догори.
 //
@@ -56,16 +57,13 @@ assert(!is_undef(brand_marks), "print3d-parts/brand.scad не підключив
 // 60 мм заввишки на основі 15×15. Усі вони призматичні вздовж Y (складова Y найбільшої
 // нормалі ≈ 0), тому поворот навколо Y кладе їхню найбільшу грань на стіл. Кут `pre`
 // не підібраний на око: він порахований із нормалі цієї грані (див. README).
-// Бренд (brand.scad) вирізається вже В КООРДИНАТАХ СТОЛУ, після укладання: так його
-// положення задається друкованими мм по STL, а модель і решта обгортки не знають про нього.
+// Бренд (brand.scad → branded()) вирізається ДО укладання, у системі самої деталі — тими
+// самими місцями з моделі, що показують 3D-сторінки; lay() лише повертає і масштабує.
 module lay() {
-    difference() {
-        scale(1/SC)
-            if      (ori == "y") rotate([90, 0, 0]) rotate([0, pre, 0]) children();   // +Y моделі → +Z столу
-            else if (ori == "x") rotate([0, -90, 0]) rotate([0, pre, 0]) children();  // +X моделі → +Z столу
-            else rotate([0, pre, 0]) children();                                       // z або raw: як у моделі
-        brand_cut(pp);
-    }
+    scale(1/SC)
+        if      (ori == "y") rotate([90, 0, 0]) rotate([0, pre, 0]) children();   // +Y моделі → +Z столу
+        else if (ori == "x") rotate([0, -90, 0]) rotate([0, pre, 0]) children();  // +X моделі → +Z столу
+        else rotate([0, pre, 0]) children();                                       // z або raw: як у моделі
 }
 
 // -----------------------------------------------------------------------------
@@ -124,15 +122,25 @@ module make_cyl_body(bore, rod, closed, stroke, pin, wall = 5, eye_len = 45) {
 // own != "" — компонент дістається з вузла механізмом самої моделі:
 // $sel лишає одну деталь, $one — одну з дзеркальної пари.
 module from_assembly() { $sel = pp; $one = true; part_by_name(own); }
+module bk_side_one() { $sel = "bk_side"; $one = true; part_by_name("bucket"); }
 
 if (own != "") lay() from_assembly();
 
 // Труби — у власній системі, віссю вздовж +X (як для розгорток ескізів)
-else if (pp == "tube_boom_seg1") lay() tube_local("boom_seg1");
+// Знак на трубах — на обох бічних стінках: +Y лягає догори (ori = y), −Y — на стіл
+else if (pp == "tube_boom_seg1") lay() branded("boom_seg1") tube_local("boom_seg1");
 else if (pp == "tube_boom_seg2") lay() tube_local("boom_seg2");
-else if (pp == "tube_stick")     lay() tube_local("stick");
+else if (pp == "tube_stick")     lay() branded("stick") tube_local("stick");
 
-else if (pp == "post_plate")     lay() make_post_plate();
+// Знак на обох гранях: одна з них друкується на столі — там виїмка трохи грубіша, це нормально
+else if (pp == "post_plate")     lay() branded("post_plate") make_post_plate();
+
+// Боковини ковша — дві РІЗНІ деталі, хоча в моделі це одна дзеркальна пара: логотип
+// іде на зовнішню грань кожної. $one дає ліву (+Y машини, якщо дивитись від колони на
+// ківш), вона лягає зовнішньою гранню догори як є. Права — справжня права (дзеркало по Y
+// моделі, зі своїм знаком), перевернута зовнішньою гранню догори: поворот 180° навколо X.
+else if (pp == "bk_side_L") lay() branded("bk_side", 1) bk_side_one();
+else if (pp == "bk_side_R") lay() rotate([180, 0, 0]) branded("bk_side", -1) mirror([0, 1, 0]) bk_side_one();
 
 // Круглі. Розміри — ті самі вирази, що в моделі; звірено з її echo(BOM_ROUND).
 else if (pp == "A_bushing")   lay() make_ring(bush_od_main,     pin_A,        boom_foot_boss_len);

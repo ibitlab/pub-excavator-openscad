@@ -39,6 +39,7 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from author import line as author_line       # noqa: E402  авторство по центру колонтитула (AUTHORS у корені)
+import page_style                            # noqa: E402  один вигляд шапки й підвалу для всіх PDF
 CHROME_CANDIDATES = [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
@@ -182,7 +183,7 @@ def parse(md):
 
 # ---------------------------------------------------------------- HTML
 CSS = """
-@page { size: A4 portrait; margin: 14mm 12mm 13mm 12mm; }
+@page { size: A4 portrait; margin: 25mm 10mm 10mm 10mm; }   /* поля як в аркушів; зверху — місце під шапку (tools/page_style.py) */
 * { box-sizing: border-box; }
 body { font: 10.2pt/1.42 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #000;
        background: #fff; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -297,7 +298,7 @@ def render(blocks, images, title_hint):
                     and (tail + 1 == len(blocks) or blocks[tail + 1][0] == 'h2'):
                 close_at = tail
         if kind == 'h1':
-            out.append(f'<h1>{inline(val)}</h1>')
+            pass                      # заголовок — у шапці кожної сторінки (to_pdf, tools/page_style.py), як в аркушах
         elif kind == 'h2':
             flush_sketches()
             sec_no += 1
@@ -347,9 +348,12 @@ def render(blocks, images, title_hint):
 
 
 # ---------------------------------------------------------------- PDF
-def to_pdf(html_path, pdf_path, chrome, footer_title, date):
+def to_pdf(html_path, pdf_path, chrome, footer_title, date, header=None):
     """Спершу node+puppeteer-core (дає колонтитул із номерами сторінок), інакше —
-    сам Chrome через --print-to-pdf. PDF в обох випадках той самий, крім номерів."""
+    сам Chrome через --print-to-pdf. PDF в обох випадках той самий, крім номерів.
+    Підвал — tools/page_style.footer_html. header = (заголовок, «набір · версія · дата»[, підзаголовок]) —
+    шапка на кожній сторінці тим самим шаблоном (page_style.header_html); без неї документ малює шапку сам
+    (аркуші розкладки — у SVG кожного аркуша)."""
     media = os.path.join(ROOT, 'tools', 'media')
     if shutil.which('node') and os.path.isdir(os.path.join(media, 'node_modules', 'puppeteer-core')):
         # Файл кладеться саме в tools/media: node шукає пакет від теки СКРИПТА,
@@ -358,20 +362,18 @@ def to_pdf(html_path, pdf_path, chrome, footer_title, date):
         with open(js, 'w') as f:
             f.write("""
 import puppeteer from 'puppeteer-core';
-const [chrome, src, out, title, date, author] = process.argv.slice(2);
+const [chrome, src, out, header, footer] = process.argv.slice(2);
 const b = await puppeteer.launch({ executablePath: chrome, headless: 'new' });
 const p = await b.newPage();
 await p.goto('file://' + src, { waitUntil: 'load' });
-const style = 'font:7pt -apple-system,Helvetica,Arial,sans-serif;color:#555;width:100%;padding:0 12mm;position:relative;';
 await p.pdf({ path: out, format: 'A4', printBackground: true, preferCSSPageSize: true,
-  displayHeaderFooter: true, headerTemplate: '<div></div>',
-  footerTemplate: `<div style="${style}"><span>${title}</span>` +
-    `<span style="position:absolute;left:0;right:0;text-align:center;color:#888">${author}</span>` +
-    `<span style="float:right">${date} · с. <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>` });
+  displayHeaderFooter: true, headerTemplate: header, footerTemplate: footer });
 await b.close();
 """)
         try:
-            r = subprocess.run(['node', js, chrome, html_path, pdf_path, footer_title, date, author_line()],
+            head = page_style.header_html(*header) if header else '<div></div>'
+            foot = page_style.footer_html(footer_title, date, author_line())
+            r = subprocess.run(['node', js, chrome, html_path, pdf_path, head, foot],
                                cwd=media, capture_output=True, text=True)
         finally:
             os.remove(js)
@@ -410,8 +412,12 @@ def main():
     chrome = os.environ.get('CHROME') or next((c for c in CHROME_CANDIDATES if os.path.exists(c)), None)
     if not chrome:
         sys.exit('не знайшов Chrome; вкажіть CHROME=/шлях/до/chrome')
-    how = to_pdf(html_path, os.path.abspath(a.out), chrome, title,
-                 datetime.date.today().isoformat())
+    date = datetime.date.today().isoformat()
+    vd = os.path.join(ROOT, 'versions')
+    vers = sorted(d for d in os.listdir(vd) if d.startswith('V')) if os.path.isdir(vd) else []
+    meta = f"print3d-parts · {vers[-1] if vers else 'без версії'} · {date}"          # як у шапці аркушів розкладки
+    head, _, sub = title.partition(': ')
+    how = to_pdf(html_path, os.path.abspath(a.out), chrome, title, date, header=(head, meta, sub))
 
     n_img = sum(1 for v in images.cache.values() if v)
     print(f'  {a.out}: {pdf_pages(a.out)} стор., {os.path.getsize(a.out) // 1024} КБ, '
