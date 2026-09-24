@@ -54,7 +54,7 @@ KIT = os.path.dirname(HERE)
 ROOT = os.path.dirname(KIT)
 sys.path.insert(0, KIT)
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
-from make_assembly_pdf import to_pdf, CHROME_CANDIDATES                              # noqa: E402
+from html_pdf import to_pdf, CHROME_CANDIDATES                                      # noqa: E402  tools/html_pdf.py
 from make_pos_drawing import compute as compute_positions                            # noqa: E402
 from stl_mesh import read_stl, silhouette, as_circle                                 # noqa: E402
 from hue_callouts import classify, anchors, finish_image, spread_rows                # noqa: E402
@@ -370,7 +370,7 @@ def mkdim(A, B, P0, P1, text, tdir, toff):
 
 
 class Scheme:
-    """Схема «де саме стає накладна деталь» — та сама, що в img/positions.png, але у стилі
+    """Схема «де саме стає накладна деталь» — з make_pos_drawing.compute(), але у стилі
     аркуша: вид збоку у масштабі 1:1 (як і контури поруч — деталь можна прикласти) і
     переріз з торця; усі числа — друковані мм, про метал ані слова. Контури й відступи —
     з make_pos_drawing.compute(): слід деталі на базі виміряний із перерізу моделі."""

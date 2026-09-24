@@ -24,14 +24,14 @@ The overview, the live 3D model and the PDF documents are in [README.md](README.
 | `versions/VNNN-date-time/` | **Built versions — everything generated lives only here**: `stl/`, `renders/`, `docs/` (`02-kinematics.md`, `03-strength.md`, `04-bom.md`, the angle ranges, the intersection check), `bom/`, `dxf/`, `drawings/`, `scad/` (a snapshot of the model and the scripts), `VERSION.md`. The current one is the folder with the highest number. |
 | `tools/build_version.sh` | **The version build script**: intersection check → moving-pair check → STL of every part → renders → reports → `VERSION.md`. The version number increments automatically. |
 | `tools/bom_drawings.sh` | **BOM + drawings**: the bill of materials (`bom.md`, `bom.csv`), the outlines of every plate as 1:1 DXF for cutting, and PDF sketches with the main dimensions (`drawings/parts.pdf` + PNG pages). The data comes from the model's echo and from a projection of each plate — there is no separate list of dimensions anywhere. The first run creates `tools/.venv` with matplotlib. |
-| `print3d-parts/` | **The 1:5 printed kit** — every component on its own, the way it is cut from steel (54 files, 76 pieces), glued instead of welded: `make.sh` → STL sorted by slicer job, `BOM.md`, `ASSEMBLY.md`. Separately, `sheets/SHEETS.pdf` — **1:1 sorting sheets** for the pile of printed parts: the outline of every part on the sheet of its own sub-assembly, renders with callouts, gluing step cards. See section 2. |
+| `print3d-parts/` | **The 1:5 printed kit** — every component on its own, the way it is cut from steel (54 files, 76 pieces), glued instead of welded: `make.sh` → STL sorted by slicer job, `BOM.md`, and `sheets/SHEETS.pdf` — **1:1 sorting sheets** for the pile of printed parts: the outline of every part on the sheet of its own sub-assembly, renders with callouts, gluing step cards. See section 2. |
 | `tools/viewer.sh` → `tools/viewer.py`, `tools/viewer/index.html` | **An interactive 3D page in the browser**: orbit / pan / zoom, the angles change instantly, and any other model parameter is rebuilt through OpenSCAD in ≈ 0.4 s. See section 2. |
 | `tools/viewer-wasm.sh` → `tools/viewer-wasm/` (`package.json`, Vite) | **A second version of the 3D page — with no backend**: OpenSCAD-WASM in a web worker renders the model right in the browser; it builds into a static site in `dist/`. See section 2. |
 | `tools/media/` | **README media**: `readme_media.sh` → the page tour GIF (`page_tour.mjs`, several modes and views) and the PDF previews (`pdf_preview.py`) in `docs/img/`. Screenshots of the page in headless Chrome (`page_shot.mjs`), collages (`compose.py`) and a full set of images and video for publications (`make_media.sh` → `temp/media/`, which is never committed). |
 | `tools/check_overlaps.sh` | Checks that the sub-assemblies of the weldment abut but never overlap (the intersection volume of every pair is 0). |
 | `tools/check_motion.sh` | Checks the **moving** pairs in 3D over the full cylinder stroke: bucket ↔ stick / rocker / link / cylinder, link ↔ rocker, the bodies of all three cylinders ↔ their own brackets, stick ↔ boom; and, for reference, bucket ↔ boom in the folded pose. |
 | `scad/brand/` → `tools/brand_merge.py` | **The logo**: one polygon per size (merged from the generator's output by `brand_merge.py`: ~800 zero-area slivers made every WASM rebuild ≈ 3× slower). Where it goes is the `brand_marks` table in the model — the 3D pages, the renders, the sheets and the printed recesses all read that one table. |
-| `tools/page_style.py` | **One look for every PDF**: the header (bold title, "kit · version · date", a 0.5 mm rule) and the footer (document · author · date · page N/M) of `SHEETS.pdf`, `ASSEMBLY.pdf` and the part sketches. |
+| `tools/page_style.py` | **One look for every PDF**: the header (bold title, "kit · version · date", a 0.5 mm rule) and the footer (document · author · date · page N/M) of `SHEETS.pdf` and the part sketches. |
 | `tools/stl_volume.py` | The volume of an STL (cm³), needed for the intersection check. |
 | `tools/agent_analytics.py` | Analytics of the agent work from the Claude Code logs (tokens, minutes, roles). |
 | `tools/git-hooks/pre-commit` | A git hook: before committing changes under `scad/` it checks the plates for overlaps. Enable it once: `git config core.hooksPath tools/git-hooks`. |
@@ -160,7 +160,7 @@ The options for issuing drawings, and what was chosen: **DXF 1:1** — the main 
 ### The 1:5 printed kit and the sorting sheets
 
 ```
-print3d-parts/make.sh                                              # STL of every component, checks, BOM, ASSEMBLY, sorting sheets
+print3d-parts/make.sh                                              # STL of every component, checks, BOM, sorting sheets
 tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png   # the sheets only (≈1.5 min; renders are cached)
 ```
 

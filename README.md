@@ -25,10 +25,6 @@
 
 [![1:1 sorting sheets for the 1:5 printed kit](docs/img/pdf_sheets.png)](print3d-parts/sheets/SHEETS.pdf)
 
-**[Assembly of the printed kit](print3d-parts/ASSEMBLY.pdf)** — what is glued to what, step by step, with the dimensions of every part and a table of look-alike parts.
-
-[![Assembly of the printed kit](docs/img/pdf_assembly.png)](print3d-parts/ASSEMBLY.pdf)
-
 > 📘 **All the technical detail is in [TECHNICAL.md](TECHNICAL.md)** — the files and scripts, how to run the model and the 3D pages, the chosen geometry and kinematics, the bucket, sections and steel, the AI review, **what must be checked before cutting metal**, fabrication notes and the next stages. Installing and the core commands: [QUICKSTART.md](QUICKSTART.md).
 
 ## What this is
@@ -53,7 +49,7 @@ The bucket is welded up from real parts (side plates, shell, cutting edge, teeth
 
 ## The 1:5 printed kit
 
-Every component can be printed at 1:5 and glued together exactly where it would be welded in steel: 54 files, 76 pieces. The sorting sheets and the assembly guide above are made for it; how the kit is split up and printed is in [print3d-parts/README.md](print3d-parts/README.md).
+Every component can be printed at 1:5 and glued together exactly where it would be welded in steel: 54 files, 76 pieces. The 1:1 sorting sheets above are made for gluing it; how the kit is split up and printed is in [print3d-parts/README.md](print3d-parts/README.md).
 
 ## Disclaimer
 

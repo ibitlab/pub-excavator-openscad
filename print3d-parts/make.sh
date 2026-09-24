@@ -52,25 +52,21 @@ python3 print3d-parts/make_bom.py "$TSV" /tmp/parts_check.json /tmp/parts_report
 echo "  print3d-parts/BOM.md"
 
 echo
-echo "== креслення прив'язок"
-# Вежа F і вилка D стають посеред пластини — словами це не пояснити.
-mkdir -p print3d-parts/img
-tools/.venv/bin/python print3d-parts/make_pos_drawing.py print3d-parts/img/positions.png \
-    print3d-parts/img/positions.json /tmp/parts_report.echo
-
-echo
-echo "== інструкція складання"
-# Зупиняє збирання навмисно: деталь без кроку складання — це деталь, яку нікуди
-# не приклеїти, і краще дізнатися про це тут, ніж із надрукованим набором у руках.
-python3 print3d-parts/make_assembly.py "$TSV" print3d-parts/assembly.tsv \
-    /tmp/parts_check.json "$VER" print3d-parts/img/positions.json > print3d-parts/ASSEMBLY.md
-echo "  print3d-parts/ASSEMBLY.md"
-
-echo
-echo "== інструкція складання на папері"
-# Біля принтера зручніше з аркушем, ніж із екраном: ескізи деталей у PDF стоять
-# у тексті картинками, а не посиланнями. Потрібні лише python з Pillow і Chrome.
-tools/.venv/bin/python print3d-parts/make_assembly_pdf.py || echo "  PDF не зібрано (потрібен Chrome) — ASSEMBLY.md на місці"
+echo "== кроки складання"
+# Зупиняє збирання навмисно: деталь без кроку в assembly.tsv мовчки випала б з аркушів
+# розкладки — це деталь, яку нікуди не приклеїти, і краще дізнатися про це тут, ніж із
+# надрукованим набором у руках. Кожен ключ parts.tsv — рівно один раз, чужих немає.
+python3 - "$TSV" print3d-parts/assembly.tsv <<'PY'
+import sys
+rows = lambda f: [l.split('\t') for l in open(f, encoding='utf-8') if l.strip() and not l.startswith('#')]
+parts = [r[0] for r in rows(sys.argv[1])]
+steps = [r[2] for r in rows(sys.argv[2])]
+bad = [f'без кроку: {k}' for k in parts if k not in steps] + [f'крок для невідомої деталі: {k}' for k in steps if k not in parts] \
+    + [f'кілька кроків: {k}' for k in sorted(set(steps)) if steps.count(k) > 1]
+if bad:
+    sys.exit('  ПОМИЛКА assembly.tsv:\n    ' + '\n    '.join(bad))
+print(f'  кроків: {len(steps)}, деталей: {len(parts)} — кожна рівно в одному кроці')
+PY
 
 echo
 echo "== аркуші розкладки 1:1"

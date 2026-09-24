@@ -11,7 +11,7 @@ bom_drawings.py — специфікація (BOM), DXF 1:1 та PDF-ескіз�
 """
 import subprocess, json, re, os, sys, math, argparse, csv, tempfile, datetime, textwrap
 from author import line as author_line, md_footer   # авторство в підвалі кожного аркуша й у bom.md (AUTHORS у корені)
-import page_style as ps                        # шапка й підвал — той самий вигляд, що в SHEETS.pdf і ASSEMBLY.pdf
+import page_style as ps                        # шапка й підвал — той самий вигляд, що в SHEETS.pdf
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCAD = os.path.join(ROOT, 'scad', 'excavator_boom.scad')
@@ -333,7 +333,7 @@ def make_pdf(path, bom, flats, tubes, version):
             fig.text(LX, 0.865, '\n'.join(R['table']), fontsize=8.2, va='top', family='DejaVu Sans Mono')
             ax.set_xlim(-pad * 3.2, W + pad); ax.set_ylim(-pad * 3.4, H + pad * 1.5); save(pdf, fig, f['key'])
 
-        # --- підвал з номерами сторінок (як у SHEETS.pdf / ASSEMBLY.pdf) і запис
+        # --- підвал з номерами сторінок (як у SHEETS.pdf) і запис
         for n, (fig, name) in enumerate(figs, 1):
             ps.mpl_footer(fig, FOOT, date, author_line(), n, len(figs))
             pdf.savefig(fig); fig.savefig(os.path.join(png_dir, f'{n:02d}_{name}.png'), dpi=90); plt.close(fig)

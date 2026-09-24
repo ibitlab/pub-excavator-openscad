@@ -90,7 +90,7 @@ node tools/media/probe.mjs URL --set sl_boom=40 --js "__VIEW__().angles" --shot 
 PDF робить Chrome, перевіряє poppler (`brew install poppler`; є в QUICKSTART). `mutool`,
 `gs`, ImageMagick не потрібні.
 
-- **PDF** — `to_pdf(html, pdf, chrome, підпис, дата)` з `print3d-parts/make_assembly_pdf.py`
+- **PDF** — `to_pdf(html, pdf, chrome, підпис, дата, header=…)` з `tools/html_pdf.py`
   (імпортом, не копією): з `node` + `puppeteer-core` у `tools/media/node_modules` дає
   колонтитул із номерами сторінок, без них — `--print-to-pdf`. `@page { size: A4;
   margin: … }` + `preferCSSPageSize` → CSS-міліметри стають міліметрами паперу без

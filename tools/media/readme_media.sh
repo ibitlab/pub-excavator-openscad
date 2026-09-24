@@ -2,8 +2,8 @@
 # Медіа для README, одним запуском (≈ 5 хв):
 #   docs/img/page_tour.gif, page_tour.uk.gif — «тур» 3D-сторінки (WASM, свіжа збірка) у кількох
 #       режимах і ракурсах: щоб з першого погляду було видно, що за посиланням на живу сторінку;
-#   docs/img/pdf_sheets.png, pdf_assembly.png, pdf_parts.png — прев'ю PDF, на які README посилається.
-# Запускати після змін у 3D-сторінці, у моделі (вигляд машини) чи в будь-якому з трьох PDF.
+#   docs/img/pdf_sheets.png, pdf_parts.png — прев'ю PDF, на які README посилається.
+# Запускати після змін у 3D-сторінці, у моделі (вигляд машини) чи в будь-якому з двох PDF.
 # Потрібні: node з puppeteer-core у tools/media, Chrome, ffmpeg, poppler, tools/.venv (Pillow).
 set -eu
 cd "$(dirname "$0")/../.."
@@ -32,5 +32,4 @@ done
 echo "== прев'ю PDF"
 VER=$(ls -d versions/V* | sort | tail -1)
 $PY tools/media/pdf_preview.py print3d-parts/sheets/SHEETS.pdf 1,9,10,12 docs/img/pdf_sheets.png
-$PY tools/media/pdf_preview.py print3d-parts/ASSEMBLY.pdf 1,6,9,14 docs/img/pdf_assembly.png
 $PY tools/media/pdf_preview.py "$VER/drawings/parts.pdf" 1,3,12,17 docs/img/pdf_parts.png --height 300 --overlap 0.3

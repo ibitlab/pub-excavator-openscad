@@ -10,9 +10,9 @@
 
 Хто бере:
   * print3d-parts/sheets/make_sheets.py — шапка в SVG кожного аркуша (head_svg), підвал — to_pdf;
-  * print3d-parts/make_assembly_pdf.py  — to_pdf(): шапка й підвал шаблонами Chrome (header_html, footer_html);
+  * tools/html_pdf.py                   — to_pdf(): шапка й підвал шаблонами Chrome (header_html, footer_html);
   * tools/bom_drawings.py               — ескізи деталей у matplotlib (mpl_header, mpl_footer).
-Змінюєш вигляд — змінюй тут, і перезбери всі три PDF.
+Змінюєш вигляд — змінюй тут, і перезбери обидва PDF (аркуші й ескізи).
 """
 import html
 
