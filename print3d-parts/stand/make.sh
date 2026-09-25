@@ -43,11 +43,12 @@ v=$(vol /tmp/stand_seat.stl)
 echo "  плити в об'ємі виїмок: $v см³ (дві виїмки по 0.5 мм, має бути > 0)"
 
 echo "== посадка прищепки на циліндрі стріли (шток висунутий на 40 % ходу)"
-render clip_fit /tmp/stand_clip_fit.stl
+# при номінальному зазорі: від'ємний CLIP_FIT — навмисний натяг, він перетин і дає
+render clip_fit /tmp/stand_clip_fit.stl -D CLIP_FIT=0
 v=$(vol /tmp/stand_clip_fit.stl)
 [ "$v" = "0.000" ] || { echo "  ПОМИЛКА: прищепка перетинає гільзу або шток — $v см³"; exit 1; }
-echo "  з гільзою і штоком не перетинається: так (перетин 0.000 см³)"
-render clip_seat /tmp/stand_clip_seat.stl
+echo "  з гільзою і штоком не перетинається: так (перетин 0.000 см³ при CLIP_FIT=0)"
+render clip_seat /tmp/stand_clip_seat.stl -D CLIP_FIT=0
 v=$(vol /tmp/stand_clip_seat.stl)
 [ "$v" != "0.000" ] || { echo "  ПОМИЛКА: штуцер не входить в отвір прищепки — отвір не там"; exit 1; }
 echo "  штуцер в отворі рукава: так (без отвору перетин $v см³)"
