@@ -57,7 +57,7 @@ const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf3f1ec);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8478, 1.15));
+const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8478, 1.15); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-1500, -3000, 4000); scene.add(sun);
 const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(2500, 3000, 800); scene.add(fill);
 let camera, controls, ortho = false;
@@ -149,6 +149,7 @@ function updatePose() {
     if (bad) warn.push(L == null ? t('cyl.out', { part: title })
       : t('cyl.out.range', { part: title, L: L.toFixed(0), lo: closed, hi: closed + stroke }));
     const inp = $('num_' + key), sl = $('sl_' + key); if (document.activeElement !== inp) inp.value = (+a[key].toFixed(1)); sl.value = a[key];
+    const arSl = $('ar_' + key); if (arSl) arSl.value = a[key];   // повзунки накладки AR (є після першого входу)
   }
   const gz = -groundZ(), T = P.T, mm = t('hud.mm');
   const where = z => t(z >= 0 ? 'hud.above' : 'hud.below');
@@ -260,11 +261,14 @@ function buildPoseUI() {
   for (const [id, a] of Object.entries(POSES)) { const b = document.createElement('button'); b.textContent = t('pose.' + id); b.onclick = () => { stopPlay(); glide(a); }; $('poses').appendChild(b); }
 }
 let anim = null;
+// Кадри анімації пози — з власного циклу рендера, а не з requestAnimationFrame вікна:
+// у сеансі AR браузер його не викликає, і цикл копання там стояв би.
+const frameQ = [], nextFrame = f => frameQ.push(f);
 function glide(to, ms = 600, then) {
   const from = [ang3.boom, ang3.stick, ang3.bucket], t0 = performance.now(); anim = { cancel: false };
   const me = anim, step = t => { if (me.cancel) return; const k = Math.min(1, (t - t0) / ms), e = k * k * (3 - 2 * k);
     ang3.boom = from[0] + (to[0] - from[0]) * e; ang3.stick = from[1] + (to[1] - from[1]) * e; ang3.bucket = from[2] + (to[2] - from[2]) * e; updatePose();
-    if (k < 1) requestAnimationFrame(step); else if (then) then(); }; requestAnimationFrame(step);
+    if (k < 1) nextFrame(step); else if (then) then(); }; nextFrame(step);
 }
 const CYCLE = [[12, 145, 0, 900], [-22, 142, 5, 1100], [-26, 95, 45, 1500], [-22, 78, 125, 1000], [38, 80, 135, 1400], [42, 140, 120, 1100], [42, 142, -17, 900], [12, 145, 0, 1000]];
 let playing = false;
@@ -997,8 +1001,137 @@ const foldToggle = () => setSheet(sheet > 0 ? 0 : prevSheet);
   sw.onchange = apply;
   apply();
 })();
+// ------------------------------------------ AR: машина в кімнаті через камеру телефона
+// WebXR immersive-ar — Chrome на Android з ARCore. Сцену й далі малює ця сторінка, тож
+// поза працює так само, як на екрані: повзунки → ang3 → updatePose(). Safari на iPhone
+// WebXR для AR не має — там кнопка просто не з'являється.
+// Модель — у мм і з Z догори, WebXR — у метрах і з Y догори. Тому world повертається
+// на −90° навколо X (x, y, z → x, z, −y) і масштабується, а arRoot стоїть у точці на підлозі.
+// Камера своя: у камери сторінки near = 20 (мм), а WebXR прочитав би це як 20 м.
+const arRoot = new THREE.Group();
+const arCam = new THREE.PerspectiveCamera(50, 1, 0.02, 100);
+const reticle = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.14, 40).rotateX(-Math.PI / 2),
+                               new THREE.MeshBasicMaterial({ color: 0xffffff }));
+reticle.matrixAutoUpdate = false;
+const AR_SCALES = [1, 5];                                     // 1:1 — надворі, 1:5 — на столі
+const AR = { session: null, hitSrc: null, placing: true, scale: 1, saved: null };
+const zUp2yUp = p => new THREE.Vector3(p.x, p.z, -p.y);
+function arWorld() {                                          // машина всередині arRoot
+  const s = 0.001 / AR.scale;
+  world.scale.setScalar(s); world.rotation.set(-Math.PI / 2, 0, 0);
+  // Коло — точка на землі під віссю A (основа стріли): так машину ставлять на край ями.
+  // Сама вісь A — на висоті «вісь A над землею», земля моделі лягає на підлогу.
+  world.position.set(0, groundZ() * s, 0);
+}
+function arHint(key) { const s = key ? t(key) : ''; if ($('ar_hint').textContent !== s) $('ar_hint').textContent = s; }
+function arScaleLabel() { const b = $('ar_scale'); b.textContent = '1:' + AR.scale; b.title = t('ar.scale', { s: '1:' + AR.scale }); }
+function arSyncPlay() {                                       // у накладці підписи коротші: ряд кнопок має влізти в ширину телефона
+  const b = $('ar_play'), s = t(playing ? 'ar.stop' : 'ar.play');
+  if (b.textContent !== s) { b.textContent = s; b.classList.toggle('on', playing); }
+}
+function arBuildUI() {
+  const box = $('ar_sliders'); box.replaceChildren();
+  const a = effAngles();
+  for (const [key] of ANG) {
+    const l = limits(key) || [-90, 180];
+    const inp = el('input', { type: 'range', id: 'ar_' + key, min: l[0], max: l[1], step: 0.5 });
+    inp.value = a[key];
+    inp.addEventListener('input', () => { ang3[key] = +inp.value; stopPlay(); updatePose(); });
+    const row = el('label', { className: 'ar-ang' });
+    row.append(el('span', { textContent: t('ang.' + key) }), inp);
+    box.appendChild(row);
+  }
+  arScaleLabel(); arSyncPlay();
+}
+async function arStart() {
+  $('ar_msg').textContent = '';
+  try {
+    AR.session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: $('ar_ui') } });
+    AR.placing = true;
+    AR.saved = { pos: camera.position.clone(), target: controls.target.clone(), bg: scene.background,
+                 lights: [hemi, sun, fill].map(l => l.position.clone()) };
+    document.body.classList.add('ar');
+    scene.background = null; ground.visible = false; envelope.visible = false;
+    for (const l of [hemi, sun, fill]) l.position.copy(zUp2yUp(l.position));   // «вгору» тепер — Y
+    scene.add(arRoot, reticle); arRoot.add(world); arRoot.visible = false; reticle.visible = false;
+    controls.enabled = false;
+    arWorld(); arBuildUI(); arHint('ar.find');
+    renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local');
+    await renderer.xr.setSession(AR.session);
+    AR.session.addEventListener('select', arSelect);
+    const viewer = await AR.session.requestReferenceSpace('viewer');
+    AR.hitSrc = await AR.session.requestHitTestSource({ space: viewer });
+  } catch (e) {
+    const s = AR.session;
+    arEnd();
+    if (s) s.end().catch(() => {});
+    $('ar_msg').textContent = t('ar.fail', { msg: (e && (e.message || e.name)) || String(e) });
+    setTimeout(() => { $('ar_msg').textContent = ''; }, 8000);
+  }
+}
+function arSelect() {                                         // дотик по сцені (не по кнопках) — поставити машину на коло
+  if (!AR.placing || !reticle.visible) return;
+  const p = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+  const d = p.clone().sub(new THREE.Vector3().setFromMatrixPosition(renderer.xr.getCamera().matrixWorld));
+  arRoot.position.copy(p);
+  arRoot.rotation.set(0, Math.atan2(-d.x, -d.z), 0);         // вісь X машини (куди тягнеться стріла) — праворуч від погляду: бачиш її збоку, як у виді «Збоку»
+  arRoot.visible = true; AR.placing = false; reticle.visible = false;
+  arHint('ar.placed');
+}
+function arFrame(frame) {
+  if (AR.placing && AR.hitSrc) {
+    const hit = frame.getHitTestResults(AR.hitSrc)[0];
+    const pose = hit && hit.getPose(renderer.xr.getReferenceSpace());
+    reticle.visible = !!pose;
+    if (pose) reticle.matrix.fromArray(pose.transform.matrix);
+    arHint(pose ? 'ar.tap' : 'ar.find');
+  }
+  arSyncPlay();
+}
+function arEnd() {                                            // повернути сторінку як було; викликається й після невдалого старту
+  const s = AR.saved;
+  if (AR.hitSrc) { try { AR.hitSrc.cancel(); } catch (e) { /* сеанс уже закрито */ } }
+  AR.hitSrc = null; AR.session = null;
+  if (!s) return;
+  AR.saved = null;
+  renderer.xr.enabled = false;
+  scene.remove(arRoot, reticle); scene.add(world);
+  world.position.set(0, 0, 0); world.rotation.set(0, 0, 0); world.scale.setScalar(1);
+  [hemi, sun, fill].forEach((l, i) => l.position.copy(s.lights[i]));
+  scene.background = s.bg;
+  document.body.classList.remove('ar');
+  camera.position.copy(s.pos); controls.target.copy(s.target); controls.enabled = !locked; controls.update();
+  applyShow(); resize();
+}
+renderer.xr.addEventListener('sessionend', arEnd);           // «Вийти», кнопка «Назад» телефона або збій сеансу
+// Дотик по панелі AR не повинен ставити машину: скасовуємо select, що виник із дотику по кнопках.
+$('ar_ui').addEventListener('beforexrselect', e => { if (e.target.closest && e.target.closest('.ar-ctl')) e.preventDefault(); });
+$('ar_exit').onclick = () => { if (AR.session) AR.session.end().catch(() => {}); };
+$('ar_place').onclick = () => { AR.placing = true; };
+$('ar_rotl').onclick = () => { arRoot.rotation.y += 15 * RAD; };
+$('ar_rotr').onclick = () => { arRoot.rotation.y -= 15 * RAD; };
+$('ar_scale').onclick = () => {
+  AR.scale = AR_SCALES[(AR_SCALES.indexOf(AR.scale) + 1) % AR_SCALES.length];
+  arWorld(); arScaleLabel();
+};
+$('ar_play').onclick = () => { $('play').click(); arSyncPlay(); };
+function arInit() {                                           // кнопка — лише там, де AR справді є (https, ARCore)
+  const b = $('ar_btn');
+  b.onclick = () => { if (!AR.session && V) arStart(); };
+  if (!window.isSecureContext || !navigator.xr) return;
+  navigator.xr.isSessionSupported('immersive-ar').then(ok => { b.hidden = !ok; document.body.classList.toggle('arok', ok); }).catch(() => {});
+}
+window.__AR__ = () => ({ active: !!AR.session, placing: AR.placing, scale: AR.scale, button: !$('ar_btn').hidden });   // для тестів
+window.__ARUI__ = key => { document.body.classList.add('ar'); arBuildUI(); arHint(key || 'ar.placed'); };   // лише накладка, без сеансу й без руху сцени — для знімка
+
 let tPrev = performance.now();
-(function loop() { const now = performance.now(); smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+renderer.setAnimationLoop((time, frame) => {                  // у сеансі AR цей самий цикл отримує кадри WebXR
+  const now = performance.now();
+  for (const f of frameQ.splice(0)) f(now);
+  if (AR.session && renderer.xr.isPresenting) { if (frame) arFrame(frame); tPrev = now; renderer.render(scene, arCam); return; }
+  smTick(Math.min(0.05, (now - tPrev) / 1000)); tPrev = now; controls.update(); renderer.render(scene, camera);
+});
 
 // ---------------------------------------------------------------- мова сторінки
 function applyStatic() {                                      // статичні підписи index.html: data-i18n / data-i18n-title
@@ -1038,6 +1171,7 @@ function renderAll() {
     ang3.boom = values.boom_angle; ang3.stick = values.stick_angle; ang3.bucket = values.bucket_angle;
     await rebuild();
     setView(VIEWS.side);                       // ракурс з адреси більше не беремо
+    arInit();                                  // кнопка AR — коли є що ставити
     window.__READY__ = true;
   } catch (e) { $('load').hidden = true; status('st.load', { msg: e.message }, 'err'); }
 })();

@@ -20,7 +20,10 @@ case "${1:-dev}" in
   phone)   npm run build
            ip=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null \
                 || hostname -I 2>/dev/null | awk '{print $1}')
-           echo "  на телефоні (та сама Wi-Fi): http://${ip:-АДРЕСА-ЦЬОГО-КОМПʼЮТЕРА}:8767/"
+           echo "  on the phone (same Wi-Fi): http://${ip:-THIS-COMPUTER-ADDRESS}:8767/"
+           # WebXR (AR) працює лише в безпечному контексті, а це звичайний http у мережі
+           echo "  AR: in Chrome on the phone open chrome://flags/#unsafely-treat-insecure-origin-as-secure"
+           echo "      → http://${ip:-THIS-COMPUTER-ADDRESS}:8767 → Enabled → Relaunch (set back to Default after testing)"
            npx vite preview --host --port 8767 --strictPort ;;
   test)    npm test ;;
   *)       npm run dev ;;

@@ -243,6 +243,36 @@
     #tip { top: 14px; bottom: auto; left: 14px; transform: none;
            max-width: min(430px, calc(100% - 360px)); }
   }
+  /* AR: накладка поверх камери. Порожнє місце пропускає дотик до сцени (там ставлять
+     машину), тому pointer-events лише на кнопках і панелі. */
+  /* Кнопка AR — у куті над моделлю, як звикли в переглядачах 3D: у шухляді вона була б
+     нижче першого екрана. Є лише там, де браузер справді вміє AR (клас arok на body). */
+  #ar_btn { position: absolute; right: 12px; bottom: 12px; z-index: 4; border-radius: 999px;
+            font-weight: 600; box-shadow: 0 2px 8px #0000001a; min-height: 40px; padding: 6px 14px; }
+  #ar_btn:not(.on) { background: #fbfaf7e6; }
+  #ar_btn[hidden] { display: none; }
+  #ar_msg { position: absolute; right: 112px; bottom: 12px; z-index: 4; max-width: min(320px, calc(100% - 136px));
+            background: #fff4f2e8; border: 1px solid #e3b4ab; border-radius: 7px; padding: 5px 8px;
+            color: var(--bad); font-size: 11.5px; }
+  #ar_msg:empty { display: none; }
+  @media (max-width: 900px), (pointer: coarse) {
+    body.arok #tip { bottom: 62px; }                 /* плашка-підказка не налазить на кнопку AR */
+  }
+  #ar_ui { display: none; }
+  body.ar #ar_ui { display: flex; flex-direction: column; justify-content: space-between;
+                   position: fixed; inset: 0; z-index: 10; padding: 12px 12px 18px;
+                   pointer-events: none; color: #fff; }
+  #ar_ui .ar-top { display: flex; align-items: center; gap: 8px; }
+  #ar_hint { flex: 1; text-align: center; background: #000000a6; border-radius: 999px;
+             padding: 9px 14px; font-size: 13px; line-height: 1.35; }
+  #ar_hint:empty { visibility: hidden; }
+  #ar_ui button { pointer-events: auto; min-height: 42px; min-width: 42px; font-size: 14px; padding: 5px 9px; }
+  #ar_ui #ar_rotl, #ar_ui #ar_rotr { font-size: 22px; line-height: 1; }   /* #ar_ui button інакше переважує */
+  #ar_ui button:not(.on) { background: #fbfaf7f0; }
+  #ar_panel { pointer-events: auto; background: #000000a6; border-radius: 14px; padding: 8px 12px 10px; }
+  .ar-ang { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 8px; font-size: 13px; }
+  .ar-ang input { width: 100%; height: 34px; margin: 0; accent-color: var(--acc); }
+  #ar_panel .row { margin: 8px 0 0; gap: 6px; flex-wrap: nowrap; }
 </style>
 </head>
 <body>
@@ -294,7 +324,17 @@
   <div id="hud"></div>
   <div id="tip" hidden><span data-i18n="tip.drag"></span><button id="tip_x" aria-label="×">×</button></div>
   <div id="load"><div class="ttl" data-i18n="load.engine"></div><div class="track"><i></i></div><div class="sub"></div></div>
+  <button id="ar_btn" hidden data-i18n="ar.btn" data-i18n-title="ar.title"></button>
+  <div id="ar_msg"></div>
   <div id="help" data-i18n="help">ліва кнопка — обертання · права / Shift — панорама · коліщатко — масштаб · подвійний клік — центр обертання · SpaceMouse — у «Розширених можливостях»</div>
+</div>
+<!-- Накладка AR (WebXR DOM Overlay): поза сеансом AR схована, у сеансі браузер показує лише її поверх камери -->
+<div id="ar_ui">
+  <div class="ar-top"><span id="ar_hint"></span><button id="ar_exit" class="ar-ctl" data-i18n="ar.exit"></button></div>
+  <div id="ar_panel" class="ar-ctl">
+    <div id="ar_sliders"></div>
+    <div class="row"><button id="ar_play"></button><button id="ar_rotl" data-i18n-aria="ar.rotl">↺</button><button id="ar_rotr" data-i18n-aria="ar.rotr">↻</button><button id="ar_scale"></button><button id="ar_place" data-i18n="ar.place"></button></div>
+  </div>
 </div>
 
 <script type="module" src="./src/main.js"></script>

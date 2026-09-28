@@ -24,6 +24,7 @@
 //   --wait МС               пауза
 // Прапорці: --phone (390×844, isMobile, hasTouch, dsf 2; інакше 1440×900) · --size WxH · --dsf N
 //           --fresh (окремий контекст: порожній localStorage — мова, згорнуте попередження, лічильник підказки)
+//           --pre "код" (виконати до скриптів сторінки — підставний navigator.xr тощо)
 //           --settle МС (пауза після готовності, типово 600) · CHROME=/шлях/до/chrome
 // Код виходу 3 = на сторінці були помилки JS (їх видно в [pageerror]/[console.error]).
 import { existsSync } from 'node:fs';
@@ -43,6 +44,8 @@ const p = await ctx.newPage(); let errors = 0;
 p.on('pageerror', e => { errors++; console.log('[pageerror]', String(e).slice(0, 300)); });
 p.on('console', m => { if (m.type() === 'error') { errors++; console.log('[console.error]', m.text().slice(0, 300)); } });
 await p.setViewport({ width: W, height: H, deviceScaleFactor: +val('dsf', phone ? 2 : 1), isMobile: phone, hasTouch: phone });
+// --pre "код" — виконати ДО скриптів сторінки: підставний API (navigator.xr, пристрої). Перевіряє логіку, не залізо.
+if (has('pre')) await p.evaluateOnNewDocument(val('pre'));
 await p.goto(url, { waitUntil: 'domcontentloaded' });
 await p.waitForFunction('window.__READY__ === true', { timeout: 180000 });   // сторінка ставить прапорець після першої побудови
 await sleep(+val('settle', 600));                                            // перші кадри swiftshader і згасання інерції камери

@@ -19,7 +19,7 @@
 | Розрахунки, креслення, PDF | Python 3: стандартна бібліотека (системний `python3`); numpy, shapely, matplotlib, Pillow (`tools/.venv`) |
 | Оркестрація | bash-скрипти (`build_version.sh`, `make.sh`, `check_*.sh`) |
 | 3D-сторінка з сервером | `http.server` (Python) + three.js 0.160 з CDN, один HTML без збирання |
-| 3D-сторінка без бекенду | Vite, three.js, `openscad-wasm-prebuilt` (рушій 2025.01) у веб-воркері; тест — node |
+| 3D-сторінка без бекенду | Vite, three.js, `openscad-wasm-prebuilt` (рушій 2025.01) у веб-воркері, WebXR (AR на Android); тест — node |
 | PDF / знімки / відео | Chrome headless (HTML → PDF, знімки), puppeteer-core, ffmpeg, poppler |
 | CI / хостинг | GitHub Actions → GitHub Pages (лише WASM-сторінка) |
 | Процес | git-хук `tools/git-hooks/pre-commit`, skills і workflow Claude Code у `.claude/` |

@@ -19,7 +19,7 @@ A short map: what the code is made of, who calls whom and in what format the dat
 | Calculations, drawings, PDF | Python 3: standard library (system `python3`); numpy, shapely, matplotlib, Pillow (`tools/.venv`) |
 | Orchestration | bash scripts (`build_version.sh`, `make.sh`, `check_*.sh`) |
 | 3D page with a server | `http.server` (Python) + three.js 0.160 from a CDN, a single HTML file, no build step |
-| 3D page without a backend | Vite, three.js, `openscad-wasm-prebuilt` (2025.01 engine) in a web worker; tests run in node |
+| 3D page without a backend | Vite, three.js, `openscad-wasm-prebuilt` (2025.01 engine) in a web worker, WebXR (AR on Android); tests run in node |
 | PDF / screenshots / video | headless Chrome (HTML → PDF, screenshots), puppeteer-core, ffmpeg, poppler |
 | CI / hosting | GitHub Actions → GitHub Pages (the WASM page only) |
 | Process | git hook `tools/git-hooks/pre-commit`, Claude Code skills and workflows in `.claude/` |
