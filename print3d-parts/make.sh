@@ -75,6 +75,14 @@ echo "== привід циліндрів гвинтом M5"
 python3 print3d-parts/model_drive.py --stl "$OUT/stl" --out "$OUT/DRIVE.md"
 
 echo
+echo "== циліндри на шпильці M5 з моторедуктором N20"
+# Робочий варіант циліндрів (гайка в шестерні, мотор збоку, енкодер і кінцевики на датчиках
+# Холла) — окремі деталі поруч із друкованими «глухими» циліндрами набору, не замість них у
+# parts.tsv. Перетин власних деталей чи зіткнення з машиною зупиняє збирання. Маса решти
+# машини для розрахунку — з щойно зібраних STL набору.
+print3d-parts/m5_cylinders/make.sh --out "$OUT/m5_cylinders" --kit-stl "$OUT/stl"
+
+echo
 echo "== кроки складання"
 # Зупиняє збирання навмисно: деталь без кроку в assembly.tsv мовчки випала б з аркушів
 # розкладки — це деталь, яку нікуди не приклеїти, і краще дізнатися про це тут, ніж із
@@ -117,6 +125,7 @@ print3d-parts/group.sh "$OUT/stl"
     [ -n "$DESC" ] && echo "- Зміни: $DESC"; echo
     echo "- \`stl/<тека>/\` — одна тека = одне завдання слайсера (колір · висота шару · підпори), пояснення — у \`print3d-parts/README.md\`"
     echo "- \`BOM.md\` — специфікація з виміряних STL; \`DRIVE.md\` — привід циліндрів гвинтом M5"
+    echo "- \`m5_cylinders/\` — циліндри на шпильці M5 з моторедуктором N20: \`stl/\`, \`img/\`, \`CALC.md\` (як влаштовано — \`print3d-parts/m5_cylinders/README.md\`)"
     echo "- \`sheets/SHEETS.pdf\` — аркуші розкладки 1:1 для сортування й склеювання; \`sheets/sheets.json\` — усі числа (прев'ю сторінок — у \`build/sheets-png/\`, не в git)"
     echo; echo '---'; echo "<sub>$(head -1 AUTHORS)</sub>"
 } > "$OUT/VERSION.md"
@@ -134,6 +143,9 @@ if [ -d latest/print3d ]; then
     mkdir -p latest/print3d-history
     if git ls-files --error-unmatch latest/print3d/VERSION.md >/dev/null 2>&1; then git mv latest/print3d "latest/print3d-history/$PREV"
     else mv latest/print3d "latest/print3d-history/$PREV"; fi
+    # Історія лежить на рівень глибше: посилання, що виходять за межі набору (BOM.md → ../drawings/
+    # машини), дістають ще один «../» — інакше архівна підверсія посилається в порожнечу.
+    for f in "latest/print3d-history/$PREV"/*.md; do sed -i '' 's#](\.\./#](../../#g' "$f"; done
     echo "  $PREV → latest/print3d-history/"
 fi
 mv "$OUT" latest/print3d
