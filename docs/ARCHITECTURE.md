@@ -130,6 +130,7 @@ flowchart LR
 | `web/` | the pages: `viewer/` with its server `viewer.py`, `viewer-wasm/` (published on Pages) |
 | `versions/VNNN-…/` | `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (snapshot of the model and scripts), `viewer.html`, `VERSION.md` |
 | `print3d-parts/` | the 1:5 kit: `parts.scad`, `parts.tsv`, `assembly.tsv`, `stl/`, `BOM.md`, `sheets/`, `stand/` (a separate display stand with its own `make.sh`) |
+| `docs/` | the documents: TECHNICAL, QUICKSTART, ARCHITECTURE, GEOMETRY, STORY (`.md` / `.uk.md`); README and SAFETY stay in the root |
 | `docs/img/` | README images (updated by `build_version.sh` and `readme_media.sh`) |
 | `views.json` | saved views (shared by the pages and `views.py`) |
 | `.claude/` | agent skills and workflows |

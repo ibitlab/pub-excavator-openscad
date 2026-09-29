@@ -25,7 +25,7 @@
 
 [![1:1 sorting sheets for the 1:5 printed kit](docs/img/pdf_sheets.png)](print3d-parts/sheets/SHEETS.pdf)
 
-> 📘 **All the technical detail is in [TECHNICAL.md](TECHNICAL.md)** — the files and scripts, how to run the model and the 3D pages, the chosen geometry and kinematics, the bucket, sections and steel, the AI review, **what must be checked before cutting metal**, fabrication notes and the next stages. Installing and the core commands: [QUICKSTART.md](QUICKSTART.md). How the code is built — the stack, links between parts, data formats: [ARCHITECTURE.md](ARCHITECTURE.md); geometry in the pages, print versus steel, the OFF format: [GEOMETRY.md](GEOMETRY.md).
+> 📘 **All the technical detail is in [TECHNICAL.md](docs/TECHNICAL.md)** — the files and scripts, how to run the model and the 3D pages, the chosen geometry and kinematics, the bucket, sections and steel, the AI review, **what must be checked before cutting metal**, fabrication notes and the next stages. Installing and the core commands: [QUICKSTART.md](docs/QUICKSTART.md). How the code is built — the stack, links between parts, data formats: [ARCHITECTURE.md](docs/ARCHITECTURE.md); geometry in the pages, print versus steel, the OFF format: [GEOMETRY.md](docs/GEOMETRY.md).
 
 ## What this is
 
@@ -43,7 +43,7 @@ The bucket is welded up from real parts (side plates, shell, cutting edge, teeth
 | Force at the tooth (bucket cylinder, 160 bar) | up to 11.8 kN |
 | Steel without the cylinders and the column | ≈ 130 kg |
 
-*Computed from the model (version V005) with pin A 650 mm above the ground; the working-range drawing and every number behind it are in [TECHNICAL.md](TECHNICAL.md), section 3.*
+*Computed from the model (version V005) with pin A 650 mm above the ground; the working-range drawing and every number behind it are in [TECHNICAL.md](docs/TECHNICAL.md), section 3.*
 
 ![working range](docs/img/work-range.en.png)
 
@@ -53,7 +53,7 @@ Every component can be printed at 1:5 and glued together exactly where it would 
 
 ## How this was made
 
-**Ihor Ivaniuk (@IBITLAB)** is the originator and the product owner. From the author: the idea of the machine (a towable mini excavator built around hydraulic cylinders already bought), every task, the choice of what is kept and what is rejected, the review of the results — on the renders, on the 3D page, on the printed kit held in hand — and the organisation of the AI's work itself: which checks must exist, what every document has to look like, what gets published. This is a lot of hours of work, spread over many sessions. How it started, in the author's own words and with the first prompts: [STORY.md](STORY.md).
+**Ihor Ivaniuk (@IBITLAB)** is the originator and the product owner. From the author: the idea of the machine (a towable mini excavator built around hydraulic cylinders already bought), every task, the choice of what is kept and what is rejected, the review of the results — on the renders, on the 3D page, on the printed kit held in hand — and the organisation of the AI's work itself: which checks must exist, what every document has to look like, what gets published. This is a lot of hours of work, spread over many sessions. How it started, in the author's own words and with the first prompts: [STORY.md](docs/STORY.md).
 
 **The AI does the execution** — Claude Code by Anthropic: the OpenSCAD model and its independent Python twins (kinematics, strength, the bucket), the drawings, the bill of materials and the DXF files, both 3D pages, the 1:5 printed kit with its sorting sheets, and the texts in both languages. The "independent reviews" are also done by AI agents with different lenses; their findings go to the author, who decides what to fix.
 
@@ -65,7 +65,7 @@ None of this has been checked by a qualified engineer — see the disclaimer bel
 
 > ## ⚠️ Made with AI. Use at your own risk
 >
-> **The idea, the tasks and the decisions are the author's (Ihor Ivaniuk); all of this documentation, the model geometry, the calculations, the drawings and the bill of materials were produced and computed by artificial intelligence (Claude Code) to those tasks.** None of it has been checked or approved by a qualified engineer. The "independent review" in section 4a of [TECHNICAL.md](TECHNICAL.md) was likewise carried out by AI agents, not by human experts.
+> **The idea, the tasks and the decisions are the author's (Ihor Ivaniuk); all of this documentation, the model geometry, the calculations, the drawings and the bill of materials were produced and computed by artificial intelligence (Claude Code) to those tasks.** None of it has been checked or approved by a qualified engineer. The "independent review" in section 4a of [TECHNICAL.md](docs/TECHNICAL.md) was likewise carried out by AI agents, not by human experts.
 >
 > This is **not engineering documentation**. The calculations are simplified, the inputs are incomplete (some were taken from vendor pages marked "≈"), and nothing has been tested physically — no machine has ever been built from this model.
 >

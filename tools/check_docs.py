@@ -3,7 +3,7 @@
 
   * кожне відносне посилання й картинка в .md веде на файл, що існує; `#якір` — на справжній
     заголовок (правило GitHub: нижній регістр, пробіли → «-», решта розділових знаків геть);
-  * двійники (README, TECHNICAL, QUICKSTART, SAFETY, STORY, ARCHITECTURE, GEOMETRY — .md / .uk.md) мають однаковий кістяк:
+  * двійники (кожен `X.uk.md` з `X.md` поруч — README і SAFETY у корені, решта в `docs/`) мають однаковий кістяк:
     та сама послідовність заголовків, таблиць (з кількістю рядків), картинок, блоків коду й
     цитат. Номери рядків не звіряються — один перенос рядка ще не розбіжність структури.
 
@@ -17,7 +17,6 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TWINS = ['README', 'TECHNICAL', 'QUICKSTART', 'SAFETY', 'STORY', 'ARCHITECTURE', 'GEOMETRY']
 SKIP = ('_deprecated/', 'versions/', 'node_modules/', '.claude/')
 
 
@@ -79,16 +78,19 @@ def main():
                 bad.append(f'{f}: немає файлу — {link}')
             elif anc and target.endswith('.md') and anc not in anchors(target):
                 bad.append(f'{f}: немає якоря — {link}')
-    for name in TWINS:
+    # двійники знаходяться самі: список імен тихо пропускав документ, що переїхав у іншу теку
+    twins = sorted(f[:-len('.uk.md')] for f in files if f.endswith('.uk.md'))
+    for name in twins:
         a, b = os.path.join(ROOT, name + '.md'), os.path.join(ROOT, name + '.uk.md')
-        if not (os.path.exists(a) and os.path.exists(b)):
+        if not os.path.exists(a):
+            bad.append(f'{name}.uk.md: немає англійського двійника {name}.md')
             continue
         sa, sb = skeleton(a), skeleton(b)
         if sa != sb:
             i = next((k for k in range(min(len(sa), len(sb))) if sa[k] != sb[k]), min(len(sa), len(sb)))
             bad.append(f'{name}.md / {name}.uk.md: кістяк розходиться з блоку {i + 1}: '
                        f'{sa[i] if i < len(sa) else "—"} проти {sb[i] if i < len(sb) else "—"}')
-    print(f'  документів: {len(files)}, двійників: {len(TWINS)}')
+    print(f'  документів: {len(files)}, двійників: {len(twins)}')
     if bad:
         print('  НЕ ТАК:')
         for x in bad:

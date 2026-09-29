@@ -130,6 +130,7 @@ flowchart LR
 | `web/` | сторінки: `viewer/` із сервером `viewer.py`, `viewer-wasm/` (публікується на Pages) |
 | `versions/VNNN-…/` | `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (знімок моделі й скриптів), `viewer.html`, `VERSION.md` |
 | `print3d-parts/` | набір 1:5: `parts.scad`, `parts.tsv`, `assembly.tsv`, `stl/`, `BOM.md`, `sheets/`, `stand/` (окрема стійка, свій `make.sh`) |
+| `docs/` | документи: TECHNICAL, QUICKSTART, ARCHITECTURE, GEOMETRY, STORY (`.md` / `.uk.md`); README і SAFETY — у корені |
 | `docs/img/` | картинки README (оновлюють `build_version.sh` і `readme_media.sh`) |
 | `views.json` | збережені ракурси (спільні для сторінок і `views.py`) |
 | `.claude/` | skills і workflow агентів |

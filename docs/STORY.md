@@ -2,7 +2,7 @@
 
 # How it started
 
-> ⚠️ **Ihor Ivaniuk (@IBITLAB) is the originator and product owner: organises the AI's work, sets the tasks, makes the decisions. The execution is done by AI (Claude Code by Anthropic).** Not checked by an engineer, never built, never tested. The full disclaimer is in [README.md](README.md#disclaimer); the hazards specific to this design are in [SAFETY.md](SAFETY.md).
+> ⚠️ **Ihor Ivaniuk (@IBITLAB) is the originator and product owner: organises the AI's work, sets the tasks, makes the decisions. The execution is done by AI (Claude Code by Anthropic).** Not checked by an engineer, never built, never tested. The full disclaimer is in [README.md](../README.md#disclaimer); the hazards specific to this design are in [SAFETY.md](../SAFETY.md).
 
 In the words of Ihor Ivaniuk (@IBITLAB):
 
@@ -12,13 +12,13 @@ After my intensive research into automating the construction of 3D models, and a
 
 | The first version of the model — after the first prompts | Now — the latest built version |
 |---|---|
-| ![the first version: boom, stick, cylinders, a bent strip where the bucket would be](docs/img/story-v1.png) | ![the latest version: the post, boom, stick, linkage and the bucket with the logo](docs/img/iso_default.png) |
+| ![the first version: boom, stick, cylinders, a bent strip where the bucket would be](img/story-v1.png) | ![the latest version: the post, boom, stick, linkage and the bucket with the logo](img/iso_default.png) |
 
 That made it clear that the project could be taken further. There are now scripts for OpenSCAD -> STL -> STL scale 1:5 for 3D print, auto documentation -> Web page with excavator playground and runtime rebuild in WEBAssembly in OpenScad. The first version of the STL at scale 1:5 has been printed, a huge pile of corrections and new features went in, and part of it has already been moved to Deprecated.
 
 Next steps: assemble the printed first version following the latest documentation. That way, check how realistic the project is, at least at 1:5. Wait until my friend finds the time and the means to bring in his own corrections and to start ordering laser cutting of the parts.
 
-> ⚠️ **Before ordering any cutting**, the calculations and the drawings must be checked by a qualified mechanical engineer: the model was made by AI, and no professional has checked it yet. What exactly is unfinished and hazardous in this design is in [SAFETY.md](SAFETY.md).
+> ⚠️ **Before ordering any cutting**, the calculations and the drawings must be checked by a qualified mechanical engineer: the model was made by AI, and no professional has checked it yet. What exactly is unfinished and hazardous in this design is in [SAFETY.md](../SAFETY.md).
 
 ## The first prompts, verbatim
 
