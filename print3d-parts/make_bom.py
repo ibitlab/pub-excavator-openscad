@@ -25,20 +25,22 @@ VOL = "об'єм, см³"  # ключ із апострофом — окремо
 
 
 def sheets(ver_dir, base):
-    """ключ деталі → відносне посилання на аркуш ескізу з розмірами в металі.
+    """ключ деталі → markdown-посилання на аркуш ескізу з розмірами в металі.
 
-    Аркуші робить bom_drawings.sh і називає `NN_<ключ>.png`, тож зіставлення
-    виходить за самою назвою — окремого списку тримати не треба.
+    Аркуші робить bom_drawings.sh, а в `drawings/pages.tsv` записує, яка деталь на якій
+    сторінці `parts.pdf`, — зіставлення за ключем, окремого списку тримати не треба.
+    PNG сторінок у версії немає: вміст той самий, що в PDF.
     """
     out = {}
-    d = os.path.join(ver_dir, "drawings", "png") if ver_dir else ""
-    if not d or not os.path.isdir(d):
+    idx = os.path.join(ver_dir, "drawings", "pages.tsv") if ver_dir else ""
+    if not idx or not os.path.isfile(idx):
         return out
-    rel = os.path.relpath(d, base)
-    for f in sorted(os.listdir(d)):
-        m = re.match(r"\d+_(.+)\.png$", f)
-        if m:
-            out[m.group(1)] = f"{rel}/{f}"
+    rel = os.path.relpath(os.path.dirname(idx), base)
+    for line in open(idx, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        n, key = line.rstrip("\n").split("\t")
+        out[key] = f"[с. {n}]({rel}/parts.pdf#page={n})"
     return out
 
 
@@ -114,7 +116,7 @@ def main():
         sh = "—" if shelf == 0 else f"{shelf}% ({levels})"
         vol = c.get(VOL, 0)
         bed = c.get("контакт зі столом, мм²", 0)
-        link = (f" [аркуш]({sh_link}) |" if sh_link else " — |") if smap else ""
+        link = f" {sh_link or '—'} |" if smap else ""
         print(f"| `{name}` | {qty} | {d[0]:.1f} × {d[1]:.1f} × {d[2]:.1f} | {vol:.2f} "
               f"| {bed:.0f} | {sh} |{link} {desc} |")
 
@@ -122,7 +124,7 @@ def main():
     print("## Позначення")
     print()
     if smap:
-        print("- **Ескіз** — аркуш із контуром і розмірами деталі В МЕТАЛІ (з теки версії).")
+        print("- **Ескіз** — сторінка `parts.pdf` з контуром і розмірами деталі В МЕТАЛІ (з теки версії).")
         print("  Є тільки для пластин, труб і обичайки: смуги, круглі деталі й пальці окремих")
         print("  аркушів не мають — їхні розміри повністю описані рядком специфікації.")
     print("- **Низ** — площа, якою деталь лежить на столі. Менше ~20 мм² — обов'язковий brim.")

@@ -92,8 +92,10 @@ printf '%s\n>\n> Згенеровано автоматично (%s) скрипт
 cp "$SCAD" "$DIR/scad/"; cp -R scad/brand "$DIR/scad/"   # модель підключає include <brand/…> — без них копія не збереться
 cp tools/kinematics.py tools/strength.py tools/bucket.py tools/work_range.py "$DIR/scad/"
 
-# 4а. BOM, DXF 1:1 і PDF-ескізи деталей
-./tools/bom_drawings.sh --out "$DIR" --version "$(basename "$DIR")" | tail -1
+# 4а. BOM, DXF 1:1 і PDF-ескізи деталей. PNG сторінок — у build/ (не комітиться): дата в шапці
+#     робила кожну сторінку новим файлом при кожному збиранні, а весь вміст і так є в parts.pdf
+PNG=build/drawings-png; rm -rf "$PNG"
+./tools/bom_drawings.sh --out "$DIR" --version "$(basename "$DIR")" --png "$PNG" | tail -1
 
 # 4а'. Статична інтерактивна 3D-сторінка цієї версії (кути — у браузері; відкривається подвійним кліком, three.js тягнеться з CDN)
 python3 tools/viewer.py --export "$DIR/viewer.html" | tail -1
@@ -107,7 +109,7 @@ fi
 mkdir -p docs/img
 cp "$DIR/renders/side_default.png" "$DIR/renders/iso_default.png" "$DIR/renders/envelope.png" "$DIR/renders/part_boom.png" "$DIR/renders/part_stick.png" "$DIR/renders/part_bucket.png" "$DIR/renders/bucket_motion_2d.png" docs/img/
 cp "$DIR/renders/work-range.png" "$DIR/renders/work-range.en.png" docs/img/
-cp "$DIR"/drawings/png/*_cheek.png docs/img/sketch_cheek.png
+cp "$PNG"/*_cheek.png docs/img/sketch_cheek.png
 # README посилається на ескізи й DXF останньої версії — шлях переписується на нову теку
 for f in README.md README.uk.md; do
   sed -E -i '' "s#versions/V[0-9]{3}-[0-9-]+/(drawings|dxf)/#$DIR/\1/#g" "$f" 2>/dev/null \
@@ -123,7 +125,7 @@ done
   echo "## STL"; echo '```'; cat "$WORK/stl_list.txt"; echo '```'
   echo "Вузли стріли — у системі стріли (A = 0, хорда вздовж +X), вузли рукояті — у системі рукояті (B = 0, вісь уздовж +X); вузли ковша — у системі ковша (E = 0, x — до вістря зуба); rocker/link/post/assembly — у позі за замовчуванням."; echo
   echo "## Інтерактивний перегляд"; echo "- viewer.html — 3D-сторінка цієї версії (обертання/масштаб, кути стріли/рукояті/ковша, цикл копання). Зміна геометрії наживо — tools/viewer.sh."; echo
-  echo "## BOM і креслення"; echo "- bom/bom.md, bom/bom.csv — специфікація; dxf/*.dxf — контури пластин 1:1; drawings/parts.pdf (+ png/) — ескізи з основними розмірами."; echo
+  echo "## BOM і креслення"; echo "- bom/bom.md, bom/bom.csv — специфікація; dxf/*.dxf — контури пластин 1:1; drawings/parts.pdf — ескізи з основними розмірами (drawings/pages.tsv — яка деталь на якій сторінці)."; echo
   echo "## Перетини пластин"; echo '```'; tail -1 "$DIR/docs/overlaps.txt"; echo '```'
   echo "## Рухомі пари"; echo '```'; grep РЕЗУЛЬТАТ "$DIR/docs/motion.txt"; echo '```'
   echo; echo '---'; echo "<sub>$AUTHOR</sub>"

@@ -6,8 +6,11 @@ bom_drawings.py — специфікація (BOM), DXF 1:1 та PDF-ескіз�
   * списки BOM_* модель друкує через echo() (пластини, смуги, труби, втулки, пальці, параметри);
   * контур кожної пластини модель сама проєктує на площину (part="flat"), тут він лише читається з SVG:
     габарит, отвори (центр, діаметр), площа → маса.
-Вихід (у теці --out): bom/bom.md, bom/bom.csv, dxf/<деталь>.dxf, drawings/parts.pdf
-Запуск: tools/bom_drawings.sh [--out ТЕКА]
+Вихід (у теці --out): bom/bom.md, bom/bom.csv, dxf/<деталь>.dxf, drawings/parts.pdf,
+  drawings/pages.tsv (сторінка → ключ деталі: за ним BOM друкованого набору посилається на сторінку PDF)
+PNG сторінок — для перегляду без PDF; у версію не йдуть (дата в шапці робила кожну сторінку
+новим файлом при кожному збиранні), тому build_version.sh кладе їх у build/ через --png.
+Запуск: tools/bom_drawings.sh [--out ТЕКА] [--png ТЕКА|none]
 """
 import subprocess, json, re, os, sys, math, argparse, csv, tempfile, datetime, textwrap
 from author import line as author_line, md_footer, made_with   # авторство в підвалі кожного аркуша, у застереженні й у bom.md (AUTHORS у корені)
@@ -182,7 +185,7 @@ def e_dot(e1, e2):
     return ((e1[1][0] - e1[0][0]) * (e2[1][0] - e2[0][0]) + (e1[1][1] - e1[0][1]) * (e2[1][1] - e2[0][1])) / (l1 * l2)
 
 # ---------------------------------------------------------------- PDF
-def make_pdf(path, bom, flats, tubes, version):
+def make_pdf(path, bom, flats, tubes, version, png_dir):
     import matplotlib; matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
@@ -196,7 +199,7 @@ def make_pdf(path, bom, flats, tubes, version):
     FOOT = 'Ескізи деталей у металі · стріла, рукоять, ківш'
     # Аркуші й DXF фізично йдуть у цех різання окремо від репозиторію — застереження має бути на них самих.
     WARN = f'УВАГА: {made_with()} Інженером не перевірено, машину не випробувано — використання на власний ризик; див. SAFETY.md'
-    png_dir = os.path.join(os.path.dirname(path), 'png'); os.makedirs(png_dir, exist_ok=True)
+    if png_dir: os.makedirs(png_dir, exist_ok=True)
     figs = []                                                          # (фігура, назва) — підвал «с. N / M» ставиться, коли відомо M
     def save(pdf, fig, name):
         figs.append((fig, name))
@@ -336,7 +339,12 @@ def make_pdf(path, bom, flats, tubes, version):
         # --- підвал з номерами сторінок (як у SHEETS.pdf) і запис
         for n, (fig, name) in enumerate(figs, 1):
             ps.mpl_footer(fig, FOOT, date, author_line(), n, len(figs))
-            pdf.savefig(fig); fig.savefig(os.path.join(png_dir, f'{n:02d}_{name}.png'), dpi=90); plt.close(fig)
+            pdf.savefig(fig)
+            if png_dir: fig.savefig(os.path.join(png_dir, f'{n:02d}_{name}.png'), dpi=90)
+            plt.close(fig)
+    # без дати й версії — файл змінюється лише тоді, коли змінився склад сторінок
+    with open(os.path.join(os.path.dirname(path), 'pages.tsv'), 'w', encoding='utf-8') as f:
+        f.write('# сторінка\tключ\n' + ''.join(f'{n}\t{name}\n' for n, (_, name) in enumerate(figs, 1)))
 
 # ---------------------------------------------------------------- BOM
 def tube_kg_m(h, w, t):
@@ -346,8 +354,10 @@ def tube_kg_m(h, w, t):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', default=os.path.join(ROOT, 'build')); ap.add_argument('--version', default='')
+    ap.add_argument('--png', default='', help='тека для PNG сторінок (типово <out>/drawings/png; none — не робити)')
     a = ap.parse_args()
     out = os.path.abspath(a.out)
+    png_dir = '' if a.png == 'none' else os.path.abspath(a.png or os.path.join(out, 'drawings', 'png'))
     for d in ('bom', 'dxf', 'drawings'): os.makedirs(os.path.join(out, d), exist_ok=True)
     version = a.version or datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     bom = read_bom_echo()
@@ -437,7 +447,7 @@ def main():
         w = csv.writer(fcsv)
         w.writerow([f'# {version}: {made_with()} Інженером не перевірено, машину не випробувано — на власний ризик; див. SAFETY.md'])
         w.writerow(['тип', 'деталь', 'к-сть', 'розмір1', 'розмір2', 'розмір3', 'отвори', 'маса_кг', 'примітка']); w.writerows(rows)
-    make_pdf(os.path.join(out, 'drawings', 'parts.pdf'), bom, flats, tubes, version)
+    make_pdf(os.path.join(out, 'drawings', 'parts.pdf'), bom, flats, tubes, version, png_dir)
     if problems:
         print('!!! ЕСКІЗИ: підозрілі контури — перевір проєкцію в моделі (tube_face_2d / flat):\n  ' + '\n  '.join(problems)); sys.exit(1)
     print(f"== BOM: {out}/bom/bom.md, bom.csv; DXF: {len(flats)} шт; PDF: {out}/drawings/parts.pdf; маса разом {tot_tube + tot_plate + tot_wear + tot_round + tot_pin:.1f} кг")
