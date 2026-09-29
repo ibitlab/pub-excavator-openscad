@@ -269,6 +269,12 @@
   #ar_ui button { pointer-events: auto; min-height: 42px; min-width: 42px; font-size: 14px; padding: 5px 9px; }
   #ar_ui #ar_rotl, #ar_ui #ar_rotr { font-size: 22px; line-height: 1; }   /* #ar_ui button інакше переважує */
   #ar_ui button:not(.on) { background: #fbfaf7f0; }
+  #ar_ui button[hidden] { display: none; }
+  #ar_ui .ar-head { display: flex; flex-direction: column; gap: 6px; }
+  #ar_warn { align-self: center; background: #c62828e6; border-radius: 999px; padding: 7px 14px;
+             font-size: 14px; font-weight: 600; text-align: center; }
+  #ar_warn:empty { display: none; }
+  #ar_feat { align-self: center; font-size: 11px; opacity: 0.75; text-shadow: 0 0 3px #000; }
   #ar_panel { pointer-events: auto; background: #000000a6; border-radius: 14px; padding: 8px 12px 10px; }
   .ar-ang { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 8px; font-size: 13px; }
   .ar-ang input { width: 100%; height: 34px; margin: 0; accent-color: var(--acc); }
@@ -330,7 +336,11 @@
 </div>
 <!-- Накладка AR (WebXR DOM Overlay): поза сеансом AR схована, у сеансі браузер показує лише її поверх камери -->
 <div id="ar_ui">
-  <div class="ar-top"><span id="ar_hint"></span><button id="ar_exit" class="ar-ctl" data-i18n="ar.exit"></button></div>
+  <div class="ar-head">
+    <div class="ar-top"><span id="ar_hint"></span><button id="ar_occl" class="ar-ctl" hidden data-i18n-aria="ar.occl" data-i18n-title="ar.occl">◐</button><button id="ar_room" class="ar-ctl" hidden data-i18n-aria="ar.room" data-i18n-title="ar.room">▦</button><button id="ar_coll" class="ar-ctl" hidden data-i18n-aria="ar.coll" data-i18n-title="ar.coll">⚠</button><button id="ar_exit" class="ar-ctl" data-i18n="ar.exit"></button></div>
+    <div id="ar_warn" role="alert"></div>
+    <div id="ar_feat"></div>
+  </div>
   <div id="ar_panel" class="ar-ctl">
     <div id="ar_sliders"></div>
     <div class="row"><button id="ar_play"></button><button id="ar_rotl" data-i18n-aria="ar.rotl">↺</button><button id="ar_rotr" data-i18n-aria="ar.rotr">↻</button><button id="ar_scale"></button><button id="ar_place" data-i18n="ar.place"></button></div>

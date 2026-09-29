@@ -14,6 +14,7 @@ import { readSchema, scadLiteral } from '../src/schema.js';
 import { UI, LANGS, GROUPS_EN, PARAMS_EN } from '../src/i18n.js';
 import { LEGEND } from '../src/legend.js';
 import { armFromTip } from '../src/ik.js';
+import { Room, KIND, planeTris, meshTris } from '../src/room.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url)), root = path.resolve(here, '../../..');
 const source = readFileSync(path.join(root, 'scad/excavator_boom.scad'), 'utf8');
@@ -50,6 +51,32 @@ p1 && p1 === p2 ? ok('блок //<pose> однаковий в обох верс�
 const vjBlock = f => (readFileSync(f, 'utf8').match(/^\/\/<viewjson>[^\n]*\n([\s\S]*?)^\/\/<\/viewjson>/m) || [])[1];
 const v1 = vjBlock(path.join(here, '../src/main.js')), v2 = vjBlock(path.join(root, 'tools/viewer/index.html'));
 v1 && v1 === v2 ? ok('блок //<viewjson> однаковий в обох версіях сторінки') : fail('блок //<viewjson> у двох версіях сторінки розійшовся');
+
+// Зіткнення в AR: сеанс є лише на телефоні, тож геометрію кімнати перевіряємо тут числами.
+// Стіна — площина WebXR на x = 1 (нормаль площини, її вісь Y, дивиться в −X), підлога — на y = 0.
+{
+  const wallM = [0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0, 1, 1, 0, 1];          // по стовпцях: x→+Z, y→−X, z→−Y
+  const sq = [{ x: -1, z: -1 }, { x: 1, z: -1 }, { x: 1, z: 1 }, { x: -1, z: 1 }];
+  const floorM = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const big = sq.map(p => ({ x: p.x * 5, z: p.z * 5 }));
+  const wall = planeTris(sq, wallM), floor = planeTris(big, floorM);
+  const r = new Room(); r.build([{ tris: wall, kind: 0 }, { tris: floor, kind: 1 }]);
+  const A = [0, 0.6, 0], KI = k => (k < 0 ? '—' : KIND[k]);
+  const cases = [
+    ['точка за стіною', A, [1.2, 0.6, 0.3], 0, 0],
+    ['точка перед стіною', A, [0.9, 0.6, 0.3], 0, -1],
+    ['ближче за 3 см до стіни', A, [0.98, 0.6, 0.3], 0, 0],
+    ['стіна вище за свій край — мимо', A, [1.2, 2.3, 0], 0, -1],
+    ['ківш нижче підлоги, на якій стоїть машина', A, [0.5, -0.3, 0], 0, -1],
+    ['машина на столі (0.75 м): підлога кімнати — перешкода', [0, 1.3, 0], [0.5, -0.1, 0], 0.75, 1],
+    ['довгий відрізок через кілька комірок', [-3, 0.6, -2], [3, 0.7, 0.5], 0, 0],
+  ];
+  const bad = cases.filter(([, a, p, fy, want]) => r.hit(a, p, fy) !== want).map(([n, a, p, fy, want]) => `${n}: ${KI(r.hit(a, p, fy))} замість ${KI(want)}`);
+  const m = meshTris(new Float32Array([2, 0, -1, 2, 2, -1, 2, 0, 1]), new Uint32Array([0, 1, 2]), floorM);
+  r.build([{ tris: m, kind: 2 }]);
+  if (r.hit(A, [2.5, 0.5, 0], 0) !== 2) bad.push('трикутник сітки не зупинив відрізок');
+  bad.length ? fail('зіткнення AR: ' + bad.join('; ')) : ok(`зіткнення AR: ${cases.length + 1} випадків (стіна, підлога, стіл, сітка)`);
+}
 
 // --- переклад -------------------------------------------------------------------------------------
 const mainJs = readFileSync(path.join(here, '../src/main.js'), 'utf8');
