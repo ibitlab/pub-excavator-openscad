@@ -1,24 +1,41 @@
 #!/usr/bin/env bash
-# Збирає КОЖЕН компонент окремо (як ріжуть з металу) у print3d-parts/stl/,
-# перевіряє друкованість і пише BOM.md.
+# Друкований набір 1:5: КОЖЕН компонент окремо (як ріжуть з металу), перевірка друкованості,
+# BOM.md, DRIVE.md, аркуші розкладки — у build/print3d/, а коли все зібралось — у latest/print3d/
+# новою підверсією VNNN.K. Попередня підверсія переїжджає в latest/print3d-history/ (git mv).
+#
+# Використання: print3d-parts/make.sh ["що змінено"]
 #
 # Модель не змінюється: parts.scad підключає її як бібліотеку з part="none".
-# Склад набору — print3d-parts/parts.tsv (єдине джерело правди).
+# Склад набору — print3d-parts/parts.tsv (єдине джерело правди). Тут лише джерела; усе
+# згенероване живе в latest/print3d/ (і в архіві versions/ разом із машиною).
 # Перевірка (check_print.py) і генератор BOM (make_bom.py) лежать тут же: цей набір самодостатній.
 set -eu
 cd "$(dirname "$0")/.."
-OUT=print3d-parts/stl
+DESC="${1:-}"
 SCAD=print3d-parts/parts.scad
 TSV=print3d-parts/parts.tsv
-mkdir -p "$OUT"
-# Тека версії — для підпису геометрії в BOM і для посилань на аркуші ескізів.
-# Набори читають ЖИВУ модель, тож це підпис, а не залежність; беремо найбільший номер.
-VER=$(ls -d versions/V* 2>/dev/null | sort | tail -1)
-[ -n "$VER" ] || echo "  versions/ порожня — BOM буде без підпису версії й без ескізів"
+
+# 0. Набір — частина версії машини: він збирається лише з тієї моделі, що лежить у latest/scad/.
+#    Інакше V006.3 вийшов би з геометрії, якої у V006 немає.
+[ -f latest/VERSION.md ] || { echo "ПОМИЛКА: latest/ немає — спершу tools/build_version.sh"; exit 1; }
+MACHINE=$(sed -n '1s/^# //p' latest/VERSION.md)
+if ! cmp -s scad/excavator_boom.scad latest/scad/excavator_boom.scad || ! diff -rq scad/brand latest/scad/brand >/dev/null 2>&1; then
+    echo "ПОМИЛКА: модель змінилась після збирання $MACHINE — спершу tools/build_version.sh (він збере й набір)"
+    exit 1
+fi
+BASE=${MACHINE%%-*}                                          # V006
+# K — наступний після найбільшого серед поточного набору й історії цієї версії машини
+k=$( { [ -f latest/print3d/VERSION.md ] && sed -n '1s/^# //p' latest/print3d/VERSION.md; ls latest/print3d-history 2>/dev/null; } \
+     | sed -n "s/^$BASE\.\([0-9][0-9]*\).*/\1/p" | sort -n | tail -1 || true)
+NAME="$BASE.$(( ${k:-0} + 1 ))-$(date +%Y-%m-%d-%H%M)"
+LABEL=${NAME%%-*}                                            # V006.1 — підпис у BOM і на аркушах
+OUT=build/print3d; WORK=build/print3d-work                   # проміжне — у WORK, у набір не йде
+rm -rf "$OUT" "$WORK"; mkdir -p "$OUT/stl" "$WORK"
+echo "== набір $LABEL (машина $MACHINE) → $OUT"
 
 echo "== звіт параметрів друку"
-openscad -o /tmp/parts_report.echo -D 'part="none"' -D 'pp="none"' "$SCAD" 2>/dev/null
-sed -n '/=== друк/,$p' /tmp/parts_report.echo | sed 's/^ECHO: \"/  /; s/\"$//'
+openscad -o "$WORK/parts_report.echo" -D 'part="none"' -D 'pp="none"' "$SCAD" 2>/dev/null
+sed -n '/=== друк/,$p' "$WORK/parts_report.echo" | sed 's/^ECHO: \"/  /; s/\"$//'
 
 echo
 echo "== рендер"
@@ -28,12 +45,11 @@ n=0
 while IFS=$'\t' read -r pp own ori pre file qty group desc; do
     case "$pp" in ''|'#'*) continue ;; esac
     [ "$own" = "-" ] && own=""
-    f="$OUT/${file}_x${qty}.stl"
-    rm -f "$f"                       # OpenSCAD не пише файл, якщо результат порожній: інакше зміряємо попередній запуск
-    openscad -o "$f" --export-format binstl -D 'part="none"' -D "pp=\"$pp\"" -D "own=\"$own\"" -D "ori=\"$ori\"" -D "pre=$pre" "$SCAD" 2>/tmp/scad_err.txt || {
-        echo "  ПОМИЛКА рендера: $pp"; cat /tmp/scad_err.txt; exit 1; }
-    if grep -qE 'ERROR|WARNING:' /tmp/scad_err.txt; then
-        echo "  УВАГА у компоненті $pp:"; grep -E 'ERROR|WARNING:' /tmp/scad_err.txt | sed 's/^/    /'
+    f="$OUT/stl/${file}_x${qty}.stl"
+    openscad -o "$f" --export-format binstl -D 'part="none"' -D "pp=\"$pp\"" -D "own=\"$own\"" -D "ori=\"$ori\"" -D "pre=$pre" "$SCAD" 2>"$WORK/scad_err.txt" || {
+        echo "  ПОМИЛКА рендера: $pp"; cat "$WORK/scad_err.txt"; exit 1; }
+    if grep -qE 'ERROR|WARNING:' "$WORK/scad_err.txt"; then
+        echo "  УВАГА у компоненті $pp:"; grep -E 'ERROR|WARNING:' "$WORK/scad_err.txt" | sed 's/^/    /'
     fi
     [ -s "$f" ] || { echo "  ПОМИЛКА: $f порожній або не створений"; exit 1; }
     n=$((n + 1))
@@ -42,20 +58,21 @@ echo "  компонентів: $n"
 
 echo
 echo "== перевірка (стіл 250×250×250, межа нависання 45°)"
-python3 print3d-parts/check_print.py "$OUT"/*.stl --bed 250 --angle 45 || true
-python3 print3d-parts/check_print.py "$OUT"/*.stl --bed 250 --angle 45 --json > /tmp/parts_check.json
+python3 print3d-parts/check_print.py "$OUT"/stl/*.stl --bed 250 --angle 45 || true
+python3 print3d-parts/check_print.py "$OUT"/stl/*.stl --bed 250 --angle 45 --json > "$WORK/parts_check.json"
 
 echo
 echo "== BOM"
-python3 print3d-parts/make_bom.py "$TSV" /tmp/parts_check.json /tmp/parts_report.echo \
-    "Специфікація компонентів під зварювання" "$VER" так > print3d-parts/BOM.md
-echo "  print3d-parts/BOM.md"
+# Посилання «с. N» ведуть на ескізи машини в latest/drawings/ — BOM.md ляже в latest/print3d/
+python3 print3d-parts/make_bom.py "$TSV" "$WORK/parts_check.json" "$WORK/parts_report.echo" \
+    "Специфікація компонентів під зварювання" latest так "$LABEL" > "$OUT/BOM.md"
+echo "  $OUT/BOM.md"
 
 echo
 echo "== привід циліндрів гвинтом M5"
 # Оберти гайки M5×0.8 під «реальні» швидкості циліндрів і моторедуктор під вагу набору —
-# маса береться з щойно зібраних STL, тож блок у README.md переписується щоразу.
-python3 print3d-parts/model_drive.py
+# маса береться з щойно зібраних STL.
+python3 print3d-parts/model_drive.py --stl "$OUT/stl" --out "$OUT/DRIVE.md"
 
 echo
 echo "== кроки складання"
@@ -77,20 +94,48 @@ PY
 echo
 echo "== аркуші розкладки 1:1"
 # Папір проти купи схожих деталей: контур кожної у масштабі 1:1 на аркуші свого вузла,
-# рендери з виносками, кроки склеювання. Читає STL з stl/, assembly.tsv і parts.tsv.
-tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png || echo "  аркуші не зібрано (потрібен Chrome) — SHEETS.pdf лишився попередній"
+# рендери з виносками, кроки склеювання. Без аркушів набір неповний — тому зупиняє збирання.
+tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --stl "$OUT/stl" --dir "$OUT/sheets" --version "$LABEL" --png \
+    || { echo "  ПОМИЛКА: аркуші не зібрано (потрібен Chrome) — latest/print3d не змінено"; exit 1; }
+# Прев'ю сторінок — у build/ (не комітиться): номер і дата в шапці робили б кожне новим файлом
+# з кожною підверсією, а вміст і так є в SHEETS.pdf. Аркуш ковша показує TECHNICAL — його копія в docs/img/.
+rm -rf build/sheets-png; mv "$OUT/sheets/png" build/sheets-png
+cp build/sheets-png/3_bucket.png docs/img/sheet_bucket.png
 
 echo
 echo "== розкладка по завданнях друку"
-# Рендер завжди кладе STL у корінь stl/, а друкуються вони з тек «одне завдання
-# слайсера» (колір, висота шару, підпори). Тому розкладка — останній крок збирання:
-# структура однакова після кожного запуску, дублікатів у корені не лишається.
-# Скрипт зупиняє збирання, якщо деталь не потрапила в жодну групу: нову деталь
-# треба вписати і в parts.tsv, і в stl/group.sh.
-"$OUT/group.sh"
+# Тека = одне завдання слайсера (колір, висота шару, підпори). Скрипт зупиняє збирання,
+# якщо деталь не потрапила в жодну групу: нову деталь треба вписати і в parts.tsv, і в group.sh.
+print3d-parts/group.sh "$OUT/stl"
+
+{
+    echo "# $NAME"; echo
+    echo "> Друкований набір 1:5 машини \`$MACHINE\`. Згенеровано \`print3d-parts/make.sh\` — руками не правити."
+    echo "> Масштабна модель, не іграшка і не проєктна документація; див. \`SAFETY.md\`."; echo
+    echo "- Дата: $(date '+%Y-%m-%d %H:%M')"
+    echo "- Git (база на момент збирання): $(git rev-parse --short HEAD) ($(git log -1 --pretty=%s))$([ -n "$(git status --porcelain)" ] && echo ' + незакомічені зміни робочого дерева')"
+    [ -n "$DESC" ] && echo "- Зміни: $DESC"; echo
+    echo "- \`stl/<тека>/\` — одна тека = одне завдання слайсера (колір · висота шару · підпори), пояснення — у \`print3d-parts/README.md\`"
+    echo "- \`BOM.md\` — специфікація з виміряних STL; \`DRIVE.md\` — привід циліндрів гвинтом M5"
+    echo "- \`sheets/SHEETS.pdf\` — аркуші розкладки 1:1 для сортування й склеювання; \`sheets/sheets.json\` — усі числа (прев'ю сторінок — у \`build/sheets-png/\`, не в git)"
+    echo; echo '---'; echo "<sub>$(head -1 AUTHORS)</sub>"
+} > "$OUT/VERSION.md"
 
 echo
-echo "== шум у git"
+echo "== порівняння з поточним набором"
 # OpenSCAD іноді віддає ті самі трикутники в іншому порядку — файл «змінений», деталь та сама.
-# Такі STL повертаються до закоміченого стану, у коміт іде лише справжня зміна геометрії.
-python3 print3d-parts/stl_same.py
+# Такі STL беруться з попередньої підверсії байт-у-байт, у git іде лише справжня зміна геометрії.
+python3 tools/compare_build.py latest/print3d "$OUT" --settle || true
+
+
+# Попередня підверсія — в історію цієї версії машини; git mv, щоб git бачив перейменування
+if [ -d latest/print3d ]; then
+    PREV=$(sed -n '1s/^# //p' latest/print3d/VERSION.md)
+    mkdir -p latest/print3d-history
+    if git ls-files --error-unmatch latest/print3d/VERSION.md >/dev/null 2>&1; then git mv latest/print3d "latest/print3d-history/$PREV"
+    else mv latest/print3d "latest/print3d-history/$PREV"; fi
+    echo "  $PREV → latest/print3d-history/"
+fi
+mv "$OUT" latest/print3d
+rm -rf "$WORK"
+echo "== готово: latest/print3d = $NAME"

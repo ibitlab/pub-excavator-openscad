@@ -25,7 +25,14 @@ TUBE_MAT = 'Ст3сп/пс або S235JRH (ДСТУ 8940), не кп'
 def openscad(out, *defs):
     cmd = ['openscad', '-o', out]
     for d in defs: cmd += ['-D', d]
-    subprocess.run(cmd + [SCAD], check=True, capture_output=True)
+    # OpenSCAD 2026 зрідка падає від сигналу (SIGSEGV) на виклику, який за мить проходить:
+    # такий збій повторюємо; помилка самої моделі (звичайний код виходу) зупиняє одразу
+    for attempt in range(3):
+        r = subprocess.run(cmd + [SCAD], capture_output=True)
+        if r.returncode >= 0 or attempt == 2:
+            break
+        print(f'  openscad упав (сигнал {-r.returncode}) на {os.path.basename(out)} — повтор')
+    r.check_returncode()
 
 def read_bom_echo():
     with tempfile.TemporaryDirectory() as t:

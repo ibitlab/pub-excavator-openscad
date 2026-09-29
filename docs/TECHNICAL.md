@@ -21,10 +21,11 @@ The overview, the live 3D model and the PDF documents are in [README.md](../READ
 | `docs/01-design-inputs.md` | **A source document, written by hand.** The inputs: cylinders, spherical bearings, pins and bushings, the steel sizes actually available, hydraulics, class benchmarks, standards. |
 | `docs/research/` | Raw research notes with links to the sources. |
 | `docs/img/` | The images used by this README; `build_version.sh` refreshes them from the latest version. |
-| `versions/VNNN-date-time/` | **Built versions — everything generated lives only here**: `stl/`, `renders/`, `docs/` (`02-kinematics.md`, `03-strength.md`, `05-bucket.md`, the full logs of the overlap, motion and 3D-page checks), `bom/`, `dxf/`, `drawings/`, `scad/` (a snapshot of the model and the scripts), `VERSION.md`. The current one is the folder with the highest number. |
-| `tools/build_version.sh` | **The version build script**: intersection check → moving-pair check → STL of every part → renders → reports → `VERSION.md`. The version number increments automatically. |
+| `latest/` | **The current version — everything generated lives here**: `stl/`, `renders/`, `docs/` (`02-kinematics.md`, `03-strength.md`, `05-bucket.md`, the full logs of the overlap, motion and 3D-page checks), `bom/`, `dxf/`, `drawings/`, `scad/` (a snapshot of the model and the scripts), `VERSION.md`; `print3d/` — the current 1:5 kit (sub-version VNNN.K), `print3d-history/` — its earlier sub-versions. |
+| `versions/VNNN-date-time/` | **The archive**: a former `latest/` moves here (git mv) when a build changes the geometry or the report numbers. |
+| `tools/build_version.sh` | **The version build script**: intersection check → moving-pair check → STL of every part → renders → reports → `VERSION.md`, all in `build/version/`. Then `tools/compare_build.py` compares it with `latest/`: if the geometry or the report numbers changed, it is a new version (the old `latest/` goes to `versions/`, then the kit is built as VNNN.1); if not (colours, renders, PDF style), `latest/` is refreshed in place under the same number. `--new` forces a new version. |
 | `tools/bom_drawings.sh` | **BOM + drawings**: the bill of materials (`bom.md`, `bom.csv`), the outlines of every plate as 1:1 DXF for cutting, and PDF sketches with the main dimensions (`drawings/parts.pdf` + PNG pages). The data comes from the model's echo and from a projection of each plate — there is no separate list of dimensions anywhere. The first run creates `tools/.venv` with matplotlib. |
-| `print3d-parts/` | **The 1:5 printed kit** — every component on its own, the way it is cut from steel (54 files, 76 pieces), glued instead of welded: `make.sh` → STL sorted by slicer job, `BOM.md`, and `sheets/SHEETS.pdf` — **1:1 sorting sheets** for the pile of printed parts: the outline of every part on the sheet of its own sub-assembly, renders with callouts, gluing step cards. See section 2. |
+| `print3d-parts/` | **The 1:5 printed kit** — every component on its own, the way it is cut from steel (54 files, 76 pieces), glued instead of welded: `make.sh` → `latest/print3d/`: STL sorted by slicer job, `BOM.md`, `DRIVE.md`, and `sheets/SHEETS.pdf` — **1:1 sorting sheets** for the pile of printed parts: the outline of every part on the sheet of its own sub-assembly, renders with callouts, gluing step cards. See section 2. |
 | `web/viewer.sh` → `web/viewer.py`, `web/viewer/index.html` | **An interactive 3D page in the browser**: orbit / pan / zoom, the angles change instantly, and any other model parameter is rebuilt through OpenSCAD in ≈ 0.4 s. See section 2. |
 | `web/viewer-wasm.sh` → `web/viewer-wasm/` (`package.json`, Vite) | **A second version of the 3D page — with no backend**: OpenSCAD-WASM in a web worker renders the model right in the browser; it builds into a static site in `dist/`. See section 2. |
 | `tools/media/` | **README media**: `readme_media.sh` → the page tour GIF (`page_tour.mjs`, several modes and views) and the PDF previews (`pdf_preview.py`) in `docs/img/`. Screenshots of the page in headless Chrome (`page_shot.mjs`), collages (`compose.py`) and a full set of images and video for publications (`make_media.sh` → `temp/media/`, which is never committed). |
@@ -67,7 +68,7 @@ cd tools && python3 kinematics.py && python3 strength.py --boom 120x80x5 --stick
 
 ```
 web/viewer.sh                                   # opens http://127.0.0.1:8765/ in the browser (Ctrl+C to stop)
-python3 web/viewer.py --export file.html        # a static page with no server (one ships with every version: versions/VNNN-…/viewer.html)
+python3 web/viewer.py --export file.html        # a static page with no server (one ships with every version: latest/viewer.html)
 ```
 
 - **Mouse**: left button orbits, right button or Shift pans, the wheel zooms towards the cursor, a double click on a part sets a new orbit centre. There are view buttons (side, isometric, top, front, fit) and a perspective / orthographic toggle.
@@ -140,8 +141,8 @@ Both pages (server and WASM) can be driven with a 3D mouse without any plugin; t
 ### Versions, STL and renders
 
 ```
-tools/build_version.sh "what changed"            # one command: a new version in versions/VNNN-date-time/ (≈1.5 min)
-tools/build_version.sh --commit "what changed"   # the same plus git add -A and a commit "VNNN: what changed"
+tools/build_version.sh "what changed"            # one command: latest/ — a new version or a refresh in place (≈2 min, +1 min for the kit)
+tools/build_version.sh --commit "what changed"   # the same plus the commits: the archive move first, then "VNNN: what changed"
 tools/check_overlaps.sh                  # only the plate intersection check
 tools/check_motion.sh                    # only the moving-pair collision check (≈40 s)
 openscad -o boom_gussets.stl --export-format binstl -D 'part="boom_gussets"' scad/excavator_boom.scad
@@ -166,7 +167,7 @@ the clevises stand on the saddles, the F "tower" sits on the top doubler of the 
 
 ```
 tools/bom_drawings.sh                 # → build/bom/bom.md, bom.csv · build/dxf/*.dxf · build/drawings/parts.pdf
-tools/build_version.sh "description"  # the same, inside a new version in versions/VNNN-…/
+tools/build_version.sh "description"  # the same, inside latest/
 ```
 
 The options for issuing drawings, and what was chosen: **DXF 1:1** — the main format for laser and plasma cutting (the shop takes the file as it is); **a PDF sketch** — for the workshop: plates with the holes dimensioned from the datum edges, tubes as a development of all 4 faces (top/bottom flanges, left/right walls: mitre cuts, the end bevel, holes measured from the end), thickness, quantity and mass; **CSV** — for ordering the steel and for record-keeping. Deliberately not done: full drawings to ЕСКД with tolerances (that is FreeCAD TechDraw / KOMPAS territory, working from a STEP model), sheet nesting (the cutting shop does that from the DXF), and STEP export (OpenSCAD cannot do it; if needed, go through FreeCAD with CSG).
@@ -179,13 +180,13 @@ The options for issuing drawings, and what was chosen: **DXF 1:1** — the main 
 ### The 1:5 printed kit and the sorting sheets
 
 ```
-print3d-parts/make.sh                                              # STL of every component, checks, BOM, sorting sheets
-tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png   # the sheets only (≈1.5 min; renders are cached)
+print3d-parts/make.sh "what changed"                               # a new kit sub-version in latest/print3d/: STL, checks, BOM, sorting sheets
+tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png   # a draft of the sheets only, in build/sheets/ (≈1.5 min; renders are cached)
 ```
 
-A printed kit is a pile of look-alikes: bushings, pins and washers differ by fractions of a millimetre, and sorting them by eye does not work. `print3d-parts/sheets/SHEETS.pdf` sorts the pile on paper: six A4 sheets, one per sub-assembly that gets glued (boom, stick, bucket, rocker with link, column with cylinders) and a separate one for the pins and washers that join the sub-assemblies. Every part is drawn as a **1:1** outline the way it lies on the table: put the part on its outline, and if it fits, that is the one. Next to the outline are the gluing step number, the file name, the overall size, the height, the hole diameters; identical flat parts share one outline as a stack, pins each get their own, and pairs that match in every dimension (A and C, F and H, J and Q) are marked as interchangeable. The free space on the sheet holds renders of the sub-assembly with a callout to every file, followed by gluing step cards: what is already glued is grey, the new part is orange, and for the pins the cards are close-ups of the joints. Nothing here is drawn by hand: outlines and holes are taken from the measured STL, the composition and the steps from `assembly.tsv` and `parts.tsv`, and the views are chosen by how many parts they show. A 100 mm ruler at the bottom of every sheet tells you whether the printer is scaling. How it is done and what was decided — `print3d-parts/sheets/README.md`.
+A printed kit is a pile of look-alikes: bushings, pins and washers differ by fractions of a millimetre, and sorting them by eye does not work. `latest/print3d/sheets/SHEETS.pdf` sorts the pile on paper: six A4 sheets, one per sub-assembly that gets glued (boom, stick, bucket, rocker with link, column with cylinders) and a separate one for the pins and washers that join the sub-assemblies. Every part is drawn as a **1:1** outline the way it lies on the table: put the part on its outline, and if it fits, that is the one. Next to the outline are the gluing step number, the file name, the overall size, the height, the hole diameters; identical flat parts share one outline as a stack, pins each get their own, and pairs that match in every dimension (A and C, F and H, J and Q) are marked as interchangeable. The free space on the sheet holds renders of the sub-assembly with a callout to every file, followed by gluing step cards: what is already glued is grey, the new part is orange, and for the pins the cards are close-ups of the joints. Nothing here is drawn by hand: outlines and holes are taken from the measured STL, the composition and the steps from `assembly.tsv` and `parts.tsv`, and the views are chosen by how many parts they show. A 100 mm ruler at the bottom of every sheet tells you whether the printer is scaling. How it is done and what was decided — `print3d-parts/sheets/README.md`.
 
-![bucket sorting sheet](../print3d-parts/sheets/png/3_bucket.png)
+![bucket sorting sheet](img/sheet_bucket.png)
 
 ## 3. The chosen geometry (mm) and why
 

@@ -10,7 +10,7 @@ Where the 3D pages get their geometry, how the STL for printing differs from the
 |---|---|---|
 | WASM page (`web/viewer-wasm/`) | `scad/excavator_boom.scad` — steel at 1:1, welded bodies | OFF in browser memory |
 | Page with a server (`web/viewer.py`) | the same model | one OFF per body → JSON |
-| `tools/build_version.sh` | the same model | STL 1:1 in `versions/…/stl/` |
+| `tools/build_version.sh` | the same model | STL 1:1 in `latest/stl/` |
 | `print3d-parts/make.sh` | `print3d-parts/parts.scad` (the model as a library) | STL 1:5, one component per file |
 
 The pages do not use the printed kit and do not produce STL.

@@ -12,17 +12,19 @@
 попередні деталі сірі, а нова — помаранчева.
 
 Звідки що береться (руками нічого не вписано):
-  контури, габарити, отвори   — з ВИМІРЯНИХ STL набору (print3d-parts/stl/**), shapely
+  контури, габарити, отвори   — з ВИМІРЯНИХ STL набору (--stl; make.sh дає build/print3d/stl), shapely
   склад аркушів і кроки       — print3d-parts/assembly.tsv (вузол, крок, куди, як)
   назви файлів, кількості     — print3d-parts/parts.tsv
   рендери                     — sheets.scad (кожна деталь своїм відтінком; виноски — за
                                  відтінком пікселів, ракурси — за тим, скільки деталей видно)
 
-Виходи: SHEETS.pdf (A4, 1:1), sheets.json (усі числа: комірки, ракурси, виноски —
-перевіряти можна читанням, не відкриваючи PDF), png/ — прев'ю сторінок розкладки,
+Виходи (у теці --dir): SHEETS.pdf (A4, 1:1), sheets.json (усі числа: комірки, ракурси,
+виноски — перевіряти можна читанням, не відкриваючи PDF), png/ — прев'ю сторінок розкладки,
 відрендерені з самого PDF (poppler: pdftoppm + pdftotext; без нього — знімок HTML у Chrome).
+Типово — чернетка в build/sheets/ зі STL latest/print3d/stl; у набір (latest/print3d/sheets/)
+аркуші потрапляють лише через print3d-parts/make.sh — новою підверсією.
 
-    tools/.venv/bin/python print3d-parts/sheets/make_sheets.py            # усе
+    tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png      # усе, у build/sheets/
     … --only 1 --no-steps --png                                          # один аркуш, швидко
     … --fresh                                                            # перерендерити всі PNG
 
@@ -137,9 +139,12 @@ def read_assembly():
             for s, n, k, w, h in read_tsv(os.path.join(KIT, 'assembly.tsv'), 5)]
 
 
+STL_DIR = os.path.join(ROOT, 'latest', 'print3d', 'stl')          # --stl; make.sh дає build/print3d/stl
+
+
 def find_stl(file):
-    """STL лежать у теках «одне завдання слайсера» (stl/group.sh); шукаємо рекурсивно."""
-    for d, _, fs in os.walk(os.path.join(KIT, 'stl')):
+    """STL лежать у теках «одне завдання слайсера» (group.sh); шукаємо рекурсивно."""
+    for d, _, fs in os.walk(STL_DIR):
         for f in fs:
             if f.startswith(file + '_x') and f.endswith('.stl'):
                 return os.path.join(d, f)
@@ -1132,8 +1137,13 @@ def card_html(st, part, vw, scheme=None):
 
 # ------------------------------------------------------------------ головне
 def main():
+    global STL_DIR
     ap = argparse.ArgumentParser(description='аркуші розкладки 1:1 для набору print3d-parts')
-    ap.add_argument('--out', default=os.path.join(HERE, 'SHEETS.pdf'))
+    # Типово — чернетка в build/sheets/ зі STL поточного набору (latest/print3d/stl): так
+    # ітерують розкладку. У набір аркуші потрапляють лише через make.sh (нова підверсія).
+    ap.add_argument('--dir', default=os.path.join(ROOT, 'build', 'sheets'), help='куди: SHEETS.pdf, sheets.json, png/')
+    ap.add_argument('--stl', default=STL_DIR, help='звідки STL набору')
+    ap.add_argument('--version', default='чернетка', help='підпис у шапці аркушів (V006.1)')
     ap.add_argument('--only', type=int, help='лише один аркуш (номер)')
     ap.add_argument('--no-steps', action='store_true', help='без сторінок кроків (швидко)')
     ap.add_argument('--no-pdf', action='store_true')
@@ -1143,9 +1153,11 @@ def main():
     ap.add_argument('--keep-html')
     a = ap.parse_args()
 
+    STL_DIR = os.path.abspath(a.stl)
+    os.makedirs(a.dir, exist_ok=True)
+    a.out = os.path.join(a.dir, 'SHEETS.pdf')
     parts, steps = read_parts(), read_assembly()
-    vers = sorted(d for d in os.listdir(os.path.join(ROOT, 'versions')) if d.startswith('V')) if os.path.isdir(os.path.join(ROOT, 'versions')) else []
-    ver = vers[-1] if vers else 'без версії'
+    ver = a.version
     date = datetime.date.today().isoformat()
     R = Renders(a.tmp, a.fresh)
     report = dict(version=ver, date=date, sheets=[])
@@ -1175,7 +1187,7 @@ def main():
     print(f'  рендерів зроблено: {R.n}')
 
     chrome = os.environ.get('CHROME') or next((c for c in CHROME_CANDIDATES if os.path.exists(c)), None)
-    png_dir = os.path.join(HERE, 'png')
+    png_dir = os.path.join(a.dir, 'png')
     if a.no_pdf:
         if a.png and chrome:
             previews_from_html(pages, report, a.tmp, chrome, png_dir)
@@ -1192,7 +1204,7 @@ def main():
             elif chrome:
                 print('  poppler не знайдено (brew install poppler) — прев’ю зі знімка HTML, не з PDF')
                 previews_from_html(pages, report, a.tmp, chrome, png_dir)
-    with open(os.path.join(HERE, 'sheets.json'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(a.dir, 'sheets.json'), 'w', encoding='utf-8') as f:
         json.dump(report, f, ensure_ascii=False, indent=1)
     print('  sheets.json записано')
 

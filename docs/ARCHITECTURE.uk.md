@@ -9,7 +9,7 @@
 - **Одне джерело правди** — `scad/excavator_boom.scad`. Усе інше — його споживачі.
 - **Інтерфейс моделі — командний рядок OpenSCAD**: вхід — `-D назва=значення`, вихід — файл геометрії та рядки `ECHO:` у stderr. Жоден інструмент не має власного списку розмірів: числа читаються з echo, контури — з експорту.
 - **Двійники** (`tools/kinematics.py`, `tools/bucket.py`, блок `//<pose>` у сторінках) повторюють формули моделі незалежним кодом; розбіжність ловлять перевірки (розділ 6).
-- **Згенероване** живе в `versions/VNNN-…/`; у корені — лише джерела, `docs/img/` і друкований набір.
+- **Згенероване** живе в `latest/` (поточна версія, набір 1:5 — у ній) і `versions/VNNN-…/` (архів); у корені — лише джерела й `docs/img/`. Проміжне — у `build/`, його немає в git.
 
 ## 2. Стек
 
@@ -33,16 +33,17 @@ flowchart LR
     OV[check_overlaps.sh]
     MO[check_motion.sh]
   end
-  subgraph "Версія (build_version.sh)"
+  subgraph "Версія → latest/ (build_version.sh)"
     STL[stl/*.stl]
     PNG[renders/*.png]
     REP["docs/*.md<br/>kinematics · strength · bucket"]
     BOM["bom_drawings.py<br/>bom · dxf · parts.pdf"]
     VH[viewer.html]
   end
-  subgraph "Друкований набір (print3d-parts/make.sh)"
+  subgraph "Друкований набір → latest/print3d/ (print3d-parts/make.sh)"
     PS[parts.scad] --> PSTL[stl/**]
     PSTL --> SH["sheets/make_sheets.py<br/>SHEETS.pdf · sheets.json"]
+    PSTL --> DR["model_drive.py<br/>DRIVE.md"]
   end
   subgraph Сторінки
     SRV[viewer.py + viewer/index.html]
@@ -91,17 +92,18 @@ flowchart LR
 | Звідки → куди | Формат | Хто / як |
 |---|---|---|
 | модель → перевірки | STL перетину → об'єм, см³ (допуск 0.05) | `check_overlaps.sh` (пари пластин вузла), `check_motion.sh` (рухомі пари на всьому ході) |
-| модель → версія | STL, PNG, echo → `VERSION.md` | `build_version.sh` |
+| модель → версія | STL, PNG, echo → `VERSION.md`, усе в `build/version/` | `build_version.sh` |
+| нове збирання ↔ `latest/` | STL — набором трикутників, звіти й діапазони кутів — текстом без номерів і дат → код виходу 0 (те саме) / 1 (змінилось) | `compare_build.py`: змінилось — старий `latest/` у `versions/` (git mv), нова версія; те саме — `latest/` оновлюється на місці |
 | двійники → звіти | Markdown у stdout, PNG (matplotlib) | `kinematics.py`, `strength.py`, `bucket.py`, `work_range.py` |
 | модель → BOM і креслення | echo `BOM_*` + SVG → `bom.md`, `bom.csv`, DXF 1:1, `parts.pdf` | `bom_drawings.py` |
-| версія → README | копії PNG у `docs/img/`; шляхи в `README*.md` переписуються `sed` | `build_version.sh` |
+| версія → README | копії PNG у `docs/img/`; `README*.md` посилаються на `latest/…` (шляхи сталі) | `build_version.sh` |
 | сторінка (сервер) ↔ `viewer.py` | `GET /api/schema` → JSON параметрів; `GET /api/views` → `views.json`; `POST /api/build {params, fresh}` → `{view, parts{тіло: {pos, groups[{color, idx}]}}, log, ms}` | 12 процесів OpenSCAD паралельно, по OFF на тіло; кеш останніх наборів параметрів |
 | WASM-сторінка ↔ воркер | `postMessage {id, source, files, defs}` → `{id, view, parts, log, ms}` (буфери — transfer) | один запуск `part="view_all"`: тіла зсунуті на `i·spacing` по Y, `offmesh.js` розрізає назад |
 | модель → WASM-сторінка | текст `.scad` вшивається збіркою (`?raw`), `views.json` — як JSON | Vite; інших входів немає (з адреси — лише `?lang`) |
 | поза в браузері | кути → точки `pose()` → матриці тіл | JS, без OpenSCAD; ті самі формули, що `pt_*()` моделі |
 | сторінка → ракурси | JSON (камера, кути, змінені параметри, видимість): буфер обміну / файл `views.json` / `localStorage` | `views.py render` → PNG OpenSCAD |
-| модель → набір 1:5 | `parts.scad` + `parts.tsv` (TSV, «-» = порожньо) → STL по одному компоненту | `print3d-parts/make.sh`; `check_print.py` → JSON; `make_bom.py` → `BOM.md` |
-| набір → аркуші | STL (силуети shapely) + `assembly.tsv` + `sheets.scad` (PNG) → HTML → PDF | `make_sheets.py` → `SHEETS.pdf`, `sheets.json` (усі числа), `png/` (з PDF через poppler) |
+| модель → набір 1:5 | `parts.scad` + `parts.tsv` (TSV, «-» = порожньо) → STL по одному компоненту, у `build/print3d/` → `latest/print3d/` підверсією VNNN.K (попередня → `print3d-history/`) | `print3d-parts/make.sh` (лише якщо модель збігається з `latest/scad/`); `check_print.py` → JSON; `make_bom.py` → `BOM.md`; `model_drive.py` → `DRIVE.md` |
+| набір → аркуші | STL (силуети shapely) + `assembly.tsv` + `sheets.scad` (PNG) → HTML → PDF | `make_sheets.py` → `SHEETS.pdf`, `sheets.json` (усі числа); прев'ю `png/` (з PDF через poppler) лишаються в `build/`, аркуш ковша копіюється в `docs/img/` |
 | сторінка/PDF → медіа README | знімки puppeteer → GIF (ffmpeg); прев'ю PDF | `tools/media/readme_media.sh` → `docs/img/` |
 | `main` → Pages | `npm ci` → `npm test` → `vite build` → `dist/` + LICENSE, THIRD-PARTY | `.github/workflows/pages.yml` |
 
@@ -111,13 +113,15 @@ flowchart LR
 |---|---|
 | пластини прилягають, не перекриваються | `check_overlaps.sh`; git-хук перед комітом змін у `scad/` |
 | рухомі пари не зіткаються | `check_motion.sh` (у складі збирання версії) |
-| Python-кінематика = модель | діапазони кутів до 0.1°, гілка ковша 0.000 мм: `kinematics.py`, `kinematics.py --check` |
+| Python-кінематика = модель | **вручну**: діапазони з `kinematics.py` звіряються з echo моделі (до 0.1°). `kinematics.py --check` лише звіряє пряму й обернену задачу ковша в самому Python; автоматичної звірки Python ↔ модель поки немає |
 | модель будується старішим рушієм WASM без попереджень | `npm test` (також у CI перед публікацією) |
 | блоки `//<pose>`, `//<spacemouse>`, `//<viewjson>` однакові в обох сторінках | `npm test` |
 | поза JS = echo моделі (зуб ковша) | `npm test` |
 | переклад повний, кольори легенди є в `color(...)` моделі | `npm test` |
 | перерахунок камери сторінка → OpenSCAD | `views.py check` + `media/view_roundtrip.mjs` |
 | кожна деталь набору — рівно в одному кроці | `make.sh` (звірка `parts.tsv` ↔ `assembly.tsv`) |
+| набір зібраний з моделі `latest/` | `make.sh` відмовляє, якщо `scad/` відрізняється від `latest/scad/` |
+| новий номер версії — лише коли змінилось по суті | `compare_build.py` у `build_version.sh` (`--new` — примусово) |
 | документи: посилання, якорі, кістяк двомовних пар | `check_docs.py` |
 | у коміті немає особистих даних (текст і метадані PDF, PNG, zip) | `check_personal.py` |
 
@@ -128,8 +132,10 @@ flowchart LR
 | `scad/` | модель і полігони логотипа |
 | `tools/` | двійники, генератори, перевірки, `media/`, `git-hooks/`, `dev/` (помічник SpaceMouse, аналітика агентів) |
 | `web/` | сторінки: `viewer/` із сервером `viewer.py`, `viewer-wasm/` (публікується на Pages) |
-| `versions/VNNN-…/` | `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (знімок моделі й скриптів), `viewer.html`, `VERSION.md` |
-| `print3d-parts/` | набір 1:5: `parts.scad`, `parts.tsv`, `assembly.tsv`, `stl/`, `BOM.md`, `sheets/`, `stand/` (окрема стійка, свій `make.sh`) |
+| `latest/` | поточна версія: `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (знімок моделі й скриптів), `viewer.html`, `VERSION.md`; `print3d/` — поточний набір 1:5 (VNNN.K), `print3d-history/` — його попередні підверсії |
+| `versions/VNNN-…/` | архів: сюди переїжджає колишній `latest/` (git mv), коли змінились геометрія чи числа звітів |
+| `build/` | проміжне й журнали перевірок, PNG-прев'ю ескізів і аркушів; не в git |
+| `print3d-parts/` | джерела набору 1:5: `parts.scad`, `parts.tsv`, `assembly.tsv`, `make.sh`, `group.sh`, `sheets/` (генератор), `stand/` (окрема стійка зі своїм `make.sh` і STL); результат — у `latest/print3d/` |
 | `docs/` | документи: TECHNICAL, QUICKSTART, ARCHITECTURE, GEOMETRY, STORY (`.md` / `.uk.md`); README і SAFETY — у корені |
 | `docs/img/` | картинки README (оновлюють `build_version.sh` і `readme_media.sh`) |
 | `views.json` | збережені ракурси (спільні для сторінок і `views.py`) |

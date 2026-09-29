@@ -17,13 +17,13 @@
 
 ## Documents (PDF, in Ukrainian)
 
-**[Part sketches in steel](versions/V005-2026-09-24-1519/drawings/parts.pdf)** — the bill of materials, every plate with its hole positions tied to real edges, the tubes unfolded on all four sides; the logo is marked where the decal goes. For cutting: DXF 1:1 in [`dxf/`](versions/V005-2026-09-24-1519/dxf/).
+**[Part sketches in steel](latest/drawings/parts.pdf)** — the bill of materials, every plate with its hole positions tied to real edges, the tubes unfolded on all four sides; the logo is marked where the decal goes. For cutting: DXF 1:1 in [`dxf/`](latest/dxf/).
 
-[![Part sketches in steel](docs/img/pdf_parts.png)](versions/V005-2026-09-24-1519/drawings/parts.pdf)
+[![Part sketches in steel](docs/img/pdf_parts.png)](latest/drawings/parts.pdf)
 
-**[1:1 sorting sheets for the 1:5 printed kit](print3d-parts/sheets/SHEETS.pdf)** — every printed part drawn at 1:1 the way it lies on the table: put the part on its outline, and if it fits, that is the one; renders of each sub-assembly with a callout to every file, then gluing step cards.
+**[1:1 sorting sheets for the 1:5 printed kit](latest/print3d/sheets/SHEETS.pdf)** — every printed part drawn at 1:1 the way it lies on the table: put the part on its outline, and if it fits, that is the one; renders of each sub-assembly with a callout to every file, then gluing step cards.
 
-[![1:1 sorting sheets for the 1:5 printed kit](docs/img/pdf_sheets.png)](print3d-parts/sheets/SHEETS.pdf)
+[![1:1 sorting sheets for the 1:5 printed kit](docs/img/pdf_sheets.png)](latest/print3d/sheets/SHEETS.pdf)
 
 > 📘 **All the technical detail is in [TECHNICAL.md](docs/TECHNICAL.md)** — the files and scripts, how to run the model and the 3D pages, the chosen geometry and kinematics, the bucket, sections and steel, the AI review, **what must be checked before cutting metal**, fabrication notes and the next stages. Installing and the core commands: [QUICKSTART.md](docs/QUICKSTART.md). How the code is built — the stack, links between parts, data formats: [ARCHITECTURE.md](docs/ARCHITECTURE.md); geometry in the pages, print versus steel, the OFF format: [GEOMETRY.md](docs/GEOMETRY.md).
 

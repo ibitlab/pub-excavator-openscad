@@ -10,7 +10,7 @@
 |---|---|---|
 | WASM-сторінка (`web/viewer-wasm/`) | `scad/excavator_boom.scad` — метал 1:1, зварні тіла | OFF у пам'яті браузера |
 | Сторінка з сервером (`web/viewer.py`) | та сама модель | OFF на кожне тіло → JSON |
-| `tools/build_version.sh` | та сама модель | STL 1:1 у `versions/…/stl/` |
+| `tools/build_version.sh` | та сама модель | STL 1:1 у `latest/stl/` |
 | `print3d-parts/make.sh` | `print3d-parts/parts.scad` (модель як бібліотека) | STL 1:5, по компоненту на файл |
 
 Сторінки набору для друку не використовують і STL не створюють.

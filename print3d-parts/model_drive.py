@@ -8,11 +8,12 @@
 за якими підбирати моторедуктор.
 
 Нічого не вписується руками: циліндри й геометрія — з `tools/kinematics.py` (звіряються
-з моделлю), маса — з `stl/`, масштаб — з `parts.scad`, місткість ковша — з
-`tools/bucket.py`. Результат замінює блок між маркерами в `README.md` набору.
+з моделлю), маса — з STL набору, масштаб — з `parts.scad`, місткість ковша — з
+`tools/bucket.py`. Результат — окремий `DRIVE.md` поруч зі збиранням набору (згенероване не
+живе в рукописному README; README лише посилається на `latest/print3d/DRIVE.md`).
 
-usage: model_drive.py            # переписати блок у README.md
-       model_drive.py --print    # лише надрукувати, README не чіпати
+usage: model_drive.py --stl ТЕКА --out DRIVE.md    # так кличе make.sh (ТЕКА — build/print3d/stl)
+       model_drive.py --print                      # лише надрукувати; STL — з latest/print3d/stl
 """
 import glob
 import math
@@ -36,6 +37,7 @@ except ImportError:
 import bucket                      # noqa: E402
 import kinematics as K             # noqa: E402
 from make_bom import PLA           # noqa: E402  г/см³ — та сама густина, що в BOM
+from author import md_footer       # noqa: E402  підпис автора внизу DRIVE.md (AUTHORS у корені)
 
 # --- Припущення (змінюються тут, решта рахується) -------------------------------------
 Q_LPM = 11.0        # л/хв — насос НШ-10 через редукцію 3 (TECHNICAL, розділ 5); весь потік в один циліндр
@@ -66,7 +68,12 @@ N20_PICK = [(10, 2000), (20, 1000), (30, 800), (50, 400)]   # що порівн�
 ETA_GEAR = {10: .70, 20: .65, 30: .60, 50: .60, 100: .55, 200: .50, 298: .45}   # ККД редуктора, оцінка
 OVERLOAD = 0.5      # частка моменту зупинки, вище якої мотор гріється (там же його найбільша потужність)
 
-BEGIN, END = '<!-- model_drive:begin -->', '<!-- model_drive:end -->'
+def _arg(name, default=None):
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+
+
+STL = _arg('--stl', os.path.join(ROOT, 'latest', 'print3d', 'stl'))   # звідки маси деталей
+OUT = None if '--print' in sys.argv else _arg('--out')              # None — лише надрукувати
 NAMES = dict(boom='Стріла', stick='Рукоять', bucket='Ківш')
 
 # Де сидить кожна деталь набору: точка кінематики (назва або середина двох), точка на осі
@@ -130,7 +137,7 @@ def masses():
         if key not in WHERE:
             missing.append(key)
             continue
-        hits = glob.glob(os.path.join(HERE, 'stl', '**', f'{file}_x{qty}.stl'), recursive=True)
+        hits = glob.glob(os.path.join(STL, '**', f'{file}_x{qty}.stl'), recursive=True)
         if not hits:
             sys.exit(f'model_drive.py: немає STL для {key} ({file}_x{qty}.stl) — спершу make.sh')
         out.append((key, stl_volume(hits[0]) * qty * PLA * FILL, WHERE[key]))
@@ -330,10 +337,10 @@ def main():
 
     L = []
     w = L.append
-    w(BEGIN)
-    w('<!-- Згенеровано print3d-parts/model_drive.py (make.sh). Руками не правити: зміни припущення у скрипті. -->')
+    w('# Привід циліндрів гвинтом M5')
     w('')
-    w('## Привід циліндрів гвинтом M5')
+    w('> Згенеровано `print3d-parts/model_drive.py` (крок `make.sh`) з виміряних STL набору. '
+      'Руками не правити: припущення — сталі на початку скрипту.')
     w('')
     w(f'Якщо циліндр моделі — гвинт **M5×0.8** (шток) і гайка, яку крутить моторедуктор, то за один оберт '
       f'гайки шток проходить {PITCH} мм. Щоб модель рухалась **як машина**, кожен циліндр має пройти свій '
@@ -413,22 +420,15 @@ def main():
       f'`print3d-parts/model_drive.py`; після зміни — `python3 print3d-parts/model_drive.py`.')
     w('')
     n20_section(w, sc, q, F_empty, F_sand)
-    w(END)
-    block = '\n'.join(L)
+    w('')
+    w(md_footer().strip())
+    block = '\n'.join(L) + '\n'
 
-    if '--print' in sys.argv:
+    if OUT is None:
         print(block)
         return
-    path = os.path.join(HERE, 'README.md')
-    txt = open(path, encoding='utf-8').read()
-    if BEGIN in txt:
-        txt = re.sub(re.escape(BEGIN) + r'.*?' + re.escape(END), lambda _: block, txt, flags=re.S)
-    else:
-        txt = txt.replace('\n## Важливе, що цей набір НЕ дає', '\n' + block + '\n\n## Важливе, що цей набір НЕ дає', 1)
-        if BEGIN not in txt:
-            sys.exit('model_drive.py: не знайшов, куди вставити блок у README.md')
-    open(path, 'w', encoding='utf-8').write(txt)
-    print(f'  print3d-parts/README.md — привід M5 (стріла тримає до {F_sand["boom"][0]:.1f} Н з піском)')
+    open(OUT, 'w', encoding='utf-8').write(block)
+    print(f'  {os.path.relpath(OUT, ROOT)} — привід M5 (стріла тримає до {F_sand["boom"][0]:.1f} Н з піском)')
 
 
 if __name__ == '__main__':

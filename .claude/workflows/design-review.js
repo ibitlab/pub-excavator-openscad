@@ -21,7 +21,7 @@ You are reviewing a parametric OpenSCAD design of a mini-excavator working equip
 Repository: ${REPO} (all paths below are relative to it). Read README.md and CLAUDE.md first, then the files relevant to your lens:
  - scad/excavator_boom.scad — parametric model (angles are primary parameters; limits computed from cylinder lengths; part selector, flat projection, BOM echo).
  - tools/kinematics.py — independent Python solver of the same geometry; tools/strength.py — planar statics + section/pin/weld checks.
- - docs/01-design-inputs.md — purchased cylinders, available steel, hydraulics, norms. Latest generated reports: versions/<highest>/docs/.
+ - docs/01-design-inputs.md — purchased cylinders, available steel, hydraulics, norms. Latest generated reports: latest/docs/ (the print kit: latest/print3d/).
 Tools: 'openscad -o /tmp/x.echo scad/excavator_boom.scad' for echo(); '-D name=value' (one -D per value) to override; 'tools/check_overlaps.sh'; python3 scripts run from tools/.
 Do NOT modify repository files, EXCEPT writing your own result file described below.
 Conventions: side view X forward, Z up; boom chord angle theta to horizontal; stick interior angle psi at joint B; bucket angle omega relative to stick axis (+ = curl).`

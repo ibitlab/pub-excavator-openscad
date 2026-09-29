@@ -23,7 +23,7 @@ A parametric model of the working equipment of a towable mini excavator — boom
 # open the model: boom / stick / bucket angles are the first parameters in the Customizer
 openscad scad/excavator_boom.scad
 
-# build a version → versions/VNNN-date-time/ (STL, renders, reports, BOM, DXF, PDF, viewer.html); --commit also commits it
+# build a version → latest/ (STL, renders, reports, BOM, DXF, PDF, viewer.html, the 1:5 kit); the previous one → versions/
 tools/build_version.sh --commit "what changed"
 
 # checks only: plates abut without overlapping / moving pairs never collide over the full cylinder stroke
@@ -46,4 +46,4 @@ cd web/viewer-wasm && npm run preview:sm
 
 Once after cloning: `git config core.hooksPath tools/git-hooks` — this checks plate overlaps before every commit that touches the model.
 
-The results of the last build are in the `versions/` folder with the highest number: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`.
+The results of the last build are in `latest/`: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`, and the printed kit in `print3d/`. Earlier versions are in `versions/`.

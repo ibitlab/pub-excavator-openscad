@@ -40,7 +40,7 @@ The project previously used `openscad-wasm@0.0.4`, which **shipped no licence fi
 
 ## What is *not* affected by the GPL
 
-The OpenSCAD model, and everything OpenSCAD produces from it — STL, DXF, PDF sketches, the BOM, the renders and the reports in `versions/` — are the work of this project. The output of a GPL program is not a derivative work of that program, and this model includes no external SCAD library (no `include`/`use`, no MCAD), so no third-party code is embedded in it.
+The OpenSCAD model, and everything OpenSCAD produces from it — STL, DXF, PDF sketches, the BOM, the renders and the reports in `latest/` and `versions/` — are the work of this project. The output of a GPL program is not a derivative work of that program, and this model includes no external SCAD library (no `include`/`use`, no MCAD), so no third-party code is embedded in it.
 
 ## Referenced but not included
 
@@ -88,7 +88,7 @@ Standards cited by number only (ДСТУ 8940, ГОСТ 8645, РД 22-158-86, IS
 
 ## Чого GPL не стосується
 
-Модель OpenSCAD і все, що вона видає — STL, DXF, PDF-ескізи, специфікація, рендери та звіти у `versions/` — робота цього проєкту. Вихід GPL-програми не є похідним твором від неї, а модель не підключає жодної зовнішньої SCAD-бібліотеки (немає `include`/`use`, немає MCAD), тож чужого коду всередині неї немає.
+Модель OpenSCAD і все, що вона видає — STL, DXF, PDF-ескізи, специфікація, рендери та звіти в `latest/` і `versions/` — робота цього проєкту. Вихід GPL-програми не є похідним твором від неї, а модель не підключає жодної зовнішньої SCAD-бібліотеки (немає `include`/`use`, немає MCAD), тож чужого коду всередині неї немає.
 
 ## Згадується, але не включене
 

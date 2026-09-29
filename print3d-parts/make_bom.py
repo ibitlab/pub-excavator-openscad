@@ -7,7 +7,10 @@
 Беруться ЧОТИРИ ОСТАННІ колонки TSV (файл, к-сть, група, опис), тож колонки спереду
 (`own`, `вісь`, `поворот`) не заважають.
 
-usage: make_bom.py parts.tsv check.json report.echo ["Заголовок"] [тека_версії] [ескізи]
+usage: make_bom.py parts.tsv check.json report.echo ["Заголовок"] [тека_версії] [ескізи] [назва]
+
+`тека_версії` — `latest`: BOM.md ляже в `latest/print3d/`, посилання на ескізи рахуються звідти.
+`назва` — підверсія набору для підпису (V006.1); без неї — ім'я теки версії.
 
 `ескізи` = "так" — посилання на аркуш ескізу в металі; лише коли ключ означає саме ту
 деталь, що на аркуші (ключ цілого вузла і аркуш самої труби — різні речі).
@@ -57,7 +60,8 @@ def main():
     ver_dir = sys.argv[5] if len(sys.argv) > 5 else ""
     want_sheets = len(sys.argv) > 6 and sys.argv[6] == "так"
     checks = {c["файл"]: c for c in json.load(open(js, encoding="utf-8"))}
-    smap = sheets(ver_dir, os.path.dirname(os.path.abspath(tsv))) if want_sheets else {}
+    # BOM.md лежить у <тека_версії>/print3d/ — посилання на її drawings/ рахуються звідти
+    smap = sheets(ver_dir, os.path.join(ver_dir, "print3d")) if want_sheets else {}
 
     rows = []
     for line in open(tsv, encoding="utf-8"):
@@ -82,11 +86,10 @@ def main():
     print(f"# {title} 1:{scale}")
     print()
     print("> Згенеровано `make.sh` з **виміряних** STL — руками тут нічого не вписано.")
-    # Набори підключають ЖИВУ модель (`include <../scad/excavator_boom.scad>`), а не
-    # знімок із versions/. Номер версії тут — лише підпис «на яку геометрію це схоже»,
-    # і його передає make.sh (тека з найбільшим номером), щоб він не застигав.
-    ver = os.path.basename(ver_dir) if ver_dir else "не вказано"
-    print(f"> Модель-джерело: `scad/excavator_boom.scad`, версія геометрії `{ver}`.")
+    # Набори підключають ЖИВУ модель (`include <../scad/excavator_boom.scad>`); make.sh збирає
+    # набір лише тоді, коли вона та сама, що в latest/scad/, тож підпис версії правдивий.
+    ver = sys.argv[7] if len(sys.argv) > 7 else (os.path.basename(ver_dir) if ver_dir else "не вказано")
+    print(f"> Модель-джерело: `scad/excavator_boom.scad`, набір `{ver}`.")
     print(">")
     # найменша деталь набору — за найбільшим габаритом, а не за товщиною
     small = min((max(r[4]["габарит"]) for r in rows if r[4].get("габарит")), default=0)
@@ -131,7 +134,7 @@ def main():
     print("- **Полиці** — частка площі, що друкується в повітрі майже горизонтально, і висота")
     print("  найбільших над столом. Дужки з висотою 0.5–1.5 мм означають підсічки під")
     print("  пластинами: підпора зі столу їх бере. Полиці всередині труб — це містки, не звиси")
-    print("  (див. README), підпору туди пускати НЕ можна.")
+    print("  (див. print3d-parts/README.md), підпору туди пускати НЕ можна.")
     print("- Габарити — уже в друкованих міліметрах, деталі повернуті в позу друку.")
 
 

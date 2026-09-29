@@ -30,6 +30,5 @@ for lang in en uk; do
 done
 
 echo "== прев'ю PDF"
-VER=$(ls -d versions/V* | sort | tail -1)
-$PY tools/media/pdf_preview.py print3d-parts/sheets/SHEETS.pdf 1,9,10,12 docs/img/pdf_sheets.png
-$PY tools/media/pdf_preview.py "$VER/drawings/parts.pdf" 1,3,12,17 docs/img/pdf_parts.png --height 300 --overlap 0.3
+$PY tools/media/pdf_preview.py latest/print3d/sheets/SHEETS.pdf 1,9,10,12 docs/img/pdf_sheets.png
+$PY tools/media/pdf_preview.py latest/drawings/parts.pdf 1,3,12,17 docs/img/pdf_parts.png --height 300 --overlap 0.3

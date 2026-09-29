@@ -23,7 +23,7 @@
 # відкрити модель: кути стріли / рукояті / ковша — перші параметри в Customizer
 openscad scad/excavator_boom.scad
 
-# зібрати версію → versions/VNNN-дата-час/ (STL, рендери, звіти, BOM, DXF, PDF, viewer.html); --commit одразу комітить
+# зібрати версію → latest/ (STL, рендери, звіти, BOM, DXF, PDF, viewer.html, набір 1:5); попередня → versions/
 tools/build_version.sh --commit "що змінено"
 
 # лише перевірки: пластини не перекриваються / рухомі пари не зіткаються на всьому ході циліндрів
@@ -46,4 +46,4 @@ cd web/viewer-wasm && npm run preview:sm
 
 Один раз після клонування: `git config core.hooksPath tools/git-hooks` — перевірка перекриттів перед комітом змін моделі.
 
-Результати останнього збирання — у теці `versions/` з найбільшим номером: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`.
+Результати останнього збирання — у `latest/`: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`, друкований набір — у `print3d/`. Попередні версії — у `versions/`.

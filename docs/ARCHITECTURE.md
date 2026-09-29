@@ -9,7 +9,7 @@ A short map: what the code is made of, who calls whom and in what format the dat
 - **One source of truth** — `scad/excavator_boom.scad`. Everything else consumes it.
 - **The model's interface is the OpenSCAD command line**: input is `-D name=value`, output is a geometry file plus `ECHO:` lines on stderr. No tool keeps its own list of dimensions: numbers are read from echo, outlines from the export.
 - **Twins** (`tools/kinematics.py`, `tools/bucket.py`, the `//<pose>` block in the pages) repeat the model's formulas in independent code; the checks catch any divergence (section 6).
-- **Generated output** lives in `versions/VNNN-…/`; the root holds only sources, `docs/img/` and the printed kit.
+- **Generated output** lives in `latest/` (the current version, the 1:5 kit inside it) and `versions/VNNN-…/` (the archive); the root holds only sources and `docs/img/`. Intermediate files go to `build/`, which is not in git.
 
 ## 2. Stack
 
@@ -33,16 +33,17 @@ flowchart LR
     OV[check_overlaps.sh]
     MO[check_motion.sh]
   end
-  subgraph "Version (build_version.sh)"
+  subgraph "Version → latest/ (build_version.sh)"
     STL[stl/*.stl]
     PNG[renders/*.png]
     REP["docs/*.md<br/>kinematics · strength · bucket"]
     BOM["bom_drawings.py<br/>bom · dxf · parts.pdf"]
     VH[viewer.html]
   end
-  subgraph "Printed kit (print3d-parts/make.sh)"
+  subgraph "Printed kit → latest/print3d/ (print3d-parts/make.sh)"
     PS[parts.scad] --> PSTL[stl/**]
     PSTL --> SH["sheets/make_sheets.py<br/>SHEETS.pdf · sheets.json"]
+    PSTL --> DR["model_drive.py<br/>DRIVE.md"]
   end
   subgraph Pages
     SRV[viewer.py + viewer/index.html]
@@ -91,17 +92,18 @@ flowchart LR
 | From → to | Format | Who / how |
 |---|---|---|
 | model → checks | intersection STL → volume, cm³ (tolerance 0.05) | `check_overlaps.sh` (plate pairs within a sub-assembly), `check_motion.sh` (moving pairs over the full stroke) |
-| model → version | STL, PNG, echo → `VERSION.md` | `build_version.sh` |
+| model → version | STL, PNG, echo → `VERSION.md`, all in `build/version/` | `build_version.sh` |
+| new build ↔ `latest/` | STL as triangle sets, reports and angle ranges as text without numbers and dates → exit code 0 (same) / 1 (changed) | `compare_build.py`: changed — the old `latest/` goes to `versions/` (git mv), a new version; same — `latest/` refreshed in place |
 | twins → reports | Markdown on stdout, PNG (matplotlib) | `kinematics.py`, `strength.py`, `bucket.py`, `work_range.py` |
 | model → BOM and drawings | echo `BOM_*` + SVG → `bom.md`, `bom.csv`, DXF 1:1, `parts.pdf` | `bom_drawings.py` |
-| version → README | PNG copies in `docs/img/`; paths in `README*.md` rewritten by `sed` | `build_version.sh` |
+| version → README | PNG copies in `docs/img/`; `README*.md` link to `latest/…` (stable paths) | `build_version.sh` |
 | page (server) ↔ `viewer.py` | `GET /api/schema` → parameters as JSON; `GET /api/views` → `views.json`; `POST /api/build {params, fresh}` → `{view, parts{body: {pos, groups[{color, idx}]}}, log, ms}` | 12 OpenSCAD processes in parallel, one OFF per body; cache of recent parameter sets |
 | WASM page ↔ worker | `postMessage {id, source, files, defs}` → `{id, view, parts, log, ms}` (buffers transferred) | one run of `part="view_all"`: bodies shifted by `i·spacing` along Y, `offmesh.js` cuts them apart |
 | model → WASM page | the `.scad` text is bundled at build time (`?raw`), `views.json` as JSON | Vite; no other inputs (the URL supplies only `?lang`) |
 | pose in the browser | angles → `pose()` points → body matrices | JS, no OpenSCAD; the same formulas as the model's `pt_*()` |
 | page → saved views | JSON (camera, angles, changed parameters, visibility): clipboard / `views.json` file / `localStorage` | `views.py render` → OpenSCAD PNG |
-| model → 1:5 kit | `parts.scad` + `parts.tsv` (TSV, `-` = empty) → one STL per component | `print3d-parts/make.sh`; `check_print.py` → JSON; `make_bom.py` → `BOM.md` |
-| kit → sheets | STL (shapely silhouettes) + `assembly.tsv` + `sheets.scad` (PNG) → HTML → PDF | `make_sheets.py` → `SHEETS.pdf`, `sheets.json` (every number), `png/` (from the PDF via poppler) |
+| model → 1:5 kit | `parts.scad` + `parts.tsv` (TSV, `-` = empty) → one STL per component, in `build/print3d/` → `latest/print3d/` as sub-version VNNN.K (the previous one → `print3d-history/`) | `print3d-parts/make.sh` (only if the model matches `latest/scad/`); `check_print.py` → JSON; `make_bom.py` → `BOM.md`; `model_drive.py` → `DRIVE.md` |
+| kit → sheets | STL (shapely silhouettes) + `assembly.tsv` + `sheets.scad` (PNG) → HTML → PDF | `make_sheets.py` → `SHEETS.pdf`, `sheets.json` (every number); `png/` previews (from the PDF via poppler) stay in `build/`, the bucket sheet is copied to `docs/img/` |
 | page/PDF → README media | puppeteer screenshots → GIF (ffmpeg); PDF previews | `tools/media/readme_media.sh` → `docs/img/` |
 | `main` → Pages | `npm ci` → `npm test` → `vite build` → `dist/` + LICENSE, THIRD-PARTY | `.github/workflows/pages.yml` |
 
@@ -111,13 +113,15 @@ flowchart LR
 |---|---|
 | plates touch but do not overlap | `check_overlaps.sh`; git hook before committing changes in `scad/` |
 | moving pairs do not collide | `check_motion.sh` (part of the version build) |
-| Python kinematics = the model | angle ranges within 0.1°, bucket linkage branch 0.000 mm: `kinematics.py`, `kinematics.py --check` |
+| Python kinematics = the model | **by hand**: compare the ranges from `kinematics.py` with the model's echo (within 0.1°). `kinematics.py --check` only cross-checks the bucket's forward and inverse solution in Python itself; there is no automatic Python ↔ model check yet |
 | the model builds in the older WASM engine without warnings | `npm test` (also in CI before publishing) |
 | the `//<pose>`, `//<spacemouse>`, `//<viewjson>` blocks are identical in both pages | `npm test` |
 | JS pose = the model's echo (bucket tooth) | `npm test` |
 | translation complete, legend colours exist in the model's `color(...)` | `npm test` |
 | camera conversion page → OpenSCAD | `views.py check` + `media/view_roundtrip.mjs` |
 | every kit part is in exactly one step | `make.sh` (`parts.tsv` ↔ `assembly.tsv`) |
+| the kit is built from the model of `latest/` | `make.sh` refuses if `scad/` differs from `latest/scad/` |
+| a new version number only when something real changed | `compare_build.py` inside `build_version.sh` (`--new` to force) |
 | docs: links, anchors, skeleton of bilingual pairs | `check_docs.py` |
 | no personal data in a commit (text and PDF, PNG, zip metadata) | `check_personal.py` |
 
@@ -128,8 +132,10 @@ flowchart LR
 | `scad/` | the model and the logo polygons |
 | `tools/` | twins, generators, checks, `media/`, `git-hooks/`, `dev/` (SpaceMouse helper, agent analytics) |
 | `web/` | the pages: `viewer/` with its server `viewer.py`, `viewer-wasm/` (published on Pages) |
-| `versions/VNNN-…/` | `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (snapshot of the model and scripts), `viewer.html`, `VERSION.md` |
-| `print3d-parts/` | the 1:5 kit: `parts.scad`, `parts.tsv`, `assembly.tsv`, `stl/`, `BOM.md`, `sheets/`, `stand/` (a separate display stand with its own `make.sh`) |
+| `latest/` | the current version: `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (snapshot of the model and scripts), `viewer.html`, `VERSION.md`; `print3d/` — the current 1:5 kit (VNNN.K), `print3d-history/` — its earlier sub-versions |
+| `versions/VNNN-…/` | the archive: a former `latest/` moves here (git mv) when the geometry or the report numbers change |
+| `build/` | intermediate files and check logs, drawing and sheet PNG previews; not in git |
+| `print3d-parts/` | sources of the 1:5 kit: `parts.scad`, `parts.tsv`, `assembly.tsv`, `make.sh`, `group.sh`, `sheets/` (generator), `stand/` (a separate display stand with its own `make.sh` and STL); the output goes to `latest/print3d/` |
 | `docs/` | the documents: TECHNICAL, QUICKSTART, ARCHITECTURE, GEOMETRY, STORY (`.md` / `.uk.md`); README and SAFETY stay in the root |
 | `docs/img/` | README images (updated by `build_version.sh` and `readme_media.sh`) |
 | `views.json` | saved views (shared by the pages and `views.py`) |

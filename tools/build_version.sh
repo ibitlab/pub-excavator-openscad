@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
-# Збирання версії: versions/VNNN-РРРР-ММ-ДД-ГГХХ/ зі STL кожної деталі, рендерами, звітами та знімком моделі.
-# Використання: tools/build_version.sh [--commit] ["короткий опис змін"]
-#   --commit — після збирання закомітити все (git add -A) з повідомленням "VNNN: опис"
+# Збирання версії машини: STL кожного вузла, рендери, звіти, BOM/DXF/PDF, знімок моделі — у latest/.
+# Використання: tools/build_version.sh [--new] [--no-kit] [--commit] ["короткий опис змін"]
+#   Збирається в build/version/; лише коли всі перевірки пройшли, результат іде в latest/.
+#   Змінились геометрія чи числа звітів (tools/compare_build.py) — нова версія VNNN: попередній
+#   latest/ переїжджає в versions/<його назва> через git mv, після чого збирається набір (VNNN.1).
+#   Не змінились (кольори, рендери, стиль PDF) — latest/ оновлюється на місці з тим самим номером.
+#   --new     — нова версія навіть без змін по суті;  --no-kit — не збирати набір після нової версії
+#   --commit  — закомітити: архів окремим комітом (щоб git бачив перейменування), нове — другим
 set -e -o pipefail
 cd "$(dirname "$0")/.."
-COMMIT=0; DESC=""
-for a in "$@"; do case "$a" in --commit) COMMIT=1 ;; -h|--help) sed -n '2,4p' "$0"; exit 0 ;; *) DESC="$a" ;; esac; done
+COMMIT=0; FORCE_NEW=0; KIT=1; DESC=""
+for a in "$@"; do case "$a" in --commit) COMMIT=1 ;; --new) FORCE_NEW=1 ;; --no-kit) KIT=0 ;; -h|--help) sed -n '2,9p' "$0"; exit 0 ;; *) DESC="$a" ;; esac; done
 SCAD=scad/excavator_boom.scad
 # Авторство — дрібно внизу кожного згенерованого документа; джерело — AUTHORS у корені
 AUTHOR="$(head -1 AUTHORS)"
@@ -15,15 +20,19 @@ WARN="> **УВАГА:** автор — ${WHO}: ідея, задачі, ріше�
 > Використання — на власний ризик і відповідальність; відомі недоробки конструкції — у \`SAFETY.md\`."
 GIT_BASE="$(git rev-parse --short HEAD) ($(git log -1 --pretty=%s))"
 [ -n "$(git status --porcelain)" ] && GIT_BASE="$GIT_BASE + незакомічені зміни робочого дерева"
-mkdir -p versions
-last=$(ls versions 2>/dev/null | sed -n 's/^V\([0-9][0-9][0-9]\)-.*/\1/p' | sort -n | tail -1)
+# Номер — наступний після найбільшого з трьох джерел: теки versions/, latest/ і git-теги VNNN
+# (версії, прибрані з дерева, лишаються тегами — їхні номери не можна видати вдруге).
+OLD_NAME=$( [ -f latest/VERSION.md ] && sed -n '1s/^# //p' latest/VERSION.md || true )
+last=$( { ls versions 2>/dev/null; echo "$OLD_NAME"; git tag -l 'V[0-9][0-9][0-9]'; } \
+        | sed -n 's/^V\([0-9][0-9][0-9]\).*/\1/p' | sort -n | tail -1)
 N=$(printf "%03d" $((10#${last:-0} + 1)))
-DIR="versions/V${N}-$(date +%Y-%m-%d-%H%M)"
+NAME="V${N}-$(date +%Y-%m-%d-%H%M)"
+DIR=build/version; rm -rf "$DIR"
 mkdir -p "$DIR/stl" "$DIR/renders" "$DIR/docs" "$DIR/scad"   # bom/, dxf/, drawings/ створює bom_drawings.sh
 # Проміжне, що цілком іде у VERSION.md (список STL, echo моделі), — у тимчасову теку, не у версію:
 # окремим файлом поруч воно було б лише дублем.
 WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT
-echo "== $DIR"
+echo "== $NAME → $DIR"
 
 # 1. Перевірка перетинів пластин (зупиняє збирання, якщо є перекриття)
 ./tools/check_overlaps.sh | tee "$DIR/docs/overlaps.txt"
@@ -77,7 +86,7 @@ tools/.venv/bin/python tools/trim_png.py "$DIR"/renders/part_*.png \
 # 4. Звіти і знімок моделі — пишуться ЛИШЕ у теку версії (у корені репозиторію згенерованих копій немає)
 (cd tools && python3 kinematics.py > "../$DIR/docs/02-kinematics.md" && python3 strength.py --boom 120x80x5 --stick 100x60x5 > "../$DIR/docs/03-strength.md")
 for f in "$DIR/docs/02-kinematics.md" "$DIR/docs/03-strength.md"; do   # позначка "згенеровано" з номером версії
-  printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+  printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$NAME" | cat - "$f" > "$f.tmp" && mv "$f.tmp" "$f"
   printf '\n---\n<sub>%s</sub>\n' "$AUTHOR" >> "$f"
 done
 openscad -o "$WORK/ranges.echo" "$SCAD" >/dev/null 2>&1
@@ -88,49 +97,88 @@ else echo "  docs/01-design-inputs.md немає — пропущено (док�
 # Креслення робочої зони з розмірами (A…J) — обома мовами, як і README
 tools/.venv/bin/python tools/work_range.py --out "$DIR/renders/work-range.png" | tail -1
 tools/.venv/bin/python tools/work_range.py --lang en --out "$DIR/renders/work-range.en.png" >/dev/null
-printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$(basename "$DIR")" | cat - "$DIR/docs/05-bucket.md" > "$DIR/docs/05-bucket.md.tmp" && mv "$DIR/docs/05-bucket.md.tmp" "$DIR/docs/05-bucket.md"
+printf '%s\n>\n> Згенеровано автоматично (%s) скриптом `tools/build_version.sh`.\n\n' "$WARN" "$NAME" | cat - "$DIR/docs/05-bucket.md" > "$DIR/docs/05-bucket.md.tmp" && mv "$DIR/docs/05-bucket.md.tmp" "$DIR/docs/05-bucket.md"
 cp "$SCAD" "$DIR/scad/"; cp -R scad/brand "$DIR/scad/"   # модель підключає include <brand/…> — без них копія не збереться
 cp tools/kinematics.py tools/strength.py tools/bucket.py tools/work_range.py "$DIR/scad/"
 
-# 4а. BOM, DXF 1:1 і PDF-ескізи деталей. PNG сторінок — у build/ (не комітиться): дата в шапці
-#     робила кожну сторінку новим файлом при кожному збиранні, а весь вміст і так є в parts.pdf
-PNG=build/drawings-png; rm -rf "$PNG"
-./tools/bom_drawings.sh --out "$DIR" --version "$(basename "$DIR")" --png "$PNG" | tail -1
+# 5. Опис версії (функцією: пишеться двічі — для порівняння й остаточно, з правильною назвою)
+write_version() {   # write_version НАЗВА [рядки «- Дата/Зміни/Оновлено» з попереднього latest/]
+  {
+    echo "# $1"; echo; echo "$WARN"; echo
+    if [ -n "$2" ]; then printf '%s\n' "$2"; echo "- Оновлено: $(date '+%Y-%m-%d %H:%M')${DESC:+ — $DESC}"
+    else echo "- Дата: $(date '+%Y-%m-%d %H:%M')"; [ -n "$DESC" ] && echo "- Зміни: $DESC"; fi
+    echo "- Git (база на момент збирання): $GIT_BASE"; echo
+    echo "## Діапазони (echo моделі)"; echo '```'; sed 's/^ECHO: //' "$WORK/ranges.echo"; echo '```'; echo
+    echo "## STL"; echo '```'; cat "$WORK/stl_list.txt"; echo '```'
+    echo "Вузли стріли — у системі стріли (A = 0, хорда вздовж +X), вузли рукояті — у системі рукояті (B = 0, вісь уздовж +X); вузли ковша — у системі ковша (E = 0, x — до вістря зуба); rocker/link/post/assembly — у позі за замовчуванням."; echo
+    echo "## Інтерактивний перегляд"; echo "- viewer.html — 3D-сторінка цієї версії (обертання/масштаб, кути стріли/рукояті/ковша, цикл копання). Зміна геометрії наживо — web/viewer.sh."; echo
+    echo "## BOM і креслення"; echo "- bom/bom.md, bom/bom.csv — специфікація; dxf/*.dxf — контури пластин 1:1; drawings/parts.pdf — ескізи з основними розмірами (drawings/pages.tsv — яка деталь на якій сторінці)."; echo
+    echo "## Друкований набір 1:5"; echo "- print3d/ — поточна підверсія набору (VNNN.K), print3d-history/ — попередні підверсії цієї версії машини."; echo
+    echo "## Перетини пластин"; echo '```'; tail -1 "$DIR/docs/overlaps.txt"; echo '```'
+    echo "## Рухомі пари"; echo '```'; grep РЕЗУЛЬТАТ "$DIR/docs/motion.txt"; echo '```'
+    echo; echo '---'; echo "<sub>$AUTHOR</sub>"
+  } > "$DIR/VERSION.md"
+}
+write_version "$NAME"
 
-# 4а'. Статична інтерактивна 3D-сторінка цієї версії (кути — у браузері; відкривається подвійним кліком, three.js тягнеться з CDN)
+# 6. Нова версія чи оновлення на місці. Незмінні STL беруться байт-у-байт із latest/ (--settle):
+#    OpenSCAD міняє порядок трикутників, і без цього git бачив би «змінений» файл. bom/, drawings/,
+#    dxf/ ще не зібрані (їм потрібна остаточна назва) і однаково похідні від тих самих STL.
+MODE=new
+if [ -d latest ]; then
+  if python3 tools/compare_build.py latest "$DIR" --settle --ignore=print3d,print3d-history,bom,drawings,dxf && [ $FORCE_NEW -eq 0 ]; then
+    MODE=update
+    echo "  геометрія й числа ті самі — latest/ оновлюється на місці, назва лишається $OLD_NAME (--new — примусово нова версія)"
+    for f in "$DIR"/docs/*.md; do sed "s/$NAME/$OLD_NAME/g" "$f" > "$f.tmp" && mv "$f.tmp" "$f"; done
+    NAME=$OLD_NAME
+    write_version "$NAME" "$(grep -E '^- (Дата|Зміни|Оновлено):' latest/VERSION.md)"
+  fi
+fi
+
+# 7. BOM, DXF 1:1 і PDF-ескізи — уже з остаточною назвою (вона стоїть у шапці кожної сторінки).
+#    PNG сторінок — у build/ (не комітиться): дата в шапці робила кожну сторінку новим файлом
+#    при кожному збиранні, а весь вміст і так є в parts.pdf
+PNG=build/drawings-png; rm -rf "$PNG"
+./tools/bom_drawings.sh --out "$DIR" --version "$NAME" --png "$PNG" | tail -1
+
+# 7а. Статична інтерактивна 3D-сторінка цієї версії (кути — у браузері; відкривається подвійним кліком, three.js тягнеться з CDN)
 python3 web/viewer.py --export "$DIR/viewer.html" | tail -1
 
-# 4а''. Версія перегляду без бекенду (OpenSCAD-WASM): чи будує модель старіший браузерний рушій. Не зупиняє збирання; потрібен npm install у web/viewer-wasm
+# 7б. Версія перегляду без бекенду (OpenSCAD-WASM): чи будує модель старіший браузерний рушій. Не зупиняє збирання; потрібен npm install у web/viewer-wasm
 if [ -d web/viewer-wasm/node_modules ]; then
   (cd web/viewer-wasm && npm test --silent) > "$DIR/docs/viewer-wasm-test.txt" 2>&1 && echo "  viewer-wasm: тест пройдено" || echo "!!! viewer-wasm: тест НЕ пройдено — див. docs/viewer-wasm-test.txt"
 fi
 
-# 4б. Картинки для README (єдине згенероване, що лежить поза versions/)
-mkdir -p docs/img
-cp "$DIR/renders/side_default.png" "$DIR/renders/iso_default.png" "$DIR/renders/envelope.png" "$DIR/renders/part_boom.png" "$DIR/renders/part_stick.png" "$DIR/renders/part_bucket.png" "$DIR/renders/bucket_motion_2d.png" docs/img/
-cp "$DIR/renders/work-range.png" "$DIR/renders/work-range.en.png" docs/img/
-cp "$PNG"/*_cheek.png docs/img/sketch_cheek.png
-# README посилається на ескізи й DXF останньої версії — шлях переписується на нову теку
-for f in README.md README.uk.md; do
-  sed -E -i '' "s#versions/V[0-9]{3}-[0-9-]+/(drawings|dxf)/#$DIR/\1/#g" "$f" 2>/dev/null \
-    || sed -E -i "s#versions/V[0-9]{3}-[0-9-]+/(drawings|dxf)/#$DIR/\1/#g" "$f"
-done
+# 8. У latest/. Нова версія: попередній latest/ (з набором і його історією) — в архів versions/;
+#    оновлення: замінюється все, крім набору (його збирає print3d-parts/make.sh).
+if [ $MODE = new ] && [ -d latest ]; then
+  mkdir -p versions
+  if git ls-files --error-unmatch latest/VERSION.md >/dev/null 2>&1; then git mv latest "versions/$OLD_NAME"
+  else mv latest "versions/$OLD_NAME"; fi
+  echo "  $OLD_NAME → versions/$OLD_NAME"
+  if [ $COMMIT -eq 1 ]; then git commit -q -m "Archive $OLD_NAME" && echo "== закомічено: $(git log -1 --oneline)"; fi
+fi
+if [ $MODE = update ]; then
+  for x in latest/* latest/.[!.]*; do
+    [ -e "$x" ] || continue
+    case "${x#latest/}" in print3d|print3d-history) ;; *) rm -rf "$x" ;; esac
+  done
+  mv "$DIR"/* latest/; rmdir "$DIR"
+else
+  mv "$DIR" latest
+fi
 
-# 5. Опис версії
-{
-  echo "# $(basename "$DIR")"; echo; echo "$WARN"; echo
-  echo "- Дата: $(date '+%Y-%m-%d %H:%M')"; echo "- Git (база на момент збирання): $GIT_BASE"
-  [ -n "$DESC" ] && echo "- Зміни: $DESC"; echo
-  echo "## Діапазони (echo моделі)"; echo '```'; sed 's/^ECHO: //' "$WORK/ranges.echo"; echo '```'; echo
-  echo "## STL"; echo '```'; cat "$WORK/stl_list.txt"; echo '```'
-  echo "Вузли стріли — у системі стріли (A = 0, хорда вздовж +X), вузли рукояті — у системі рукояті (B = 0, вісь уздовж +X); вузли ковша — у системі ковша (E = 0, x — до вістря зуба); rocker/link/post/assembly — у позі за замовчуванням."; echo
-  echo "## Інтерактивний перегляд"; echo "- viewer.html — 3D-сторінка цієї версії (обертання/масштаб, кути стріли/рукояті/ковша, цикл копання). Зміна геометрії наживо — web/viewer.sh."; echo
-  echo "## BOM і креслення"; echo "- bom/bom.md, bom/bom.csv — специфікація; dxf/*.dxf — контури пластин 1:1; drawings/parts.pdf — ескізи з основними розмірами (drawings/pages.tsv — яка деталь на якій сторінці)."; echo
-  echo "## Перетини пластин"; echo '```'; tail -1 "$DIR/docs/overlaps.txt"; echo '```'
-  echo "## Рухомі пари"; echo '```'; grep РЕЗУЛЬТАТ "$DIR/docs/motion.txt"; echo '```'
-  echo; echo '---'; echo "<sub>$AUTHOR</sub>"
-} > "$DIR/VERSION.md"
-echo "== готово: $DIR"
+# 9. Картинки для README (docs/img/ — медіа README, не продукт; решта згенерованого — у latest/)
+mkdir -p docs/img
+cp latest/renders/side_default.png latest/renders/iso_default.png latest/renders/envelope.png latest/renders/part_boom.png latest/renders/part_stick.png latest/renders/part_bucket.png latest/renders/bucket_motion_2d.png docs/img/
+cp latest/renders/work-range.png latest/renders/work-range.en.png docs/img/
+cp "$PNG"/*_cheek.png docs/img/sketch_cheek.png
+echo "== готово: latest/ = $NAME ($([ $MODE = new ] && echo "нова версія" || echo "оновлено на місці"))"
+
+# 10. Нова версія машини — новий набір (VNNN.1): старий набір пішов в архів разом із машиною.
+if [ $MODE = new ] && [ $KIT -eq 1 ]; then
+  print3d-parts/make.sh "з нової версії машини $NAME"
+fi
 if [ $COMMIT -eq 1 ]; then
-  git add -A && git commit -q -m "$(basename "$DIR" | cut -d- -f1): ${DESC:-збирання версії}" && echo "== закомічено: $(git log -1 --oneline)"
+  git add -A && git commit -q -m "${NAME%%-*}: ${DESC:-збирання версії}" && echo "== закомічено: $(git log -1 --oneline)"
 fi

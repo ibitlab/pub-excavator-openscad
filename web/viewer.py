@@ -12,7 +12,7 @@ viewer.py — інтерактивний 3D-перегляд моделі scad/e
 
 Запуск:   web/viewer.sh                      (або python3 web/viewer.py --open)
 Статична сторінка без сервера (лише кути, геометрія за замовчуванням):
-          python3 web/viewer.py --export versions/VNNN/viewer.html
+          python3 web/viewer.py --export latest/viewer.html
 """
 import argparse, json, os, re, subprocess, sys, tempfile, threading, time, webbrowser
 from concurrent.futures import ThreadPoolExecutor
