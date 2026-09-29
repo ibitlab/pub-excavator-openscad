@@ -197,7 +197,6 @@ def make_pdf(path, bom, flats, tubes, version, png_dir):
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
     from matplotlib.patches import Polygon, Circle
-    P = dict(bom['BOM_PARAMS'])
     A4 = (11.69, 8.27)
     ps.mpl_setup(); plt.rcParams['figure.max_open_warning'] = 0       # сторінки нумеруються наприкінці — усі фігури живі до кінця
     LX = ps.MARGIN / (A4[0] * 25.4)                                    # лівий край поля — як у шапки
@@ -210,12 +209,12 @@ def make_pdf(path, bom, flats, tubes, version, png_dir):
     figs = []                                                          # (фігура, назва) — підвал «с. N / M» ставиться, коли відомо M
     def save(pdf, fig, name):
         figs.append((fig, name))
-    def foot_note(fig, text):
+    def foot_note(fig, text):   # без версії й дати: вони вже в шапці, а тут робили б кожне збирання новою картинкою (docs/img/)
         fig.text(LX, (ps.FOOT_Y + 4.0) / (A4[1] * 25.4), f'{text}\n{WARN}', fontsize=7.5, color='0.35', va='bottom')
     def page(title, sub=''):
         fig = plt.figure(figsize=A4); ax = fig.add_axes([0.06, 0.10, 0.88, 0.66]); ax.set_aspect('equal'); ax.axis('off')
         ps.mpl_header(fig, title, META, sub)
-        foot_note(fig, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі, розміри в мм; для різання пластин — DXF 1:1')
+        foot_note(fig, 'Стріла міні-екскаватора · ескіз не в масштабі, розміри в мм; для різання пластин — DXF 1:1')
         return fig, ax
     def dim_h(ax, x0, x1, y, text, off=0):
         ax.annotate('', (x0, y), (x1, y), arrowprops=dict(arrowstyle='<->', lw=0.8, color='tab:blue'))
@@ -237,7 +236,7 @@ def make_pdf(path, bom, flats, tubes, version, png_dir):
             fig = plt.figure(figsize=A4)
             y0 = ps.mpl_header(fig, title if len(pages) == 1 else f'{title} ({n}/{len(pages)})', META)
             fig.text(LX, y0, '\n'.join(chunk), fontsize=8.5, family='DejaVu Sans Mono', va='top')
-            foot_note(fig, f'Стріла міні-екскаватора · {version}')
+            foot_note(fig, 'Стріла міні-екскаватора')
             save(pdf, fig, 'bom' if len(pages) == 1 else f'bom{n}')
 
     with PdfPages(path) as pdf:
@@ -263,7 +262,7 @@ def make_pdf(path, bom, flats, tubes, version, png_dir):
             fig = plt.figure(figsize=A4)
             y0 = ps.mpl_header(fig, f"{tb['key']} — труба {tb['h']:g}×{tb['w']:g}×{tb['t']:g}, заготовка {tb['L']:g} мм: розгортка з 4 боків", META, tb['note'])
             fig.text(LX, y0, f'{TUBE_MAT}. База розмірів по довжині — крайній задній торець труби (x = 0), однакова для всіх чотирьох стінок.\nСірі числа — відступ початку/кінця стінки від бази та від протилежного торця; отвори — ланцюжком від бази і від нижньої кромки своєї стінки.', fontsize=8.5, color='0.25', va='top')
-            foot_note(fig, f'Стріла міні-екскаватора · {version} · ескіз не в масштабі між аркушами, розміри в мм')
+            foot_note(fig, 'Стріла міні-екскаватора · ескіз не в масштабі між аркушами, розміри в мм')
             # один спільний масштаб на аркуш: k мм/дюйм — за довжиною АБО за сумарною висотою стінок + місце під підписи
             X1 = tb['X1']; W_in, H_in, S_in, L_in = 0.86 * A4[0], 0.70 * A4[1], 0.66, 0.55
             k = max(X1 / (W_in - L_in - 0.35), sum(nom[hk] for _, _, hk in FACES) / (H_in - S_in * len(FACES)))
@@ -397,7 +396,7 @@ def main():
             for f in faces.values():                       # спільна база x = 0 (крайній задній торець); низ кожної стінки y = 0 (за номіналом)
                 ymid = (min(p[1] for p in f['outer']) + max(p[1] for p in f['outer'])) / 2
                 Hn = h if f is faces['left'] or f is faces['right'] else w
-                sh = lambda p: (p[0] - xmin, p[1] - ymid + Hn / 2)
+                sh = lambda p: (p[0] - xmin, p[1] - ymid + Hn / 2)   # noqa: B023 — викликається в цій самій ітерації
                 f['outer'] = [sh(p) for p in f['outer']]; f['circ'] = [(c[0] - xmin, c[1] - ymid + Hn / 2, c[2]) for c in f['circ']]
                 f['brand'] = [[sh(p) for p in l] for l in f['brand']]
                 f['x0'] = min(p[0] for p in f['outer']); f['x1'] = max(p[0] for p in f['outer'])
@@ -447,7 +446,7 @@ def main():
     md += ['', '## 6. Покупні', '', '- Гідроциліндри: ГЦ 63.40.500.700 (стріла), ГЦ ЦС50.25.400.600 (рукоять), ГЦ ЦС50.25.300.510 (ківш) — уже закуплені.',
            '- Зуби ковша приварні під ніж 12 мм — 3 шт (якщо не робити самому); ніж — смуга зносостійкої сталі 300×100×12.',
            '- Маслянки М6/М8 — 8 шт (осі A, B, E, R, J, Q, G + запас); стопорні пластини/шплінти пальців — 12 к-тів.', '',
-           '## 7. Підсумок маси', '', f'| Труби | Пластини (зі Ст3-деталями ковша) | Зносостійкі деталі ковша | Втулки | Пальці | **Разом (стріла + рукоять + важелі + ківш; без циліндрів і колони)** |', '|---|---|---|---|---|---|',
+           '## 7. Підсумок маси', '', '| Труби | Пластини (зі Ст3-деталями ковша) | Зносостійкі деталі ковша | Втулки | Пальці | **Разом (стріла + рукоять + важелі + ківш; без циліндрів і колони)** |', '|---|---|---|---|---|---|',
            f'| {tot_tube:.1f} кг | {tot_plate:.1f} кг | {tot_wear:.1f} кг | {tot_round:.1f} кг | {tot_pin:.1f} кг | **{tot_tube + tot_plate + tot_wear + tot_round + tot_pin:.1f} кг** |', '']
     open(os.path.join(out, 'bom', 'bom.md'), 'w', encoding='utf-8').write('\n'.join(md) + md_footer())
     with open(os.path.join(out, 'bom', 'bom.csv'), 'w', newline='', encoding='utf-8') as fcsv:

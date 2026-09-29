@@ -16,7 +16,7 @@ trap cleanup EXIT
 echo "== 3D-сторінка: збірка і локальний сервер"
 (cd web/viewer-wasm && npx vite build >/dev/null)
 (cd web/viewer-wasm && exec npx vite preview --port "$PORT" --strictPort >/dev/null 2>&1) & VP=$!
-for i in $(seq 1 50); do curl -s -o /dev/null "http://localhost:$PORT/" && break; sleep 0.3; done
+for _ in $(seq 1 50); do curl -s -o /dev/null "http://localhost:$PORT/" && break; sleep 0.3; done
 
 for lang in en uk; do
     echo "== тур сторінки ($lang)"

@@ -20,7 +20,7 @@ while [ $# -gt 0 ]; do
         *) STEPS="$STEPS $1"; shift ;;
     esac
 done
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 ROOT=../..
 OUT=${OUT:-$PWD/$ROOT/build/m5_cylinders}
 STEPS=${STEPS:-pairs collide stl png calc}
@@ -44,7 +44,8 @@ scad() {   # scad <вихід.stl> <аргументи openscad…>
     echo "  ПОМИЛКА: openscad не відпрацював тричі — $*"; bad=1; return 1
 }
 CYLS="boom stick bucket"
-STROKE_boom=100; STROKE_stick=80; STROKE_bucket=60
+# shellcheck disable=SC2034  # читаються непрямо: v=STROKE_$c; S=${!v}
+STROKE_boom=100 STROKE_stick=80 STROKE_bucket=60
 bad=0
 
 case " $STEPS " in *" pairs "*)
@@ -54,7 +55,7 @@ PAIRS="tube:head_rear head_rear:head_front gear:head_rear gear:head_front pinion
 motor:tube motor:head_rear motor:pinion puck:tube screw:gear screw:head_front screw:head_rear bearing:head_rear
 bearing:gear nut:gear cap:tube halls:tube halls:head_front halls:cap magnets:gear magnets:puck eye:head_front"
 for c in $CYLS; do
-    eval S=\$STROKE_$c
+    v=STROKE_$c; S=${!v}
     for e in 0 $S; do
         for pr in $PAIRS; do
             a=${pr%%:*}; b=${pr##*:}; f=$TMP/p.stl
@@ -63,7 +64,7 @@ for c in $CYLS; do
             if big "$v" 0.0005; then echo "  ПЕРЕТИН $c ext=$e: $a × $b = $v см³"; bad=1; fi
         done
     done
-    echo "  $c: $(echo $PAIRS | wc -w | tr -d ' ') пар × 2 положення штока"
+    echo "  $c: $(echo "$PAIRS" | wc -w | tr -d ' ') пар × 2 положення штока"
 done
 ;; esac
 
@@ -84,6 +85,7 @@ for c in $CYLS; do
                            bucket) A="-D boom_angle=10 -D stick_angle=100 -D bucket_angle=$x" ;; esac
             for w in $with; do
                 f=$TMP/c.stl
+                # shellcheck disable=SC2086  # $A — набір прапорців -D, розбиття навмисне
                 scad "$f" -D "cyl=\"$c\"" -D 'pp="collide"' -D "with=\"$w\"" ${PD:+-D "$PD"} $A || continue
                 v=$(vol "$f")
                 # bash 3.2: змінна перед «°» чи кирилицею — лише в ${…}, інакше значення тихо зникає
@@ -93,7 +95,7 @@ for c in $CYLS; do
         label=$([ "$phi" = model ] && echo "мотор як у m5_cyl.scad" || echo "мотор ${phi}°")
         if big "$worst" 0.05; then
             echo "  $c, $label: зіткнення до $worst см³ ($at)"; [ "$phi" = model ] && bad=1
-        else echo "  $c, $label: чисто ($(echo $angles | wc -w | tr -d ' ') положень × $(echo $with | wc -w | tr -d ' ') вузли)"; [ -n "${ALL:-}" ] || break; fi
+        else echo "  $c, $label: чисто ($(echo "$angles" | wc -w | tr -d ' ') положень × $(echo "$with" | wc -w | tr -d ' ') вузли)"; [ -n "${ALL:-}" ] || break; fi
     done
 done
 ;; esac
@@ -117,17 +119,17 @@ case " $STEPS " in *" png "*)
 echo "== рендери"
 mkdir -p "$OUT/img"; rm -f "$OUT"/img/*.png
 for c in $CYLS; do
-    eval S=\$STROKE_$c
+    v=STROKE_$c; S=${!v}
     openscad -o "$OUT/img/${c}_closed.png" --imgsize=1400,700 --viewall --autocenter --colorscheme=Tomorrow -D "cyl=\"$c\"" -D 'pp="asm"' -D ext=0 --camera=0,0,0,60,0,25,0 m5_cyl.scad >/dev/null 2>&1
-    openscad -o "$OUT/img/${c}_open.png"   --imgsize=1400,700 --viewall --autocenter --colorscheme=Tomorrow -D "cyl=\"$c\"" -D 'pp="asm"' -D ext=$S --camera=0,0,0,60,0,25,0 m5_cyl.scad >/dev/null 2>&1
+    openscad -o "$OUT/img/${c}_open.png"   --imgsize=1400,700 --viewall --autocenter --colorscheme=Tomorrow -D "cyl=\"$c\"" -D 'pp="asm"' -D "ext=$S" --camera=0,0,0,60,0,25,0 m5_cyl.scad >/dev/null 2>&1
     # розрізи — повним рендером: у прев'ю площина розрізу бере колір не деталі, а того, що вирізає
-    openscad --render -o "$OUT/img/${c}_cut.png"  --imgsize=1400,700 --viewall --autocenter --colorscheme=Tomorrow -D "cyl=\"$c\"" -D 'pp="cut"' -D ext=$((S/2)) --camera=0,0,0,90,0,0,0 m5_cyl.scad >/dev/null 2>&1
-    openscad --render -o "$OUT/img/${c}_head.png" --imgsize=1200,900 --colorscheme=Tomorrow -D "cyl=\"$c\"" -D 'pp="headcut"' -D ext=$((S/2)) --camera=0,0,0,90,0,0,200 m5_cyl.scad >/dev/null 2>&1
+    openscad --render -o "$OUT/img/${c}_cut.png"  --imgsize=1400,700 --viewall --autocenter --colorscheme=Tomorrow -D "cyl=\"$c\"" -D 'pp="cut"' -D "ext=$((S/2))" --camera=0,0,0,90,0,0,0 m5_cyl.scad >/dev/null 2>&1
+    openscad --render -o "$OUT/img/${c}_head.png" --imgsize=1200,900 --colorscheme=Tomorrow -D "cyl=\"$c\"" -D 'pp="headcut"' -D "ext=$((S/2))" --camera=0,0,0,90,0,0,200 m5_cyl.scad >/dev/null 2>&1
 done
-python3 $ROOT/tools/trim_png.py --margin 3 "$OUT"/img/*.png >/dev/null
-if python3 $ROOT/tools/trim_png.py --report "$OUT"/img/*.png | grep -iE 'порожн|ПОРОЖН'; then echo "  ПОМИЛКА: порожній рендер"; bad=1; fi
+python3 "$ROOT"/tools/trim_png.py --margin 3 "$OUT"/img/*.png >/dev/null
+if python3 "$ROOT"/tools/trim_png.py --report "$OUT"/img/*.png | grep -iE 'порожн|ПОРОЖН'; then echo "  ПОМИЛКА: порожній рендер"; bad=1; fi
 n=$(ls "$OUT"/img/*.png 2>/dev/null | wc -l | tr -d ' ')
-[ "$n" -eq 12 ] && echo "  знімків: $n" || { echo "  ПОМИЛКА: знімків $n замість 12 (openscad упав?)"; bad=1; }
+if [ "$n" -eq 12 ]; then echo "  знімків: $n"; else echo "  ПОМИЛКА: знімків $n замість 12 (openscad упав?)"; bad=1; fi
 ;; esac
 
 case " $STEPS " in *" calc "*)

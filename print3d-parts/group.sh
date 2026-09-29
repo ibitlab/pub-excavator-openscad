@@ -27,7 +27,7 @@ cd "${1:?тека зі STL, напр. build/print3d/stl}"
 
 # Порожній корінь — набір уже розкладено (скрипт викликали вручну чи двічі).
 # Без цієї перевірки далі надрукувався б перелік усіх 53 номерів як «не знайдено».
-if [ -z "$(ls *.stl 2>/dev/null)" ]; then
+if [ -z "$(ls -- *.stl 2>/dev/null)" ]; then
     echo "  у корені $1 немає файлів — набір уже розкладено"
     exit 0
 fi
@@ -104,9 +104,9 @@ grp "5_pins_silver_0.12mm_brim" \
 echo "  переміщено файлів: $moved"
 [ -z "$skipped" ] || echo "  немає серед згенерованих (вписані в групу, але не в parts.tsv):$skipped"
 
-left=$(ls *.stl 2>/dev/null | wc -l | tr -d ' ')
+left=$(ls -- *.stl 2>/dev/null | wc -l | tr -d ' ')
 [ "$left" = 0 ] || {
     echo "УВАГА: у корені лишилося $left STL поза групами:"
-    ls *.stl | sed 's/^/  /'
+    ls -- *.stl | sed 's/^/  /'
     exit 1
 }

@@ -16,7 +16,7 @@ strength.py — розрахунок міцності стріли та руко
 """
 import math, sys, argparse
 import kinematics as K
-from kinematics import add, sub, mul, norm, dist, unit, cross, rot, ang
+from kinematics import add, sub, mul, norm, dist, unit, cross, rot
 
 # ----------------------------------------------------------------------------
 # Матеріали (МПа). Джерела: ДСТУ 2651/ГОСТ 380 (Ст3), ГОСТ 19281 (09Г2С), ГОСТ 1050 (сталь 45), ГОСТ 4543 (40Х)
@@ -323,7 +323,7 @@ def joint_table(g, joints, tube_w_boom, tube_w_stick, plate_boss=10, plate_clevi
     Геометрія шарнірів — як у SCAD (бобишка = ширина труби + 2 накладки; вилки циліндрів = 2 пластини plate_clevis)."""
     p = lambda *a: print(*a, file=out)
     fy_pin = MAT[PIN_MAT]['fy']; fy_alt = MAT[PIN_MAT_ALT]['fy']; fy_pl = MAT[PLATE_MAT]['fy']
-    bb = tube_w_boom + 2 * plate_boss; bs = tube_w_stick + 2 * plate_boss
+    bs = tube_w_stick + 2 * plate_boss
     # (назва, d, сила, b — довжина бобишки/вушка між опорами, a — товщина опорної пластини, gap — зазор між вушком і пластиною, L_втулки, [p] втулки, тип)
     J = [
         ('A — вісь стріли на колоні (Ø30, бобишка 140 мм, дві втулки по краях 2×45, бронза/к-т ГАЗ-53)', 30, joints['стріла:A'], 140, plate_clevis, 1, 90, 40.0, 'бронза 2×45'),
@@ -414,7 +414,7 @@ def report(g, boom_tube, stick_tube, plates, out=sys.stdout):
                ('середина 2-го сегм.', L1 + L2 / 2), ('B (вісь рукояті)', L1 + L2)]
     stick_st = [('B+ (корінь: момент циліндра рукояті)', 30), ('кінець щік (+400)', 430), ('H (база цил. ковша)', g['sH']), ('середина', Ls / 2), ('R (коромисло)', Ls - g['rx']), ('E (вісь ковша)', Ls)]
     bt = rhs_props(*boom_tube); st = rhs_props(*stick_tube)
-    p(f"## Перерізи")
+    p("## Перерізи")
     p(f"- Стріла: труба {boom_tube[0]}×{boom_tube[1]}×{boom_tube[2]}: A={bt['A']:.0f} мм², I={bt['I']/1e4:.0f} см⁴, W={bt['W']/1e3:.1f} см³ (слабка вісь W={bt['W_w']/1e3:.1f} см³), {bt['mass']:.1f} кг/м")
     p(f"- Рукоять: труба {stick_tube[0]}×{stick_tube[1]}×{stick_tube[2]}: A={st['A']:.0f} мм², I={st['I']/1e4:.0f} см⁴, W={st['W']/1e3:.1f} см³ (слабка вісь W={st['W_w']/1e3:.1f} см³), {st['mass']:.1f} кг/м")
     for name, (tp, hp, n, span) in plates.items():

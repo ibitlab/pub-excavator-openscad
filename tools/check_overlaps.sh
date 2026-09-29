@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Перевірка: вузли зварної конструкції мають прилягати, але НЕ перекриватися.
 # Для кожної пари вузлів рахується об'єм перетину (см³); допуск 0.05 см³ (числовий шум на спільних гранях).
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 SCAD=scad/excavator_boom.scad; TMP=$(mktemp -d); bad=0
 BOOM="boom_tubes boom_gussets boom_bracket_D boom_bracket_F boom_foot_boss boom_fork_B"
 STICK="stick_tube stick_cheeks stick_bracket_H stick_tip"
 BUCKET="bucket_sides bucket_shell bucket_top bucket_edge bucket_ears bucket_wear"
 check() { # список вузлів
-  local arr=($1) i j
+  local arr i j; read -r -a arr <<< "$1"
   for ((i=0; i<${#arr[@]}; i++)); do for ((j=i+1; j<${#arr[@]}; j++)); do
     a=${arr[$i]}; b=${arr[$j]}; f="$TMP/$a-$b.stl"
     openscad -o "$f" -D 'part="overlap"' -D "ov_a=\"$a\"" -D "ov_b=\"$b\"" "$SCAD" >/dev/null 2>&1

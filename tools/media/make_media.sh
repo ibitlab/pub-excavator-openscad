@@ -9,7 +9,7 @@ grep -qx "temp/" .git/info/exclude 2>/dev/null || echo "temp/" >> .git/info/excl
 [ -d tools/media/node_modules/puppeteer-core ] || npm i --no-save --no-audit --no-fund --prefix tools/media puppeteer-core >/dev/null
 [ -x $PY ] || tools/bom_drawings.sh --out build >/dev/null                                  # створює tools/.venv
 python3 web/viewer.py --port $PORT >/dev/null 2>&1 & SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT
-for i in $(seq 1 30); do curl -s -o /dev/null "$URL" && break; sleep 0.3; done
+for _ in $(seq 1 30); do curl -s -o /dev/null "$URL" && break; sleep 0.3; done
 
 $SHOT "$URL" --out "$OUT/01_hero.png" --size 1200x1200 --dsf 2 --clean --angles -12,92,48 --view "Ізометрія"
 for pose in "reach -5,156,-17" "deep -38,90,60" "height 58,156,0" "transport 58,51,139"; do

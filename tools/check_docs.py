@@ -21,7 +21,8 @@ SKIP = ('_deprecated/', 'versions/', 'node_modules/', '.claude/')
 
 
 def md_files():
-    out = subprocess.run(['git', '-c', 'core.quotepath=false', 'ls-files', '*.md'], cwd=ROOT,
+    # --others: і ще не додані в git документи — новий файл перевіряється до першого коміту
+    out = subprocess.run(['git', '-c', 'core.quotepath=false', 'ls-files', '--cached', '--others', '--exclude-standard', '*.md'], cwd=ROOT,
                          capture_output=True, text=True).stdout.split('\n')
     return [f for f in out if f and not f.startswith(SKIP) and '/node_modules/' not in f]
 

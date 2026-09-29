@@ -39,6 +39,14 @@ echo "== $NAME → $DIR"
 # 1а. Перевірка рухомих пар на всьому ході циліндрів (ківш/коромисло/тяга/рукоять/циліндри ↔ кронштейни)
 ./tools/check_motion.sh | tee "$DIR/docs/motion.txt"
 
+# venv (shapely, matplotlib, Pillow — tools/requirements.txt): потрібен звірці двійників, звіту ковша й підрізанню рендерів.
+# Саме `python -m pip`, не `bin/pip`: у скопійованому venv шебанг bin/pip веде в СТАРИЙ venv, і пакети йдуть туди
+[ -x tools/.venv/bin/python ] || python3 -m venv tools/.venv
+tools/.venv/bin/python -c "import shapely, matplotlib, PIL, numpy" 2>/dev/null || tools/.venv/bin/python -m pip install --quiet -r tools/requirements.txt
+# 1б. Python-двійники (kinematics.py, bucket.py) проти моделі: звіти версії рахує Python, тож розбіжність
+#     зупиняє збирання — інакше числа у звітах тихо описували б іншу машину, ніж STL і креслення
+tools/.venv/bin/python tools/check_twins.py | tee "$WORK/twins.txt"
+
 # 2. STL: збірка + зварні вузли + кожна група деталей. Логотип — наліпка, не метал:
 #    у STL (і в їхніх об'ємах) його немає, на рендерах нижче — є.
 PARTS="assembly boom boom_tubes boom_gussets boom_bracket_D boom_bracket_F boom_foot_boss boom_fork_B stick stick_tube stick_cheeks stick_bracket_H stick_tip rocker link bucket bucket_sides bucket_shell bucket_top bucket_edge bucket_ears bucket_wear post"
@@ -48,9 +56,6 @@ for p in $PARTS; do
 done | tee "$WORK/stl_list.txt"
 
 # 3. Рендери: робочі положення + вузли окремо
-# venv потрібен уже тут: ним підрізаються поля рендерів (Pillow)
-[ -x tools/.venv/bin/python ] || { python3 -m venv tools/.venv; tools/.venv/bin/pip install --quiet matplotlib shapely; }
-tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip install --quiet shapely
 # --render=cgal ОБОВ'ЯЗКОВИЙ: у режимі прев'ю (OpenCSG) поверхні деталей, що дотикаються,
 # пробивають одна одну. Саме `=cgal`, а не голий --render: прапорець бере НЕОБОВ'ЯЗКОВИЙ
 # аргумент і, стоячи останнім перед іменем файлу, з'їдає його — openscad друкує usage
@@ -58,6 +63,7 @@ tools/.venv/bin/python -c "import shapely" 2>/dev/null || tools/.venv/bin/pip in
 # пробивають одна одну — труба малювалася поверх накладки, і вежа F виглядала так,
 # наче стоїть у повітрі. Геометрія при цьому ціла. З Manifold це майже безкоштовно.
 CAM="--camera=1400,-6000,200,0,0,0 --projection=o --colorscheme=Tomorrow --viewall --autocenter --render=cgal"
+# shellcheck disable=SC2086  # $CAM — набір прапорців, розбиття навмисне (у bash працює, у zsh — ні)
 render() { openscad -o "$DIR/renders/$1.png" --imgsize=2400,1500 $CAM -D "boom_angle=$2" -D "stick_angle=$3" -D "bucket_angle=$4" -D show_ground=false "$SCAD" >/dev/null 2>&1; }
 render side_default 15 100 60
 render folded 58 51 133
@@ -67,6 +73,7 @@ render max_height 58 155 0
 # --viewall --autocenter обов'язкові: з фіксованою камерою кадр обрізав ківш і колону при зміні геометрії
 openscad -o "$DIR/renders/iso_default.png" --imgsize=2400,1650 --camera=2500,-3500,1800,900,0,-100 --projection=p --viewall --autocenter --colorscheme=Tomorrow --render=cgal -D boom_angle=20 -D stick_angle=100 -D bucket_angle=60 -D show_ground=false "$SCAD" >/dev/null 2>&1   # без землі: площина 9 м з --viewall лишала машині ~10 % кадру
 # ground_span менший за типовий: із --viewall площина 9000 мм ужимає машину вдвічі
+# shellcheck disable=SC2086
 openscad -o "$DIR/renders/envelope.png" --imgsize=1600,1000 $CAM -D boom_angle=-38 -D stick_angle=100 -D bucket_angle=60 -D show_envelope=true -D ground_span=3000 "$SCAD" >/dev/null 2>&1
 for p in boom stick bucket; do
   openscad -o "$DIR/renders/part_$p.png" --imgsize=2400,1500 --camera=800,-2500,900,0,0,0 --projection=p --colorscheme=Tomorrow --viewall --autocenter --render=cgal -D "part=\"$p\"" "$SCAD" >/dev/null 2>&1
@@ -116,6 +123,7 @@ write_version() {   # write_version НАЗВА [рядки «- Дата/Змін
     echo "## Друкований набір 1:5"; echo "- print3d/ — поточна підверсія набору (VNNN.K), print3d-history/ — попередні підверсії цієї версії машини."; echo
     echo "## Перетини пластин"; echo '```'; tail -1 "$DIR/docs/overlaps.txt"; echo '```'
     echo "## Рухомі пари"; echo '```'; grep РЕЗУЛЬТАТ "$DIR/docs/motion.txt"; echo '```'
+    echo "## Python-двійники (tools/check_twins.py)"; echo '```'; grep РЕЗУЛЬТАТ "$WORK/twins.txt"; echo '```'
     echo; echo '---'; echo "<sub>$AUTHOR</sub>"
   } > "$DIR/VERSION.md"
 }
@@ -172,7 +180,8 @@ fi
 mkdir -p docs/img
 cp latest/renders/side_default.png latest/renders/iso_default.png latest/renders/envelope.png latest/renders/part_boom.png latest/renders/part_stick.png latest/renders/part_bucket.png latest/renders/bucket_motion_2d.png docs/img/
 cp latest/renders/work-range.png latest/renders/work-range.en.png docs/img/
-cp "$PNG"/*_cheek.png docs/img/sketch_cheek.png
+# ескіз — сторінка PDF із датою в шапці: копіюється, лише якщо змінилось креслення, а не шапка
+tools/.venv/bin/python tools/copy_if_changed.py "$PNG"/*_cheek.png docs/img/sketch_cheek.png
 echo "== готово: latest/ = $NAME ($([ $MODE = new ] && echo "нова версія" || echo "оновлено на місці"))"
 
 # 10. Нова версія машини — новий набір (VNNN.1): старий набір пішов в архів разом із машиною.

@@ -77,7 +77,7 @@ def main():
     for l in open(echo, encoding="utf-8"):
         m = re.search(r"=== друк[^\"]*?1:(\d+), сопло ([\d.]+)", l)
         if m:
-            scale, nozzle = m.group(1), m.group(2)
+            scale = m.group(1)
 
     total_v = sum(r[4].get(VOL, 0) * r[2] for r in rows)
     total_n = sum(r[2] for r in rows)

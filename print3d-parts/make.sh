@@ -42,7 +42,7 @@ echo "== рендер"
 n=0
 # Без конвеєра: `grep | while` крутиться в підоболонці, і exit 1 звідти не зупиняє скрипт.
 # Порожнє поле в TSV не годиться: zsh злипає послідовні табуляції, тому «нема вузла» = «-».
-while IFS=$'\t' read -r pp own ori pre file qty group desc; do
+while IFS=$'\t' read -r pp own ori pre file qty _; do
     case "$pp" in ''|'#'*) continue ;; esac
     [ "$own" = "-" ] && own=""
     f="$OUT/stl/${file}_x${qty}.stl"
@@ -106,9 +106,10 @@ echo "== аркуші розкладки 1:1"
 tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --stl "$OUT/stl" --dir "$OUT/sheets" --version "$LABEL" --png \
     || { echo "  ПОМИЛКА: аркуші не зібрано (потрібен Chrome) — latest/print3d не змінено"; exit 1; }
 # Прев'ю сторінок — у build/ (не комітиться): номер і дата в шапці робили б кожне новим файлом
-# з кожною підверсією, а вміст і так є в SHEETS.pdf. Аркуш ковша показує TECHNICAL — його копія в docs/img/.
+# з кожною підверсією, а вміст і так є в SHEETS.pdf. Аркуш ковша показує TECHNICAL — його копія в docs/img/,
+# і з тієї ж причини вона оновлюється, лише якщо змінився сам аркуш, а не шапка чи підвал.
 rm -rf build/sheets-png; mv "$OUT/sheets/png" build/sheets-png
-cp build/sheets-png/3_bucket.png docs/img/sheet_bucket.png
+tools/.venv/bin/python tools/copy_if_changed.py build/sheets-png/3_bucket.png docs/img/sheet_bucket.png
 
 echo
 echo "== розкладка по завданнях друку"

@@ -45,9 +45,11 @@ BUCKET = dict(
     wear_n=2,           # смуги зносу на п'яті
     wear=(40, 6),
 )
-# Рукоять біля осі E (з SCAD): виступ труби за E, фаска кутів торця, пів висоти труби, пакет рукояті
-STICK = dict(tip_ext=50, tip_chamfer=25, h2=50, pack_w=80, tip_plate_back=152 + 120, r_tip_R=34.5, r_bush_R=22.5,
-             rocker_r_R=37, rocker_r_J=32.5, link_r=32.5, j_boss_r=20.5, eye_r=26.5, rod_r=12.5, body_r=30, plate_boss=10)
+# Рукоять біля осі E (з SCAD): виступ труби за E, фаска кутів торця, пів висоти труби, радіуси деталей довкола осей,
+# пальці E і J/Q, проміжок між вухами ковша, довжина втулки E. Відповідники в моделі — tools/check_twins.py (STICK_MAP)
+STICK = dict(tip_ext=50, tip_chamfer=25, h2=50, tip_plate_back=152 + 120, r_tip_R=34.5, r_bush_R=22.5,
+             rocker_r_R=37, rocker_r_J=32.5, link_r=32.5, j_boss_r=20.5, eye_r=26.5, rod_r=12.5, body_r=30, plate_boss=10,
+             pin_E=30, pin_JQ=25, link_w_in=82, bushE_len=80, bush_small=45)
 RHO = 7.85e-6  # кг/мм³
 
 def rot(p, a):
@@ -185,7 +187,7 @@ def capacity(b, g):
 
 def masses(b, g):
     pr = profile(b, g); w_in = b['width'] - 2 * b['side_t']
-    ear = ear_polygon(b, g)
+    ear = ear_polygon(b, g); s = STICK
     m = {
         'боковини 2 шт': 2 * pr['side'].area * b['side_t'] * RHO,
         'обичайка': pr['dev_len'] * w_in * b['shell_t'] * RHO,
@@ -194,7 +196,8 @@ def masses(b, g):
         'накладка під вуха': b['top_len'] * b['width'] * b['top_t'] * RHO,
         'ребро губи': b['lip_rib'][0] * b['lip_rib'][1] * w_in * RHO,
         'вуха 2 шт': 2 * ear.area * b['ear_t'] * RHO,
-        'бобишки, втулка Q': (2 * math.pi / 4 * (b['boss_E_od'] ** 2 - 30 ** 2) * b['boss_E_len'] + math.pi / 4 * (45 ** 2 - 25 ** 2) * 82) * RHO,
+        'бобишки, втулка Q': (2 * math.pi / 4 * (b['boss_E_od'] ** 2 - s['pin_E'] ** 2) * b['boss_E_len']
+                              + math.pi / 4 * (s['bush_small'] ** 2 - s['pin_JQ'] ** 2) * s['link_w_in']) * RHO,
         'смуги зносу': b['wear_n'] * b['wear'][0] * b['wear'][1] * (math.radians(pr['turn2']) * b['heel_r'] + 80) * RHO,
     }
     return m
@@ -227,7 +230,8 @@ def strength_report(b, g, out=sys.stdout):
     p("| Випадок | F на осі E, кН | F у тязі (вісь Q), кН | F на зубі, кН | M на шві вух, кН·м |"); p("|---|---|---|---|---|")
     for label, sf, FE, FQ, Ft, Mw in rows: p(f"| {label} | {FE:.1f} | {FQ:.1f} | {Ft:.1f} | {Mw / 1000:.2f} |")
     p()
-    dE, dQ, t = 30.0, 25.0, b['ear_t']
+    dE, dQ, t = float(STICK['pin_E']), float(STICK['pin_JQ']), b['ear_t']
+    eL = STICK['bushE_len']
     base = min(b['lip_y'] + b['top_len'] - 4, g['qy'] + 75) - b['lip_y'] - 4
     p("| Перевірка | 160 бар × 1.25: σ/τ, МПа → запас (потрібно ≥ 1.5) | 250 бар: σ/τ, МПа → запас (потрібно ≥ 1.0) |"); p("|---|---|---|")
     def line(name, fn, lim):
@@ -244,11 +248,11 @@ def strength_report(b, g, out=sys.stdout):
          lambda FE, FQ, Ft, Mw: math.hypot(Mw / Ww, Ft / Aw), 225.0)
     line("Палець Q Ø25: згин між тягою (10) і вухом (12), зазор 1 мм", lambda FE, FQ, Ft, Mw: (FQ / 2 * (5 + 1 + t / 2)) / (math.pi * dQ ** 3 / 32), fy_pin)
     line("Палець Q Ø25: зріз (одна площина на бік)", lambda FE, FQ, Ft, Mw: FQ / 2 / (math.pi * dQ ** 2 / 4), 0.58 * fy_pin)
-    line("Палець E Ø30: згин (бобишка рукояті 80 між вухами, зазор 1 мм)", lambda FE, FQ, Ft, Mw: FE * (80 + 4 + 2 * t) / 8 / (math.pi * dE ** 3 / 32), fy_pin)
+    line(f"Палець E Ø{dE:.0f}: згин (бобишка рукояті {eL} між вухами, зазор 1 мм)", lambda FE, FQ, Ft, Mw: FE * (eL + 4 + 2 * t) / 8 / (math.pi * dE ** 3 / 32), fy_pin)
     line(f"Ніж {b['edge_w']}×{b['edge_t']}: згин у своїй площині від сили на середньому зубі (балка між боковинами; для Ст3 — fy)",
          lambda FE, FQ, Ft, Mw: Ft * (b['width'] - 2 * b['side_t']) / 4 / (b['edge_t'] * b['edge_w'] ** 2 / 6), fy)
     p()
-    Ms = F_SIDE * 1000 * (g['tip'] - b['top_x']); Fpp = Ms / (g['stick_pack'] + 2 + t) if 'stick_pack' in g else Ms / (82 + t)
+    Ms = F_SIDE * 1000 * (g['tip'] - b['top_x']); Fpp = Ms / (STICK['link_w_in'] + t)   # плече пари сил — між серединами вух
     s_pp = Fpp / (base * t); s_b = (F_SIDE * 1000 / 2 * b['top_x']) / (base * t ** 2 / 6)
     p(f"Бокова сила {F_SIDE:.0f} кН на зубі (припущення до етапу поворотного механізму): пара сил у вухах ±{Fpp / 1000:.1f} кН → {s_pp:.0f} МПа у перерізі вуха; "
       f"згин вуха з площини {s_b:.0f} МПа — несуттєво. Розпірна втулка Q, приварена до обох вух, робить пару вух жорсткою рамою.")
@@ -332,7 +336,7 @@ def plot(b, g, fn):
         ss = stick_side(g, om)
         def draw(geom, **kw):
             for gg in (geom.geoms if hasattr(geom, 'geoms') else [geom]):
-                x, y = gg.exterior.xy; ax.fill(x, y, **kw)
+                x, y = gg.exterior.xy; ax.fill(x, y, **kw)   # noqa: B023 — ax цієї ж ітерації
         draw(pr['side'], fc='#e8e2b0', ec='#8a8440', alpha=0.6)
         for k in ('shell', 'doubler', 'rib', 'blade', 'tooth'): draw(pr[k], fc='#7a7430', ec='k', lw=0.4)
         draw(ear, fc='#c9a227', ec='k', alpha=0.7, lw=0.5)

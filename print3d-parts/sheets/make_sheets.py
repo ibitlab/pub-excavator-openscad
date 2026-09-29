@@ -219,7 +219,6 @@ def measure(key, path):
         L, W = max(b[2], b[3]), min(b[2], b[3])
         along_x = b[2] >= b[3]
         # голівка — на одному з кінців; стрижень міряємо на 1/4 довжини від протилежного
-        w0 = width_at(poly, 0.05 * L) if along_x else width_at(affinity.rotate(poly, 90, origin=(0, 0)), -0.05 * L)
         p2 = poly if along_x else affinity.rotate(poly, 90, origin=(0, 0))
         b2 = p2.bounds
         xs = [b2[0] + 0.25 * L, b2[0] + 0.75 * L]
@@ -399,7 +398,7 @@ class Scheme:
         xmin, xmax = min(p[0] for p in allp), max(p[0] for p in allp)
         ymin, ymax = min(p[1] for p in allp), max(p[1] for p in allp)
         pxs = [p for loop in self.part for p in loop]
-        p_xmin, p_xmax = min(p[0] for p in pxs), max(p[0] for p in pxs)
+        p_xmax = max(p[0] for p in pxs)
         p_edge = min(p[1] for p in pxs) if up > 0 else max(p[1] for p in pxs)   # дальня від бази кромка деталі
         # у SVG вісь Y униз: деталь «над» базою (up > 0) має менші Y; знак «від бази» = up
         away = -up

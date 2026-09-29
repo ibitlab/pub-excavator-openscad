@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Перед комітом змін моделі перевірити, що пластини прилягають, а не перекриваються (≈4 с).
+# Перед комітом змін моделі чи її Python-двійників: двійники збігаються з моделлю (tools/check_twins.py),
+# пластини прилягають, а не перекриваються (≈4 с).
 # Увімкнути один раз після клонування: git config core.hooksPath tools/git-hooks
 ROOT="$(git rev-parse --show-toplevel)"
 
@@ -14,6 +15,12 @@ if [ -f "$ctx" ]; then
   [ "${n:-0}" -ge 5 ] && echo "pre-commit: temp/CONTEXT.md не оновлювався вже $n комітів — онови «Зараз у роботі» й «Відкрите» (коміт не зупинено)"
 fi
 
-git diff --cached --name-only | grep -q '^scad/' || exit 0
-command -v openscad >/dev/null || { echo "pre-commit: openscad не знайдено — перевірку перетинів пропущено"; exit 0; }
+staged=$(git diff --cached --name-only)
+echo "$staged" | grep -qE '^scad/|^tools/(kinematics|bucket)\.py$' || exit 0
+command -v openscad >/dev/null || { echo "pre-commit: openscad не знайдено — перевірки моделі пропущено"; exit 0; }
+# Python-двійники проти моделі (≈0.3 с): змінили параметр в одному місці — звіти версії розійдуться з машиною
+if [ -x "$ROOT/tools/.venv/bin/python" ]; then
+  out=$("$ROOT/tools/.venv/bin/python" "$ROOT/tools/check_twins.py") || { echo "$out"; echo "pre-commit: коміт зупинено (обійти: git commit --no-verify)"; exit 1; }
+else echo "pre-commit: немає tools/.venv — звірку двійників пропущено (pip install -r tools/requirements.txt)"; fi
+echo "$staged" | grep -q '^scad/' || exit 0
 out=$("$ROOT/tools/check_overlaps.sh") || { echo "$out" | grep -v '^ok'; echo "pre-commit: коміт зупинено (обійти: git commit --no-verify)"; exit 1; }

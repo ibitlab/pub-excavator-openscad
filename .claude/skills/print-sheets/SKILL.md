@@ -25,7 +25,7 @@ tools/.venv/bin/python print3d-parts/sheets/make_sheets.py --png      # черн
 | `sheets.scad` | обгортка рендерів: підключає `../parts.scad` (а той — модель як бібліотеку), фарбує деталі |
 | `SHEETS.pdf` | 6 аркушів розкладки + сторінки кроків (≈21 стор.) |
 | `sheets.json` | **усі числа**: комірки, ракурси, пікселі кожної деталі, виноски, кроки — читати його, не PDF |
-| `png/N_slug.png` | прев'ю аркушів розкладки з САМОГО PDF (`pdftoppm`, сторінка знаходиться за текстом шапки через `pdftotext`); без poppler — знімок HTML. Лише в `build/` (не в git); аркуш ковша `make.sh` копіює в `docs/img/sheet_bucket.png` для TECHNICAL |
+| `png/N_slug.png` | прев'ю аркушів розкладки з САМОГО PDF (`pdftoppm`, сторінка знаходиться за текстом шапки через `pdftotext`); без poppler — знімок HTML. Лише в `build/` (не в git); аркуш ковша `make.sh` копіює в `docs/img/sheet_bucket.png` для TECHNICAL — через `tools/copy_if_changed.py`, тобто лише коли змінився сам аркуш, а не шапка чи підвал з датою |
 
 ## Що вирішено (не перевідкривати)
 

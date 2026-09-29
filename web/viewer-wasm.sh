@@ -11,7 +11,7 @@
 # сервера, потрібен прапорець --host. Він відкриває сторінку всій локальній мережі:
 # сайт статичний, бекенду й даних тут немає, але в чужій мережі краще не тримати.
 # Серверна сторінка (web/viewer.sh) лишається прив'язаною до 127.0.0.1 навмисно.
-cd "$(dirname "$0")/viewer-wasm"
+cd "$(dirname "$0")/viewer-wasm" || exit 1
 command -v npm >/dev/null || { echo "потрібен Node.js ≥ 20.19 (npm)"; exit 1; }
 [ -d node_modules ] || npm install
 case "${1:-dev}" in

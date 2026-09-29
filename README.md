@@ -25,7 +25,7 @@
 
 [![1:1 sorting sheets for the 1:5 printed kit](docs/img/pdf_sheets.png)](latest/print3d/sheets/SHEETS.pdf)
 
-> 📘 **All the technical detail is in [TECHNICAL.md](docs/TECHNICAL.md)** — the files and scripts, how to run the model and the 3D pages, the chosen geometry and kinematics, the bucket, sections and steel, the AI review, **what must be checked before cutting metal**, fabrication notes and the next stages. Installing and the core commands: [QUICKSTART.md](docs/QUICKSTART.md). How the code is built — the stack, links between parts, data formats: [ARCHITECTURE.md](docs/ARCHITECTURE.md); geometry in the pages, print versus steel, the OFF format: [GEOMETRY.md](docs/GEOMETRY.md).
+> 📘 **All the technical detail is in [TECHNICAL.md](docs/TECHNICAL.md)** — how to run the model, the chosen geometry and kinematics, the bucket, sections and steel, the AI review, **what must be checked before cutting metal**, fabrication notes and the next stages. Installing and the core commands: [QUICKSTART.md](docs/QUICKSTART.md). How the code is built — the files and scripts, the stack, links between parts, data formats: [ARCHITECTURE.md](docs/ARCHITECTURE.md); the 3D pages — phones, AR, the SpaceMouse: [web/README.md](web/README.md); geometry in the pages, print versus steel, the OFF format: [GEOMETRY.md](docs/GEOMETRY.md).
 
 ## What this is
 

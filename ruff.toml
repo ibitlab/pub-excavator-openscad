@@ -1,0 +1,8 @@
+# Лінтер Python — tools/lint.sh. Лише правила, що ловлять помилки (pyflakes, bugbear, синтаксис), а не стиль:
+# кілька операторів у рядку й довгі рядки в коді проєкту навмисні.
+extend-exclude = ["_deprecated", "versions", "latest", "temp", "build"]
+
+[lint]
+select = ["E9", "F", "B"]
+# zip() без strict= і невикористана змінна циклу — у цьому коді це стиль, не дефект
+ignore = ["B905", "B007"]

@@ -155,7 +155,7 @@ def head(fig, x, y, title, sub):
 
 def frame(spec, geo, loops):
     """Поворот і зсув, після яких база горизонтальна, а нуль — там, де його шукають."""
-    key, base = spec['key'], spec['base']
+    key = spec['key']
     if key == 'F_tower':
         a = -geo['alpha1']
         o = rot([tuple(geo['K'])], a)[0]

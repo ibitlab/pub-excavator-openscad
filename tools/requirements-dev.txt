@@ -1,0 +1,5 @@
+# Лінтери для tools/lint.sh — лише для розробки, збиранню не потрібні. Ставляться в той самий tools/.venv:
+#   tools/.venv/bin/python -m pip install -r tools/requirements-dev.txt
+-r requirements.txt
+ruff>=0.16          # 0.16.9  — Python (правила: ruff.toml)
+shellcheck-py>=0.10 # 0.11.0.1 — бінарник shellcheck (винятки: .shellcheckrc)

@@ -283,7 +283,7 @@ def main():
     phi = math.atan(md.MU_THREAD / math.cos(math.radians(30)))
     kf = md.D2 / 2 * math.tan(lam + phi)                    # Н·мм на Н осьової сили
     w('')
-    w(f'Сила ваги на циліндрах, Н (порожня / з піском, штовхає / тягне): ' + '; '.join(
+    w('Сила ваги на циліндрах, Н (порожня / з піском, штовхає / тягне): ' + '; '.join(
         f'{md.NAMES[k].lower()} {F_empty[k][0]:.1f}/{F_empty[k][1]:.1f} · {F_sand[k][0]:.1f}/{F_sand[k][1]:.1f}'
         for k in KEYS) + '.')
     w('')

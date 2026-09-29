@@ -11,7 +11,7 @@ A parametric model of the working equipment of a towable mini excavator — boom
 | For what | Dependency |
 |---|---|
 | The model, building versions, the 3D page with a server | **OpenSCAD** — a nightly build with the Manifold engine (verified on 2025.07 and 2026.09; the stable 2021.01 will not do), `openscad` on the PATH; **Python 3** |
-| PDF sketches, the bucket report | nothing to install: `tools/.venv` (matplotlib, shapely) is created on the first build |
+| PDF sketches, the bucket report, the twin check | nothing to install: `tools/.venv` (`tools/requirements.txt`: numpy, shapely, matplotlib, Pillow) is created on the first build; the linters for `tools/lint.sh` — `tools/.venv/bin/python -m pip install -r tools/requirements-dev.txt` |
 | The 3D page without a backend (WASM) | **Node.js ≥ 20.19** |
 | The printed kit and its 1:1 sorting sheets (`print3d-parts/make.sh`) | **Chrome** (HTML → PDF) and **poppler** (`brew install poppler`: `pdftoppm`, `pdfinfo`, `pdftotext` — previews and page checks from the PDF itself; without it the previews are screenshots of the HTML) |
 | README media: the page tour GIF and the PDF previews (`tools/media/readme_media.sh`) | **ffmpeg**, **poppler**, Chrome and `puppeteer-core` for Node (once: `npm i --no-save --prefix tools/media puppeteer-core`; it also puts page numbers on the PDFs) |
@@ -26,9 +26,12 @@ openscad scad/excavator_boom.scad
 # build a version → latest/ (STL, renders, reports, BOM, DXF, PDF, viewer.html, the 1:5 kit); the previous one → versions/
 tools/build_version.sh --commit "what changed"
 
-# checks only: plates abut without overlapping / moving pairs never collide over the full cylinder stroke
+# checks only: plates abut without overlapping / moving pairs never collide over the full cylinder stroke /
+# the Python twins match the model / linters
 tools/check_overlaps.sh
 tools/check_motion.sh
+tools/.venv/bin/python tools/check_twins.py
+tools/lint.sh
 
 # the 1:5 printed kit: STL of every component, checks, BOM, 1:1 sorting sheets (SHEETS.pdf)
 print3d-parts/make.sh
@@ -44,6 +47,6 @@ tools/dev/with-spacemouse.sh web/viewer.sh
 cd web/viewer-wasm && npm run preview:sm
 ```
 
-Once after cloning: `git config core.hooksPath tools/git-hooks` — this checks plate overlaps before every commit that touches the model.
+Once after cloning: `git config core.hooksPath tools/git-hooks` — before every commit that touches the model or its Python twins this checks that the twins still match the model and that the plates do not overlap.
 
 The results of the last build are in `latest/`: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`, and the printed kit in `print3d/`. Earlier versions are in `versions/`.

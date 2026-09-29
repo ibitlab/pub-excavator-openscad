@@ -11,7 +11,7 @@
 | Для чого | Залежність |
 |---|---|
 | Модель, збирання версій, 3D-сторінка з сервером | **OpenSCAD** — нічна збірка з рушієм Manifold (перевірено на 2025.07 і 2026.09; стабільна 2021.01 не підійде), `openscad` у PATH; **Python 3** |
-| PDF-ескізи, звіт ковша | нічого ставити не треба: `tools/.venv` (matplotlib, shapely) створюється сам при першому збиранні |
+| PDF-ескізи, звіт ковша, звірка двійників | нічого ставити не треба: `tools/.venv` (`tools/requirements.txt`: numpy, shapely, matplotlib, Pillow) створюється сам при першому збиранні; лінтери для `tools/lint.sh` — `tools/.venv/bin/python -m pip install -r tools/requirements-dev.txt` |
 | 3D-сторінка без бекенду (WASM) | **Node.js ≥ 20.19** |
 | Друкований набір і його аркуші розкладки 1:1 (`print3d-parts/make.sh`) | **Chrome** (HTML → PDF) і **poppler** (`brew install poppler`: `pdftoppm`, `pdfinfo`, `pdftotext` — прев'ю та перевірка сторінок із самого PDF; без нього прев'ю робляться знімком HTML) |
 | Медіа README: GIF-тур сторінкою і прев'ю PDF (`tools/media/readme_media.sh`) | **ffmpeg**, **poppler**, Chrome і `puppeteer-core` для Node (один раз: `npm i --no-save --prefix tools/media puppeteer-core`; він же ставить номери сторінок у PDF) |
@@ -26,9 +26,12 @@ openscad scad/excavator_boom.scad
 # зібрати версію → latest/ (STL, рендери, звіти, BOM, DXF, PDF, viewer.html, набір 1:5); попередня → versions/
 tools/build_version.sh --commit "що змінено"
 
-# лише перевірки: пластини не перекриваються / рухомі пари не зіткаються на всьому ході циліндрів
+# лише перевірки: пластини не перекриваються / рухомі пари не зіткаються на всьому ході циліндрів /
+# Python-двійники збігаються з моделлю / лінтери
 tools/check_overlaps.sh
 tools/check_motion.sh
+tools/.venv/bin/python tools/check_twins.py
+tools/lint.sh
 
 # друкований набір 1:5: STL кожного компонента, перевірки, BOM, аркуші розкладки 1:1 (SHEETS.pdf)
 print3d-parts/make.sh
@@ -44,6 +47,6 @@ tools/dev/with-spacemouse.sh web/viewer.sh
 cd web/viewer-wasm && npm run preview:sm
 ```
 
-Один раз після клонування: `git config core.hooksPath tools/git-hooks` — перевірка перекриттів перед комітом змін моделі.
+Один раз після клонування: `git config core.hooksPath tools/git-hooks` — перед комітом змін моделі чи її Python-двійників перевіряє, що двійники збігаються з моделлю, а пластини не перекриваються.
 
 Результати останнього збирання — у `latest/`: `drawings/parts.pdf`, `dxf/`, `bom/bom.md`, `docs/`, `viewer.html`, друкований набір — у `print3d/`. Попередні версії — у `versions/`.

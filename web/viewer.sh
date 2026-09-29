@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Інтерактивний 3D-перегляд моделі в браузері: обертання/панорама/масштаб, кути — миттєво, решта параметрів — через OpenSCAD (≈0.4 с).
 # Використання: web/viewer.sh [--port 8765]          статична сторінка: python3 web/viewer.py --export ФАЙЛ.html
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 command -v openscad >/dev/null || { echo "потрібен openscad у PATH"; exit 1; }
 exec python3 web/viewer.py --open "$@"

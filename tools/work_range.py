@@ -332,7 +332,7 @@ def draw(g, lang, out):
     fig.text(0.05, 0.955, t['title'], fontsize=20, weight='bold')
     fig.text(0.05, 0.932, t['sub'], fontsize=10.5, color='0.3')
     fig.text(0.05, 0.035, (WARN_UK if lang == 'uk' else WARN_EN), fontsize=8.5, color='0.4')
-    fig.text(0.05, 0.015, f'scad/excavator_boom.scad · tools/work_range.py', fontsize=8.5, color='0.55')
+    fig.text(0.05, 0.015, 'scad/excavator_boom.scad · tools/work_range.py', fontsize=8.5, color='0.55')
 
     credit(fig)
     fig.savefig(out, dpi=110)

@@ -322,7 +322,6 @@ def report(g, out=sys.stdout):
     for s in frange(ps_min, ps_max, 7):
         bp = boom_points(g, 0); sp = stick_points(g, bp, s); L = dist(bp['F'], sp['G'])
         arm = moment_arm(bp['B'], sp['G'], bp['F']); ta = transmission_angle(bp['B'], sp['G'], bp['F'])
-        push = L > (CYL['stick']['closed'] + CYL['stick']['open']) / 2  # умовно
         M = cyl_force('stick', P_NOM) * arm / 1000
         p(f"| {s:6.1f} | {L:6.0f} | {arm:5.0f} | {ta:4.0f}° | {M:5.1f} | {M / (g['Ls'] / 1000):5.1f} |")
     p()

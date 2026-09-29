@@ -3,7 +3,7 @@
 # рахується об'єм перетину (см³), допуск 0.05 см³. Кути поза межами модель сама обмежує ходом циліндра, тому
 # -90 і 200 дають рівно крайні положення. Три проходи: хід циліндра ковша, рукояті, стріли.
 # Остання частина довідкова (не зупиняє збирання): ківш × стріла та ківш × циліндр стріли при складеній рукояті.
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 SCAD=scad/excavator_boom.scad; TMP=$(mktemp -d); bad=0
 vol() { # a b boom_angle stick_angle bucket_angle
   local f="$TMP/x.stl"; rm -f "$f"
@@ -19,7 +19,7 @@ sweep() { # назва_параметра "кути" "пари"
       if python3 -c "import sys; sys.exit(0 if float('$v') > float('$worst') else 1)"; then worst=$v; at=$x; fi
     done
     if python3 -c "import sys; sys.exit(0 if float('$worst') > 0.05 else 1)"; then echo "ЗІТКНЕННЯ  $a × $b : до $worst см³ (кут $what = ${at}°)"; bad=1
-    else echo "ok          $a × $b : 0 на всьому ході ($what, $(echo $angles | wc -w | tr -d ' ') положень)"; fi
+    else echo "ok          $a × $b : 0 на всьому ході ($what, $(echo "$angles" | wc -w | tr -d ' ') положень)"; fi
   done
 }
 sweep bucket "-90 -10 0 15 30 45 60 75 90 105 120 130 200" "m_bucket:m_stick m_bucket:m_rocker m_bucket:m_link m_bucket:m_bcyl m_link:m_stick m_rocker:m_stick m_link:m_rocker m_bcyl:m_stick m_bcyl:m_rocker"
