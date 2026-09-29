@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Циліндри моделі на шпильці M5 і моторедукторі N20: перевірки, STL, рендери, CALC.md.
+# Циліндри моделі на шпильці M5 і моторедукторі N20: перевірки, STL, рендери, CALC.md, схема підключення.
 #
 #   print3d-parts/m5_cylinders/make.sh                        # усе → build/m5_cylinders/
 #   print3d-parts/m5_cylinders/make.sh --out ТЕКА --kit-stl ТЕКА   # так кличе print3d-parts/make.sh
@@ -8,7 +8,8 @@
 #
 # Кроки: pairs — власні деталі не перетинаються (у двох крайніх положеннях штока);
 #        collide — новий циліндр без вушок не зачіпає машину (вушка ті самі, що в моделі);
-#        stl — деталі на стіл + check_print.py набору; png — збірки й розрізи; calc — CALC.md.
+#        stl — деталі на стіл + check_print.py набору; png — збірки й розрізи; calc — CALC.md;
+#        wiring — схема підключення WIRING.svg.
 # Перетин чи зіткнення зупиняє збирання (код 1) — і набір разом із ним.
 set -u
 OUT=""; KIT=""; STEPS=""
@@ -23,7 +24,7 @@ done
 cd "$(dirname "$0")" || exit 1
 ROOT=../..
 OUT=${OUT:-$PWD/$ROOT/build/m5_cylinders}
-STEPS=${STEPS:-pairs collide stl png calc}
+STEPS=${STEPS:-pairs collide stl png calc wiring}
 mkdir -p "$OUT"
 TMP=$(mktemp -d)
 vol() { if [ -s "$1" ]; then python3 $ROOT/tools/stl_volume.py "$1"; else echo 0.000; fi; }   # см³
@@ -135,6 +136,11 @@ if [ "$n" -eq 12 ]; then echo "  знімків: $n"; else echo "  ПОМИЛК�
 case " $STEPS " in *" calc "*)
 echo "== розрахунок"
 python3 calc.py ${KIT:+--kit-stl "$KIT"} --own-stl "$OUT/stl" --out "$OUT/CALC.md" || bad=1
+;; esac
+
+case " $STEPS " in *" wiring "*)
+echo "== схема підключення"
+python3 wiring.py --out "$OUT/WIRING.svg" || bad=1
 ;; esac
 
 rm -rf "$TMP"

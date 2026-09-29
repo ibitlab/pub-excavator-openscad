@@ -126,7 +126,7 @@ print3d-parts/group.sh "$OUT/stl"
     [ -n "$DESC" ] && echo "- Зміни: $DESC"; echo
     echo "- \`stl/<тека>/\` — одна тека = одне завдання слайсера (колір · висота шару · підпори), пояснення — у \`print3d-parts/README.md\`"
     echo "- \`BOM.md\` — специфікація з виміряних STL; \`DRIVE.md\` — привід циліндрів гвинтом M5"
-    echo "- \`m5_cylinders/\` — циліндри на шпильці M5 з моторедуктором N20: \`stl/\`, \`img/\`, \`CALC.md\` (як влаштовано — \`print3d-parts/m5_cylinders/README.md\`)"
+    echo "- \`m5_cylinders/\` — циліндри на шпильці M5 з моторедуктором N20: \`stl/\`, \`img/\`, \`CALC.md\`, \`WIRING.svg\` (як влаштовано — \`print3d-parts/m5_cylinders/README.md\`)"
     echo "- \`sheets/SHEETS.pdf\` — аркуші розкладки 1:1 для сортування й склеювання; \`sheets/sheets.json\` — усі числа (прев'ю сторінок — у \`build/sheets-png/\`, не в git)"
     echo; echo '---'; echo "<sub>$(head -1 AUTHORS)</sub>"
 } > "$OUT/VERSION.md"

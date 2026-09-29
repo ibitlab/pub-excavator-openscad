@@ -27,8 +27,8 @@ print3d-parts/make.sh      # окремі КОМПОНЕНТИ під зварю
 генерується з таблиць, не пишеться руками.
 
 Робочі циліндри на шпильці M5 з N20 — `print3d-parts/m5_cylinders/`. Там свої `m5_cyl.scad`,
-`calc.py`, `make.sh` і README; `print3d-parts/make.sh` кличе цей `make.sh` і кладе результат у
-`latest/print3d/m5_cylinders/` (`stl/`, `img/`, `CALC.md`). Це НЕ рядки `parts.tsv`: «глухі» циліндри
+`calc.py`, `wiring.py`, `make.sh` і README; `print3d-parts/make.sh` кличе цей `make.sh` і кладе результат у
+`latest/print3d/m5_cylinders/` (`stl/`, `img/`, `CALC.md`, `WIRING.svg`). Це НЕ рядки `parts.tsv`: «глухі» циліндри
 набору лишаються. Вибір мотора, шестерень і кута мотора — сталі на початку `m5_cyl.scad` (його зробив
 користувач: 12GAN20-298, 60 об/хв, 1:1, мотори ліворуч); `calc.py` читає їх звідти й нічого не
 вибирає сам — лише перевіряє, що стає й тягне, і показує інші N20 для порівняння. Перетин власних
