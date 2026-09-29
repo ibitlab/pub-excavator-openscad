@@ -47,7 +47,23 @@ ext = 0;            // висування штока, друковані мм (0
 // Кут мотора навколо осі циліндра, °: 0 = +Y (ліворуч, якщо дивитись від колони на ківш), 90 = +Z.
 // Усі три ліворуч: мотори й джгути на одному боці, поза площиною механізму (make.sh collide: чисто)
 MOTOR_PHI = [0, 0, 0];
-show_buy = true;    // покупне (мотор, шпилька, гайка, підшипник, магніти, датчики) у збірці
+
+/* [Що показати] */
+// Лише для збірки й розрізів (pp = asm | cut | headcut): зняти зайве й зазирнути всередину.
+// Перевірки make.sh беруть деталі напряму, галочки їх не зачіпають.
+show_tube = true;       // гільза
+show_head_rear = true;  // голова, задня частина
+show_head_front = true; // передня стінка з носом
+show_nut_gear = true;   // шестерня гайки
+show_pinion = true;     // шестерня мотора
+show_cap = true;        // задня кришка з вушком
+show_puck = true;       // поршень
+show_eye = true;        // вушко штока
+show_screw = true;      // шпилька й гайка M5
+show_bearing = true;    // підшипник MR128
+show_motor = true;      // моторедуктор N20
+show_magnets = true;    // магніти
+show_halls = true;      // датчики Холла
 
 /* [Допуски друку] */
 FIT = 0.15;         // радіальний зазор посадок, мм
@@ -368,22 +384,20 @@ module piece(n, e) {
     else echo(str("!!! невідома деталь: ", n));
 }
 
-module body_parts() {
-    cc([0.2, 0.2, 0.22]) tube();
-    cc([0.25, 0.45, 0.75]) head_rear();
-    cc([0.3, 0.55, 0.85]) head_front();
-    cc([0.9, 0.55, 0.15]) nut_gear();
-    cc([0.95, 0.75, 0.2]) pinion();
-    cc([0.2, 0.2, 0.22]) cap();
-}
-module rod_parts(e) {
-    cc([0.35, 0.35, 0.38]) puck(e);
-    cc([0.2, 0.2, 0.22]) rod_eye(e);
-}
-module cyl_asm(e) {
-    body_parts();
-    rod_parts(e);
-    if (show_buy) buy(e);
+module cyl_asm(e) {   // збірка з галочками «Що показати»
+    if (show_tube)       cc([0.2, 0.2, 0.22]) tube();
+    if (show_head_rear)  cc([0.25, 0.45, 0.75]) head_rear();
+    if (show_head_front) cc([0.3, 0.55, 0.85]) head_front();
+    if (show_nut_gear)   cc([0.9, 0.55, 0.15]) nut_gear();
+    if (show_pinion)     cc([0.95, 0.75, 0.2]) pinion();
+    if (show_cap)        cc([0.2, 0.2, 0.22]) cap();
+    if (show_puck)       cc([0.35, 0.35, 0.38]) puck(e);
+    if (show_eye)        cc([0.2, 0.2, 0.22]) rod_eye(e);
+    if (show_screw)      { cc([0.75, 0.76, 0.78]) screw(e); cc([0.7, 0.7, 0.72]) nut(); }
+    if (show_bearing)    cc([0.55, 0.57, 0.6]) bearing();
+    if (show_motor)      cc([0.85, 0.7, 0.3]) motor();
+    if (show_magnets)    cc([0.8, 0.1, 0.1]) magnets(e);
+    if (show_halls)      cc([0.15, 0.15, 0.15]) halls();
 }
 
 // Нова геометрія без вушок (вушка — ті самі, що в моделі) — для перевірки зіткнень
