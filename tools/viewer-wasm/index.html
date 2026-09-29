@@ -262,8 +262,9 @@
   body.ar #ar_ui { display: flex; flex-direction: column; justify-content: space-between;
                    position: fixed; inset: 0; z-index: 10; padding: 12px 12px 18px;
                    pointer-events: none; color: #fff; }
-  #ar_ui .ar-top { display: flex; align-items: center; gap: 8px; }
-  #ar_hint { flex: 1; text-align: center; background: #000000a6; border-radius: 999px;
+  /* кнопок у рядку до п'яти: підказка — окремим рядком під ними, інакше на телефоні її стискає у вузький стовпчик */
+  #ar_ui .ar-top { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+  #ar_hint { order: 1; flex: 1 1 100%; text-align: center; background: #000000a6; border-radius: 999px;
              padding: 9px 14px; font-size: 13px; line-height: 1.35; }
   #ar_hint:empty { visibility: hidden; }
   #ar_ui button { pointer-events: auto; min-height: 42px; min-width: 42px; font-size: 14px; padding: 5px 9px; }
@@ -337,11 +338,12 @@
 <!-- Накладка AR (WebXR DOM Overlay): поза сеансом AR схована, у сеансі браузер показує лише її поверх камери -->
 <div id="ar_ui">
   <div class="ar-head">
-    <div class="ar-top"><span id="ar_hint"></span><button id="ar_occl" class="ar-ctl" hidden data-i18n-aria="ar.occl" data-i18n-title="ar.occl">◐</button><button id="ar_room" class="ar-ctl" hidden data-i18n-aria="ar.room" data-i18n-title="ar.room">▦</button><button id="ar_coll" class="ar-ctl" hidden data-i18n-aria="ar.coll" data-i18n-title="ar.coll">⚠</button><button id="ar_exit" class="ar-ctl" data-i18n="ar.exit"></button></div>
+    <div class="ar-top"><span id="ar_hint"></span><button id="ar_occl" class="ar-ctl" hidden data-i18n-aria="ar.occl" data-i18n-title="ar.occl">◐</button><button id="ar_room" class="ar-ctl" hidden data-i18n-aria="ar.room" data-i18n-title="ar.room">▦</button><button id="ar_scan" class="ar-ctl" hidden data-i18n-aria="ar.scan" data-i18n-title="ar.scan">▤</button><button id="ar_coll" class="ar-ctl" hidden data-i18n-aria="ar.coll" data-i18n-title="ar.coll">⚠</button><button id="ar_exit" class="ar-ctl" data-i18n="ar.exit"></button></div>
     <div id="ar_warn" role="alert"></div>
     <div id="ar_feat"></div>
   </div>
   <div id="ar_panel" class="ar-ctl">
+    <label id="ar_scanrow" class="ar-ang" hidden><span data-i18n="ar.scanop"></span><input type="range" id="ar_scanop" min="10" max="100" step="5" value="30"></label>
     <div id="ar_sliders"></div>
     <div class="row"><button id="ar_play"></button><button id="ar_rotl" data-i18n-aria="ar.rotl">↺</button><button id="ar_rotr" data-i18n-aria="ar.rotr">↻</button><button id="ar_scale"></button><button id="ar_place" data-i18n="ar.place"></button></div>
   </div>

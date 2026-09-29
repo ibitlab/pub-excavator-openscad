@@ -13,6 +13,8 @@ import { LEGEND } from './legend.js';
 import { KIN, PIN_HEX, kinLegend } from './kin.js';
 import { armFromTip } from './ik.js';   // саме так, інакше Vite не підставить збудований шлях
 import { Room, KIND, planeTris, meshTris } from './room.js';
+import { Keep } from './keep.js';
+import { Scan } from './scan.js';
 import { LANGS, initLang, setLang, getLang, t, tp, tg } from './i18n.js';
 
 // Друга версія перегляду: БЕЗ бекенду. OpenSCAD працює у веб-воркері (WASM), сторінка — звичайна статика.
@@ -1016,7 +1018,8 @@ const reticle = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.14, 40).rotateX(-M
 reticle.matrixAutoUpdate = false; reticle.renderOrder = 10;
 const AR_SCALES = [1, 5];                                     // 1:1 — надворі, 1:5 — на столі
 const AR = { session: null, hitSrc: null, placing: true, scale: 1, saved: null,
-             feat: null, depthFmt: '', occl: true, room: true, coll: true, hits: [], tHit: 0, tBuild: 0, dirty: false };
+             feat: null, depthFmt: '', occl: true, room: true, coll: true, hits: [], tHit: 0, tBuild: 0, dirty: false,
+             scan: false, dz: null, tScan: 0, tMesh: 0, tKeep: 0 };
 
 // --- AR: кімната. Три необов'язкові можливості WebXR, кожна вмикається лише там, де браузер її дав:
 // depth-sensing — карта глибин кадру (Chrome на Android з ARCore Depth): справжні предмети затуляють машину;
@@ -1048,21 +1051,54 @@ const ROOM_HEX = [0x3aa0ff, 0x3ccf7a, 0xffb020];               // за KIND: с�
 const roomFill = ROOM_HEX.map(c => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
 const roomLine = ROOM_HEX.map(c => new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.8 }));
 const roomWire = ROOM_HEX.map(c => new THREE.MeshBasicMaterial({ color: c, wireframe: true, transparent: true, opacity: 0.35, depthWrite: false }));
+// Зліпок (keep.js): площини, які ARCore перестав віддавати, лишаються тінями — штриховий контур;
+// поки тінь чекає рішення, заливка ледь видна, а залишена назавжди — як у живої площини.
+const keep = new Keep(), ghostObj = new Map();
+const ghostFill = ROOM_HEX.map(c => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }));
+const ghostLine = ROOM_HEX.map(c => new THREE.LineDashedMaterial({ color: c, dashSize: 0.06, gapSize: 0.04, transparent: true, opacity: 0.8 }));
+// Скан кімнати з карт глибин (кнопка ▤, scan.js): поки кнопка ввімкнена, кадри глибини зливаються в 3D-модель
+// простору сеансу. Малюється заливкою й сіткою, кольорами кімнати за нахилом поверхні; прозорість — повзунок у панелі:
+// від ледь видимої до суцільної (тоді видно лише модель, а реальність — там, де скану ще немає).
+// Об'єм: світло сцени на гладких нормалях скану (градієнт TSDF), затінення кутів (AO зі scan.js — у кольорі вершин),
+// і в шейдері ще два множники, що не чіпають машину: поверхня боком до погляду темніша (як ліхтар на камері —
+// найсильніша підказка форми), далека — трохи тьмяніша.
+// Модель ділиться на шматки 1.6 м (scan.takeChunks): раз на секунду перебудовуються лише змінені.
+const scan = new Scan(), SCAN_L = 96, ROOM_RGB = ROOM_HEX.map(c => new THREE.Color(c).toArray());   // SCAN_L — променів уздовж довшого боку кадру
+const scanFillM = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, depthWrite: false });
+scanFillM.onBeforeCompile = sh => {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+    `outgoingLight *= mix(0.45, 1.0, abs(normal.z)) * mix(1.0, 0.7, smoothstep(1.5, 6.0, length(vViewPosition)));
+    #include <opaque_fragment>`);                              // normal — у просторі камери: z = 1 — дивиться просто на нас
+};
+const scanWireM = new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: true, transparent: true, opacity: 0.45, depthWrite: false });
+const scanGroup = new THREE.Group(), scanParts = new Map();  // ключ шматка → Mesh заливки (сітка — його дочірній Mesh на тій самій геометрії)
+scanGroup.visible = false;
+function scanOpacity(v) {                                     // 0.1…1; суцільна пише глибину, як звичайне тіло
+  const solid = v >= 0.99;
+  scanFillM.opacity = v; scanWireM.opacity = solid ? 0.3 : 0.45;
+  if (scanFillM.transparent === solid) { scanFillM.transparent = !solid; scanFillM.depthWrite = solid; scanFillM.needsUpdate = true; }
+}
+scanOpacity(0.3);
 const HIT_MAX = 48;                                           // червоні кульки в точках зіткнення — видно й без накладки (Quest)
 const hitMarks = new THREE.InstancedMesh(new THREE.SphereGeometry(0.025, 10, 8),
   new THREE.MeshBasicMaterial({ color: 0xff2a2a, depthTest: false }), HIT_MAX);
 hitMarks.count = 0; hitMarks.renderOrder = 11; hitMarks.frustumCulled = false;
 const HIT_TINT = new THREE.Color(0x901010), NO_TINT = new THREE.Color(0);
 
+function planeObj(poly, fill, line) {                         // опуклий многокутник площини: заливка віялом + контур
+  const pts = poly.map(p => new THREE.Vector3(p.x, p.y || 0, p.z)), g = new THREE.BufferGeometry().setFromPoints(pts);
+  g.setIndex(pts.slice(2).flatMap((_, i) => [0, i + 1, i + 2]));
+  const loop = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), line);
+  if (line.isLineDashedMaterial) loop.computeLineDistances();
+  return [new THREE.Mesh(g, fill), loop];
+}
 function roomMake(s) {
   const obj = new THREE.Group(); obj.matrixAutoUpdate = false; obj.visible = AR.room;
   let kind, src;
   if (s.planeSpace) {
     kind = s.orientation === 'vertical' ? 0 : 1;
     src = s.polygon.map(p => ({ x: p.x, y: p.y, z: p.z }));
-    const pts = src.map(p => new THREE.Vector3(p.x, p.y, p.z)), fill = new THREE.BufferGeometry().setFromPoints(pts);
-    fill.setIndex(pts.slice(2).flatMap((_, i) => [0, i + 1, i + 2]));
-    obj.add(new THREE.Mesh(fill, roomFill[kind]), new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), roomLine[kind]));
+    obj.add(...planeObj(src, roomFill[kind], roomLine[kind]));
   } else {
     // semanticLabel — рядок від браузера: лише порівнюємо, у сторінку він не потрапляє
     kind = s.semanticLabel === 'wall' ? 0 : ['ceiling', 'table', 'floor'].includes(s.semanticLabel) ? 1 : 2;
@@ -1094,7 +1130,7 @@ function arDepth(frame, ref) {                                // карта гл
   const view = frame.getViewerPose(ref)?.views[0]; if (!view) return;
   let d;
   try { d = frame.getDepthInformation(view); } catch (e) { AR.feat.depth = false; occl.visible = false; arFeatUI(); return; }
-  if (!d) { occl.visible = false; return; }                  // ще не готова
+  if (!d) { occl.visible = false; AR.dz = null; return; }    // ще не готова
   const n = d.width * d.height;
   let tex = occlU.depth.value;
   if (!tex || tex.image.width !== d.width || tex.image.height !== d.height) {
@@ -1107,6 +1143,86 @@ function arDepth(frame, ref) {                                // карта гл
   tex.needsUpdate = true;
   occlU.uvm.value.fromArray(d.normDepthBufferFromNormView.matrix);
   occl.visible = AR.occl;
+  // той самий кадр — для зліпка й площин з глибини: карта, її перетворення, проєкція й поза камери
+  AR.dz = { data: out, w: d.width, h: d.height, uvm: Float32Array.from(d.normDepthBufferFromNormView.matrix),
+            P: Float32Array.from(view.projectionMatrix), V: Float32Array.from(view.transform.matrix), Vi: Float32Array.from(view.transform.inverse.matrix) };
+}
+function dzAt(z, u, v) {                                      // нормалізовані координати виду (0..1, угорі ліворуч) → метри, 0 — невідомо
+  const m = z.uvm, du = m[0] * u + m[4] * v + m[12], dv = m[1] * u + m[5] * v + m[13];   // як у шейдері затуляння
+  const x = Math.floor(du * z.w), y = Math.floor(dv * z.h);
+  return x >= 0 && y >= 0 && x < z.w && y < z.h ? z.data[y * z.w + x] : 0;
+}
+function dzSeen(z, p) {                                       // → [виміряна глибина, глибина точки p] або null: поза кадром чи без глибини
+  const V = z.Vi, P = z.P;
+  const x = V[0] * p[0] + V[4] * p[1] + V[8] * p[2] + V[12], y = V[1] * p[0] + V[5] * p[1] + V[9] * p[2] + V[13];
+  const zz = V[2] * p[0] + V[6] * p[1] + V[10] * p[2] + V[14], w = -zz;
+  if (w < 0.3) return null;
+  const nx = (P[0] * x + P[8] * zz + P[12]) / w, ny = (P[5] * y + P[9] * zz + P[13]) / w;
+  if (Math.abs(nx) > 1 || Math.abs(ny) > 1) return null;
+  const m = dzAt(z, (nx + 1) / 2, (1 - ny) / 2);
+  return m > 0 ? [m, w] : null;
+}
+// Зліпок: живі площини → keep; тіні перевіряються картою глибин — крізь хибну площину видно далі (≥ 25 см),
+// справжню камера бачить саму (±10 см). Точки поза кадром не голосують.
+function keepSync(now) {
+  const live = [];
+  for (const [s, r] of roomSrc) if (r.plane && r.m) live.push({ key: s, kind: r.kind, m: r.m, poly: r.src });
+  let changed = keep.update(live, now);
+  const z = AR.dz;
+  if (z) for (const g of [...keep.ghosts]) {
+    let th = 0, sup = 0;
+    for (const p of g.pts) { const q = dzSeen(z, p); if (!q) continue; if (q[0] > q[1] + 0.25) th++; else if (Math.abs(q[0] - q[1]) < 0.1) sup++; }
+    if (th >= 2 && th > sup) changed = keep.vote(g, true) || changed;
+    else if (sup) keep.vote(g, false);
+  }
+  if (changed) { ghostSync(); AR.dirty = true; arFeatUI(); }
+}
+function ghostSync() {
+  const alive = new Set(keep.ghosts);
+  for (const [g, o] of ghostObj) if (!alive.has(g)) { roomGroup.remove(o); o.traverse(c => { if (c.geometry) c.geometry.dispose(); }); ghostObj.delete(g); }
+  for (const g of keep.ghosts) {
+    let o = ghostObj.get(g);
+    if (!o) {
+      o = new THREE.Group(); o.matrixAutoUpdate = false; o.matrix.fromArray(g.m);
+      o.add(...planeObj(g.poly, ghostFill[g.kind], ghostLine[g.kind])); roomGroup.add(o); ghostObj.set(g, o);
+    }
+    o.children[0].material = (g.fixed ? roomFill : ghostFill)[g.kind];
+  }
+}
+function dzRays(z, L) {                                      // кадр глибини → промені в просторі сеансу: { O, fwd, dirs, dep }
+  const P = z.P, V = z.V, asp = P[5] / P[0];                 // ширина / висота кадру: уздовж довшого боку — L променів
+  const cols = asp >= 1 ? L : Math.max(8, Math.round(L * asp)), rows = asp >= 1 ? Math.max(8, Math.round(L / asp)) : L;
+  const dirs = new Float32Array(cols * rows * 3), dep = new Float32Array(cols * rows);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const u = (c + 0.5) / cols, v = (r + 0.5) / rows, i = r * cols + c;
+    const x = (2 * u - 1 + P[8]) / P[0], y = (1 - 2 * v + P[9]) / P[5];   // точка виду на глибині 1 (z = −1) → напрямок у просторі сеансу
+    dirs[i * 3] = V[0] * x + V[4] * y - V[8]; dirs[i * 3 + 1] = V[1] * x + V[5] * y - V[9]; dirs[i * 3 + 2] = V[2] * x + V[6] * y - V[10];
+    dep[i] = dzAt(z, u, v);
+  }
+  return { O: [V[12], V[13], V[14]], fwd: [-V[8], -V[9], -V[10]], dirs, dep };
+}
+function scanIntegrate() { const r = dzRays(AR.dz, SCAN_L); scan.integrate(r.O, r.fwd, r.dirs, r.dep); }
+function scanDraw() {                                         // змінені шматки скану → їхні геометрії (раз на секунду)
+  for (const { key, tris, nrm, ao, kind } of scan.takeChunks()) {
+    let m = scanParts.get(key);
+    if (m) m.geometry.dispose();
+    if (!kind.length) { if (m) { scanGroup.remove(m); scanParts.delete(key); } continue; }
+    const col = new Float32Array(tris.length), g = new THREE.BufferGeometry();
+    for (let i = 0; i < kind.length; i++) for (let j = 0; j < 3; j++) {   // колір виду поверхні × затінення кута
+      const c = ROOM_RGB[kind[i]], a = ao[i * 3 + j], o = i * 9 + j * 3;
+      col[o] = c[0] * a; col[o + 1] = c[1] * a; col[o + 2] = c[2] * a;
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(tris, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.computeBoundingSphere();                                 // шматок поза кадром не малюється
+    if (!m) { m = new THREE.Mesh(g, scanFillM); m.add(new THREE.Mesh(g, scanWireM)); scanGroup.add(m); scanParts.set(key, m); }
+    m.geometry = m.children[0].geometry = g;
+  }
+}
+function scanReset() {
+  scan.clear();
+  for (const m of scanParts.values()) { m.geometry.dispose(); scanGroup.remove(m); }
+  scanParts.clear();
 }
 // Точки тіла для перевірки: вершини його сіток без повторів (5 мм), не більше 120 на тіло.
 // Опора кожного тіла — його власний початок координат: це шарнір (вісь A, B, E, пальці циліндрів).
@@ -1163,9 +1279,14 @@ function arCollide() {                                        // ~10 разів 
 function arFeatUI() {                                         // що з трьох можливостей дав браузер — видно в накладці
   const f = AR.feat, mark = v => (v ? '✓' : '—');
   if (!f) return;                                             // поза сеансом (тести) — кнопок не видно, малювати нічого
-  $('ar_feat').textContent = t('ar.feat', { d: mark(f.depth), p: mark(f.planes), m: mark(f.meshes) });
-  $('ar_occl').hidden = !f.depth; $('ar_room').hidden = $('ar_coll').hidden = !(f.planes || f.meshes);
+  const k = keep.stats();
+  $('ar_feat').textContent = t('ar.feat', { d: mark(f.depth), p: mark(f.planes), m: mark(f.meshes) }) +
+    (f.planes ? ' · ' + t('ar.kept', { n: k.fixed, w: k.wait }) : '') +
+    (scan.frames ? ' · ' + t(scan.full ? 'ar.scanfull' : 'ar.scann', { n: (scan.nTris / 1000).toFixed(1) }) : '');
+  $('ar_occl').hidden = $('ar_scan').hidden = !f.depth; $('ar_room').hidden = $('ar_coll').hidden = !(f.planes || f.meshes);
   $('ar_occl').classList.toggle('on', AR.occl); $('ar_room').classList.toggle('on', AR.room); $('ar_coll').classList.toggle('on', AR.coll);
+  $('ar_scan').classList.toggle('on', AR.scan);
+  $('ar_scanrow').hidden = !(f.depth && (AR.scan || scan.frames));   // повзунок прозорості — коли є що показувати
 }
 function arFeatInit(s) {
   const f = s.enabledFeatures || [];                          // Chrome дає список у сеансі; без нього вважаємо, що нічого
@@ -1177,6 +1298,7 @@ function arRoomEnd() {
   for (const r of roomSrc.values()) roomDrop(r);
   roomSrc.clear(); room.clear(); AR.hits = []; AR.dirty = false; AR.feat = null;
   hitMarks.count = 0; occl.visible = false;
+  keep.clear(); ghostSync(); AR.dz = null; scanReset();
   if (occlU.depth.value) { occlU.depth.value.dispose(); occlU.depth.value = null; }
   for (const g of Object.values(bodies)) g.traverse(o => { if (o.isMesh && o.material.emissive) o.material.emissive.copy(NO_TINT); });
   $('ar_warn').textContent = ''; $('ar_feat').textContent = '';
@@ -1225,7 +1347,7 @@ async function arStart() {
     document.body.classList.add('ar');
     scene.background = null; ground.visible = false; envelope.visible = false;
     for (const l of [hemi, sun, fill]) l.position.copy(zUp2yUp(l.position));   // «вгору» тепер — Y
-    scene.add(arRoot, reticle, occl, roomGroup, hitMarks); arRoot.add(world); arRoot.visible = false; reticle.visible = false;
+    scene.add(arRoot, reticle, occl, roomGroup, hitMarks, scanGroup); arRoot.add(world); arRoot.visible = false; reticle.visible = false;
     controls.enabled = false;
     arWorld(); arBuildUI(); arHint('ar.find'); arFeatInit(AR.session);
     renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local');
@@ -1264,8 +1386,12 @@ function arFrame(frame, now) {
   }
   if (AR.feat.depth) arDepth(frame, ref);
   if (AR.feat.planes || AR.feat.meshes) roomSync(frame, ref);
-  // Сітка для зіткнень перебудовується не частіше ніж двічі на секунду: сітка Quest — десятки тисяч трикутників
-  if (AR.dirty && now - AR.tBuild > 500) { room.build([...roomSrc.values()].filter(r => r.tris)); AR.dirty = false; AR.tBuild = now; }
+  if (AR.feat.planes && now - AR.tKeep > 250) { keepSync(now); AR.tKeep = now; }
+  if (AR.scan && AR.dz && now - AR.tScan > 250) { scanIntegrate(); AR.tScan = now; }   // ~4 кадри на секунду: інтеграція — найдорожче
+  if (scan.dirty.size && now - AR.tMesh > 1000) { scan.remesh(150); scanDraw(); arFeatUI(); AR.tMesh = now; }
+  // Сітка для зіткнень перебудовується не частіше ніж двічі на секунду: сітка Quest — десятки тисяч трикутників.
+  // Тіні зліпка теж ідуть у зіткнення: заради цього їх і тримаємо.
+  if (AR.dirty && now - AR.tBuild > 500) { room.build([...[...roomSrc.values()].filter(r => r.tris), ...keep.ghosts]); AR.dirty = false; AR.tBuild = now; }
   if (now - AR.tHit > 100) { arCollide(); AR.tHit = now; }
   arSyncPlay();
 }
@@ -1277,7 +1403,7 @@ function arEnd() {                                            // поверну�
   AR.saved = null;
   renderer.xr.enabled = false;
   arRoomEnd();
-  scene.remove(arRoot, reticle, occl, roomGroup, hitMarks); scene.add(world);
+  scene.remove(arRoot, reticle, occl, roomGroup, hitMarks, scanGroup); scene.add(world);
   world.position.set(0, 0, 0); world.rotation.set(0, 0, 0); world.scale.setScalar(1);
   [hemi, sun, fill].forEach((l, i) => l.position.copy(s.lights[i]));
   scene.background = s.bg;
@@ -1299,6 +1425,8 @@ $('ar_scale').onclick = () => {
 $('ar_play').onclick = () => { $('play').click(); arSyncPlay(); };
 $('ar_occl').onclick = () => { AR.occl = !AR.occl; if (!AR.occl) occl.visible = false; arFeatUI(); };
 $('ar_room').onclick = () => { AR.room = !AR.room; roomGroup.visible = AR.room; arFeatUI(); };   // зіткнення рахуються й зі схованою сіткою
+$('ar_scan').onclick = () => { AR.scan = !AR.scan; scanGroup.visible = AR.scan; arFeatUI(); };
+$('ar_scanop').addEventListener('input', e => scanOpacity(+e.target.value / 100));   // вимкнути — пауза: зібране лишається до кінця сеансу
 $('ar_coll').onclick = () => { AR.coll = !AR.coll; arCollide(); arFeatUI(); };   // кімнату будуємо й далі — увімкнення діє одразу
 function arInit() {                                           // кнопка — лише там, де AR справді є (https, ARCore)
   const b = $('ar_btn');
@@ -1307,7 +1435,7 @@ function arInit() {                                           // кнопка �
   navigator.xr.isSessionSupported('immersive-ar').then(ok => { b.hidden = !ok; document.body.classList.toggle('arok', ok); }).catch(() => {});
 }
 window.__AR__ = () => ({ active: !!AR.session, placing: AR.placing, scale: AR.scale, button: !$('ar_btn').hidden,   // для тестів
-                          feat: AR.feat, room: roomSrc.size, tris: room.n, hits: AR.hits });
+                          feat: AR.feat, room: roomSrc.size, tris: room.n, hits: AR.hits, kept: keep.stats(), scan: scan.stats() });
 // Для тестів без телефона: машина 1:1 стоїть віссю A над точкою (0, 0, 0) простору сеансу, стріла — уздовж +X,
 // поперек стоїть стіна x = wallX м (2 × 3 м). Повертає тіла, що її зачепили, і число червоних точок;
 // заразом компілює шейдер затуляння (помилку GLSL видно в консолі). Сцену повертає як було.
@@ -1321,6 +1449,69 @@ window.__ARSIM__ = wallX => {
   renderer.compile(occl, arCam);
   arRoomEnd(); scene.remove(arRoot, occl); scene.add(world);
   world.position.set(0, 0, 0); world.rotation.set(0, 0, 0); world.scale.setScalar(1);
+  return out;
+};
+// Для тестів без телефона: синтетична кімната-коробка x −2…2, y 0…2.6, z −3…2 м зі столом (x 0.3…1.5, висота 0.75,
+// z −2.2…−1.4), камера на висоті 1.4 м.
+// Скан: 16 кадрів глибини навколо (кожні 45°, погляд на 20° донизу і на 15° догори) → поверхня в parts шматках
+// (drawn — трикутників у їхніх геометріях, має дорівнювати tris); onSurface — частка
+// вершин ближче за 3 см до стін, підлоги, стелі чи столу (має бути ≈ 1), kinds — трикутників стін · горизонтальних · решти.
+// look — прозорість (0.1…1) або { op, from: [x, y, z], at: [x, y, z] }: тоді ще й знімок скану на темному тлі
+// (типово — з кута кімнати на стіл), out.png (data:-адреса) — оцінити об'єм.
+// Зліпок: площина-стіна 2 × 2 м на z = wallZ видна 6 с, зникає, лишається назавжди; далі 6 перевірок картою
+// глибин (−3 — камера бачить саму стіну, −2 — крізь неї видно далі).
+window.__ARSCAN__ = (wallZ = -3, look = 0) => {
+  const lo = [-2, 0, -3], hi = [2, 2.6, 2], tl = [0.3, 0, -2.2], th = [1.5, 0.75, -1.4], O = [0, 1.4, 0], w = 96, h = 96;
+  const P = arCam.projectionMatrix.elements, dir = new THREE.Vector3();
+  const frame = (yaw, pitch) => {
+    const R = new THREE.Matrix4().makeRotationY(yaw).multiply(new THREE.Matrix4().makeRotationX(pitch)), Vm = R.clone().setPosition(...O);
+    const data = new Float32Array(w * h);
+    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {   // глибина — уздовж осі погляду: точка = O + R·(x, y, −1)·d
+      dir.set((2 * (px + 0.5) / w - 1 + P[8]) / P[0], (1 - 2 * (py + 0.5) / h + P[9]) / P[5], -1).applyMatrix4(R);
+      let t = Infinity;
+      let t0 = 0, t1 = Infinity;                              // стіл — метод плит
+      for (let a = 0; a < 3; a++) {
+        const d = dir.getComponent(a); if (!d) continue;
+        t = Math.min(t, ((d > 0 ? hi : lo)[a] - O[a]) / d);
+        const u = (tl[a] - O[a]) / d, v = (th[a] - O[a]) / d; t0 = Math.max(t0, Math.min(u, v)); t1 = Math.min(t1, Math.max(u, v));
+      }
+      data[py * w + px] = t1 >= t0 && t0 > 0 ? Math.min(t, t0) : t;
+    }
+    AR.dz = { data, w, h, uvm: new THREE.Matrix4().elements, P: [...P], V: Vm.elements.slice(), Vi: Vm.clone().invert().elements.slice() };
+  };
+  for (let k = 0; k < 8; k++) for (const p of [-20, 15]) { frame(k * 45 * RAD, p * RAD); scanIntegrate(); }
+  while (scan.remesh(1000)); scanDraw();
+  const tp = scan.geometry().tris, kinds = [0, 0, 0];
+  let on = 0;
+  for (let i = 0; i < tp.length; i += 3) {
+    const p = [tp[i], tp[i + 1], tp[i + 2]], q = p.map((v, a) => Math.max(tl[a] - v, v - th[a]));   // q — до граней столу
+    const table = Math.hypot(...q.map(v => Math.max(v, 0))) + Math.min(Math.max(...q), 0);          // знакова відстань до коробки
+    if ([0, 1, 2].some(a => Math.abs(p[a] - lo[a]) < 0.03 || Math.abs(p[a] - hi[a]) < 0.03) || Math.abs(table) < 0.03) on++;
+  }
+  for (const k of scan.geometry().kind) kinds[k]++;
+  const out = { tris: scan.nTris, onSurface: tp.length ? +(on / (tp.length / 3)).toFixed(3) : 0, kinds, frames: scan.frames,
+                parts: scanParts.size, drawn: [...scanParts.values()].reduce((n, m) => n + m.geometry.attributes.position.count / 3, 0) };
+  renderer.compile(scanGroup, arCam);                        // шейдер затіненої заливки: помилку GLSL видно в консолі
+  if (look) {
+    const sc = new THREE.Scene(), cv = renderer.domElement, cam = new THREE.PerspectiveCamera(60, cv.width / cv.height, 0.05, 50);
+    sc.background = new THREE.Color(0x202428);
+    for (const l of [hemi, sun, fill]) { const c = l.clone(); c.position.copy(zUp2yUp(l.position)); sc.add(c); }   // світло — як у сеансі AR
+    const L = typeof look === 'number' ? { op: look } : look;
+    scanOpacity(L.op || 1); scanGroup.visible = true; sc.add(scanGroup);
+    cam.up.set(0, 1, 0);                                     // у сторінці «угору» типово Z (модель у Z-up), а тут простір WebXR
+    cam.position.set(...(L.from || [-1.85, 2.45, 1.85])); cam.lookAt(...(L.at || [0.6, 0.2, -2.4]));
+    renderer.render(sc, cam); out.png = cv.toDataURL('image/png');
+    if (L.points) out.px = L.points.map(q => { const v = new THREE.Vector3(...q).project(cam); return [Math.round((v.x + 1) / 2 * cv.width), Math.round((1 - v.y) / 2 * cv.height)]; });
+    sc.remove(scanGroup); scanGroup.visible = AR.scan; scanOpacity(+$('ar_scanop').value / 100);
+  }
+  frame(0, -15 * RAD);
+  const s = { planeSpace: {}, orientation: 'vertical', lastChangedTime: 0, polygon: [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, z]) => ({ x, y: 0, z })) };
+  const r = roomMake(s); r.m = Float32Array.from([1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1.4, wallZ, 1]); roomSrc.set(s, r);
+  keepSync(0); roomDrop(r); roomSrc.delete(s); keepSync(6000); keepSync(12000);
+  out.kept = keep.stats().fixed; out.objs = ghostObj.size;
+  for (let i = 1; i <= 6; i++) keepSync(12000 + i * 250);
+  out.afterVotes = keep.stats().fixed;
+  arRoomEnd();
   return out;
 };
 window.__ARUI__ = key => { document.body.classList.add('ar'); arBuildUI(); arHint(key || 'ar.placed'); };   // лише накладка, без сеансу й без руху сцени — для знімка

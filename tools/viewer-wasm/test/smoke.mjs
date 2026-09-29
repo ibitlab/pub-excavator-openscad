@@ -15,6 +15,8 @@ import { UI, LANGS, GROUPS_EN, PARAMS_EN } from '../src/i18n.js';
 import { LEGEND } from '../src/legend.js';
 import { armFromTip } from '../src/ik.js';
 import { Room, KIND, planeTris, meshTris } from '../src/room.js';
+import { Keep } from '../src/keep.js';
+import { Scan } from '../src/scan.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url)), root = path.resolve(here, '../../..');
 const source = readFileSync(path.join(root, 'scad/excavator_boom.scad'), 'utf8');
@@ -76,6 +78,110 @@ v1 && v1 === v2 ? ok('блок //<viewjson> однаковий в обох ве�
   r.build([{ tris: m, kind: 2 }]);
   if (r.hit(A, [2.5, 0.5, 0], 0) !== 2) bad.push('трикутник сітки не зупинив відрізок');
   bad.length ? fail('зіткнення AR: ' + bad.join('; ')) : ok(`зіткнення AR: ${cases.length + 1} випадків (стіна, підлога, стіл, сітка)`);
+}
+
+// Зліпок кімнати: зникла площина → тінь; повторна поява підтверджує; підтверджена лишається назавжди.
+{
+  const wallM = x => [0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0, x, 1, 0, 1];
+  const sq = s => [{ x: -s, z: -s }, { x: s, z: -s }, { x: s, z: s }, { x: -s, z: s }];
+  const bad = [], st = k => JSON.stringify(k.stats());
+  let k = new Keep();
+  k.update([{ key: 'a', kind: 0, m: wallM(1), poly: sq(0.3) }], 0); k.update([], 1000);
+  if (k.stats().wait !== 1) bad.push('зникла площина не стала тінню: ' + st(k));
+  k.update([], 7000); if (k.ghosts.length) bad.push('мала площина без повторної появи лишилась: ' + st(k));
+  k = new Keep();                                              // з'явилась → зникла → знову (новий XRPlane) → зникла
+  k.update([{ key: 'a', kind: 0, m: wallM(1), poly: sq(0.3) }], 0); k.update([], 500);
+  k.update([{ key: 'b', kind: 0, m: wallM(1.03), poly: sq(0.4) }], 1000);
+  if (k.ghosts.length || k.live.get('b').conf !== 2) bad.push('повторна поява не підтвердила: ' + st(k));
+  k.update([], 2000); k.update([], 8000);
+  if (k.stats().fixed !== 1) bad.push('підтверджена площина не лишилась назавжди: ' + st(k));
+  k.update([], 600000); if (k.stats().fixed !== 1) bad.push('«назавжди» минуло: ' + st(k));
+  for (let i = 0; i < 5; i++) k.vote(k.ghosts[0], true);
+  k.vote(k.ghosts[0], false); for (let i = 0; i < 5; i++) k.vote(k.ghosts[0], true);
+  if (k.ghosts.length !== 1) bad.push('перерваний ряд голосів «крізь» прибрав площину');
+  k.vote(k.ghosts[0], true); if (k.ghosts.length) bad.push('карта глибин не прибрала хибну площину');
+  k = new Keep();                                              // злиття: мала зникла, бо її поглинула більша
+  k.update([{ key: 'a', kind: 0, m: wallM(1), poly: sq(0.3) }, { key: 'b', kind: 0, m: wallM(1), poly: sq(1.5) }], 0);
+  k.update([{ key: 'b', kind: 0, m: wallM(1), poly: sq(1.5) }], 500);
+  if (k.ghosts.length || k.live.get('b').conf !== 2) bad.push('злиття не розпізнано: ' + st(k));
+  k = new Keep();                                              // інша площина поруч не «покриває»: паралельна за 0.5 м
+  k.update([{ key: 'a', kind: 0, m: wallM(1), poly: sq(0.3) }], 0); k.update([{ key: 'b', kind: 0, m: wallM(1.5), poly: sq(1.5) }], 500);
+  if (k.ghosts.length !== 1) bad.push('паралельна площина за 0.5 м поглинула тінь');
+  k = new Keep();                                              // велика й довго видна — лишається й без повторної появи
+  k.update([{ key: 'a', kind: 0, m: wallM(1), poly: sq(0.8) }], 0); k.update([], 6000); k.update([], 12000);
+  if (k.stats().fixed !== 1) bad.push('велика стіна, видна 6 с, не лишилась: ' + st(k));
+  bad.length ? fail('зліпок кімнати: ' + bad.join('; ')) : ok('зліпок кімнати: тінь, повторна поява, злиття, назавжди, карта глибин');
+}
+
+// Скан кімнати з карт глибин: кімната-коробка x −2…2, y 0…2.6, z −3…2 м, камера на висоті 1.4 м крутиться на місці
+// (кожні 22.5°, погляд на 20° донизу і на 15° догори), три проходи; у першому посеред кімнати стоїть «людина»-стовп.
+{
+  const lo = [-2, 0, -3], hi = [2, 2.6, 2], O = [0, 1.4, 0], pl = [0.8, 0, -1.7], ph = [1.2, 1.8, -1.3];
+  const frame = (yaw, pitch, person) => {
+    const cols = 96, rows = 72, tx = Math.tan(30 * Math.PI / 180), ty = Math.tan(23 * Math.PI / 180);
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const R = v => { const y1 = v[1] * cp - v[2] * sp, z1 = v[1] * sp + v[2] * cp; return [v[0] * cy + z1 * sy, y1, -v[0] * sy + z1 * cy]; };
+    const dirs = new Float32Array(cols * rows * 3), dep = new Float32Array(cols * rows);
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const d = R([(2 * c / (cols - 1) - 1) * tx, (1 - 2 * r / (rows - 1)) * ty, -1]), i = r * cols + c;
+      dirs.set(d, i * 3);
+      let t = Infinity;
+      for (let a = 0; a < 3; a++) if (d[a]) t = Math.min(t, ((d[a] > 0 ? hi : lo)[a] - O[a]) / d[a]);
+      if (person) {                                            // перетин променя з коробкою «людини» (метод плит)
+        let t0 = 0, t1 = Infinity;
+        for (let a = 0; a < 3; a++) {
+          if (!d[a]) { if (O[a] < pl[a] || O[a] > ph[a]) t1 = -1; continue; }
+          let u = (pl[a] - O[a]) / d[a], v = (ph[a] - O[a]) / d[a]; if (u > v) [u, v] = [v, u];
+          t0 = Math.max(t0, u); t1 = Math.min(t1, v);
+        }
+        if (t1 >= t0 && t0 > 0) t = Math.min(t, t0);
+      }
+      dep[i] = t;
+    }
+    return [O, R([0, 0, -1]), dirs, dep];
+  };
+  const sc = new Scan(), bad = [];
+  for (let pass = 0; pass < 3; pass++) for (let k = 0; k < 16; k++) for (const p of [-20, 15]) sc.integrate(...frame(k * Math.PI / 8, p * Math.PI / 180, pass === 0));
+  while (sc.remesh(1000));
+  const { tris, kind } = sc.geometry();
+  const parts = sc.takeChunks(), inParts = parts.reduce((n, c) => n + c.kind.length, 0);
+  if (inParts !== kind.length || sc.takeChunks().length) bad.push(`шматки: ${inParts} трикутників замість ${kind.length}, або віддаються вдруге`);
+  let far = 0, ghost = 0;
+  for (let i = 0; i < tris.length; i += 3) {
+    const p = [tris[i], tris[i + 1], tris[i + 2]];
+    if (Math.min(...[0, 1, 2].flatMap(a => [Math.abs(p[a] - lo[a]), Math.abs(p[a] - hi[a])])) > 0.04) far++;
+    if (p[0] > pl[0] && p[0] < ph[0] && p[2] > pl[2] && p[2] < ph[2] && p[1] > 0.15 && p[1] < ph[1]) ghost++;
+  }
+  const kinds = [0, 0, 0]; for (const k of kind) kinds[k]++;
+  // затінення: лице трикутника дивиться туди ж, куди гладкі нормалі (у порожнечу), нормалі рівних стін — як грані,
+  // затінення кутів — ≈ 1 посеред стіни і темніше біля кута стіни й підлоги
+  const { nrm, ao } = sc.geometry();
+  let wind = 0, agree = 0; const aoMid = [], aoFoot = [];
+  for (let i = 0; i < kind.length; i++) {
+    const T = tris.subarray(i * 9, i * 9 + 9), N = nrm.subarray(i * 9, i * 9 + 9);
+    const ux = T[3] - T[0], uy = T[4] - T[1], uz = T[5] - T[2], vx = T[6] - T[0], vy = T[7] - T[1], vz = T[8] - T[2];
+    const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx, fl = Math.hypot(fx, fy, fz) || 1;
+    const d = (fx * (N[0] + N[3] + N[6]) + fy * (N[1] + N[4] + N[7]) + fz * (N[2] + N[5] + N[8])) / fl / 3;
+    if (d > 0) wind++; if (d > 0.9) agree++;
+    for (let j = 0; j < 3; j++) {
+      const x = T[j * 3], y = T[j * 3 + 1], z = T[j * 3 + 2];
+      if (Math.abs(z + 3) < 0.05 && Math.abs(x) < 1 && y > 1 && y < 2) aoMid.push(ao[i * 3 + j]);
+      if (y < 0.06 && z < -2.9 && x < -0.3) aoFoot.push(ao[i * 3 + j]);
+    }
+  }
+  const mean = a => a.reduce((s, v) => s + v, 0) / (a.length || 1);
+  if (wind < kind.length) bad.push(`${kind.length - wind} трикутників лицем від гладких нормалей`);
+  if (agree < kind.length * 0.95) bad.push(`нормалі збігаються з гранями лише в ${(agree / kind.length * 100).toFixed(1)} %`);
+  if (mean(aoMid) < 0.97) bad.push(`рівна стіна затінена як кут: ${mean(aoMid).toFixed(2)}`);
+  if (!(Math.min(...aoFoot) < 0.8)) bad.push(`кут стіни й підлоги не темніший: найменше ${Math.min(...aoFoot).toFixed(2)}`);
+  if (kind.length < 20000) bad.push(`замало трикутників: ${kind.length}`);
+  if (far > tris.length / 3 * 0.001) bad.push(`${far} з ${tris.length / 3} вершин далі за 4 см від стін`);
+  if (ghost) bad.push(`від «людини», що пішла, лишилось ${ghost} вершин`);
+  if (!kinds[0] || !kinds[1]) bad.push('немає стін або підлоги: ' + kinds.join('/'));
+  const empty = new Scan(); empty.integrate(O, [0, 0, -1], new Float32Array(30), new Float32Array(10)); empty.remesh();
+  if (empty.geometry().kind.length) bad.push('без глибини з\'явилась поверхня');
+  bad.length ? fail('скан кімнати: ' + bad.join('; '))
+             : ok(`скан кімнати: ${sc.frames} кадрів → ${kind.length} трикутників у ${parts.length} шматках (стіни ${kinds[0]}, горизонтальні ${kinds[1]}), усі в межах 4 см, «людину» вичищено; затінення: лице й нормалі узгоджені, AO стіни ${mean(aoMid).toFixed(2)}, кута до ${Math.min(...aoFoot).toFixed(2)}`);
 }
 
 // --- переклад -------------------------------------------------------------------------------------

@@ -51,8 +51,9 @@ node tools/media/probe.mjs URL --set sl_boom=40 --js "__VIEW__().angles" --shot 
 | `__CAM__()` | `{p, t, zoom}` — положення камери |
 | `__PICK__()` | назва підсвіченого тіла або `null` (лише WASM) |
 | `__PNG__()` | Blob знімка сцени (лише WASM) |
-| `__AR__()` | `{active, placing, scale, button, feat, room, tris, hits}` — стан AR: дані можливості, скільки площин/сіток, трикутників, зіткнень (лише WASM) |
+| `__AR__()` | `{active, placing, scale, button, feat, room, tris, hits, kept, scan}` — стан AR: дані можливості, скільки площин/сіток, трикутників, зіткнень, зліпок `{live, wait, fixed}`, скан `{blocks, tris, frames, full, pending}` (лише WASM) |
 | `__ARSIM__(x)` | машина 1:1 перед стіною за x м → `{hits, marks, warn}`; зважає на кнопку `#ar_coll` (вимкнено → `hits: []`); заразом компілює шейдер затуляння (лише WASM) |
+| `__ARSCAN__(z, look)` | синтетична кімната-коробка (x −2…2, y 0…2.6, z −3…2 м) зі столом, 16 кадрів глибини навколо → скан `{tris, onSurface, kinds, frames, parts, drawn}` (`onSurface` — частка вершин у межах 3 см від стін, має бути 1; `drawn` — трикутників у геометріях шматків, має дорівнювати `tris`); заразом компілює шейдер затіненої заливки; `look` — прозорість або `{op, from, at, points}` → ще й знімок скану `png` (data:-адреса; декодуй у scratchpad і міряй `color.py px`) і `px` — пікселі точок `points` і зліпок для стіни на `z` → `{kept, objs, afterVotes}` (−3: 1/1/1, −2: 1/1/0) (лише WASM) |
 | `__ARUI__(ключ?)` | показати накладку AR без сеансу, з підказкою `ключ` — для знімка й замірів (лише WASM) |
 | `__SM__`, `__VJREPO__` | 3D-миша, список ракурсів із репозиторію |
 
