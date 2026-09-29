@@ -2,9 +2,9 @@
 # Запускає команду з вільною для браузера SpaceMouse (macOS): перед стартом закриває помічник драйвера 3Dconnexion,
 # а коли команда завершиться з БУДЬ-ЯКОЇ причини (Ctrl+C, закриття термінала, помилка, звичайний вихід) — запускає його знову.
 # Якщо помічник до старту не працював, після виходу він не запускається: повертається той стан, який був.
-#   tools/with-spacemouse.sh tools/viewer.sh                 сторінка з сервером
-#   cd tools/viewer-wasm && npm run preview:sm               WASM-сторінка (так само: npm run dev:sm)
-# Не спрацює лише при kill -9 самого скрипта — тоді вручну: tools/spacemouse-driver.sh on
+#   tools/dev/with-spacemouse.sh web/viewer.sh                 сторінка з сервером
+#   cd web/viewer-wasm && npm run preview:sm               WASM-сторінка (так само: npm run dev:sm)
+# Не спрацює лише при kill -9 самого скрипта — тоді вручну: tools/dev/spacemouse-driver.sh on
 DRV="${SM_DRIVER:-$(cd "$(dirname "$0")" && pwd)/spacemouse-driver.sh}"
 [ $# -gt 0 ] || { sed -n '2,7p' "$0"; exit 1; }
 helper_running() { [ -n "$SM_FORCE" ] || pgrep -x 3DconnexionHelper >/dev/null; }

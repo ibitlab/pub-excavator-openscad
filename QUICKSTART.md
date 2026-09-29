@@ -34,14 +34,14 @@ tools/check_motion.sh
 print3d-parts/make.sh
 
 # the 3D page in a browser: angles are instant, other parameters rebuild through OpenSCAD in ≈ 0.4 s
-tools/viewer.sh
+web/viewer.sh
 
 # the same without a backend: OpenSCAD-WASM in the browser (the first run does npm install itself)
-tools/viewer-wasm.sh              # dev server;  build → a static site in dist/;  preview;  test
+web/viewer-wasm.sh              # dev server;  build → a static site in dist/;  preview;  test
 
 # with a SpaceMouse on macOS: the driver is released while the server runs and restored on exit
-tools/with-spacemouse.sh tools/viewer.sh
-cd tools/viewer-wasm && npm run preview:sm
+tools/dev/with-spacemouse.sh web/viewer.sh
+cd web/viewer-wasm && npm run preview:sm
 ```
 
 Once after cloning: `git config core.hooksPath tools/git-hooks` — this checks plate overlaps before every commit that touches the model.

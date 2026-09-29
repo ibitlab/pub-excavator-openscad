@@ -3,16 +3,16 @@
 viewer.py — інтерактивний 3D-перегляд моделі scad/excavator_boom.scad у браузері.
 
 Як це працює:
-  * сторінка tools/viewer/index.html (three.js: обертання / панорама / масштаб) показує деталі, які OpenSCAD експортує
+  * сторінка web/viewer/index.html (three.js: обертання / панорама / масштаб) показує деталі, які OpenSCAD експортує
     у ВЛАСНИХ системах координат (стріла, рукоять, ківш, коромисло, тяга, половинки циліндрів) у форматі OFF з кольорами;
   * кути стріли / рукояті / ковша змінюються у браузері МИТТЄВО: позу складає JavaScript за тими самими формулами, що й
     функції pt_*() моделі, з точок, які модель друкує в echo(VIEW = ...);
   * будь-який інший параметр (довжини, труби, кріплення, ківш…) → сервер запускає OpenSCAD паралельно для всіх деталей
     (≈ 0.3–0.6 с) і віддає нові сітки. Параметри читаються з самого .scad (групи Customizer) — окремого списку немає.
 
-Запуск:   tools/viewer.sh                      (або python3 tools/viewer.py --open)
+Запуск:   web/viewer.sh                      (або python3 web/viewer.py --open)
 Статична сторінка без сервера (лише кути, геометрія за замовчуванням):
-          python3 tools/viewer.py --export versions/VNNN/viewer.html
+          python3 web/viewer.py --export versions/VNNN/viewer.html
 """
 import argparse, json, os, re, subprocess, sys, tempfile, threading, time, webbrowser
 from concurrent.futures import ThreadPoolExecutor
@@ -20,7 +20,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCAD = os.path.join(ROOT, 'scad', 'excavator_boom.scad')
-PAGE = os.path.join(ROOT, 'tools', 'viewer', 'index.html')
+PAGE = os.path.join(ROOT, 'web', 'viewer', 'index.html')
 PARTS = ['post', 'boom', 'v_stick', 'bucket', 'v_rocker', 'v_link',
          'v_cyl_boom_body', 'v_cyl_boom_rod', 'v_cyl_stick_body', 'v_cyl_stick_rod', 'v_cyl_bucket_body', 'v_cyl_bucket_rod']
 # параметри, які обробляє сама сторінка (без OpenSCAD): кути, прапорці показу, рівень землі

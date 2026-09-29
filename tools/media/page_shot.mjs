@@ -1,7 +1,7 @@
 // Знімок або кадри 3D-сторінки у headless Chrome (для перевірки сторінок і для матеріалів до публікацій).
 // puppeteer-core свідомо не в package.json (зауваження npm audit у його залежностях): один раз
 //   npm i --no-save --prefix tools/media puppeteer-core
-// Приклади (сторінка вже має працювати: tools/viewer.sh або npm run preview):
+// Приклади (сторінка вже має працювати: web/viewer.sh або npm run preview):
 //   node tools/media/page_shot.mjs http://127.0.0.1:8765/ --out hero.png --size 1200x1200 --dsf 2 --clean --angles -12,92,48 --view Ізометрія
 //   node tools/media/page_shot.mjs URL --out ui.png --toggle "робоча зона" --view Збоку --meta cam.json
 //   node tools/media/page_shot.mjs URL --cycle frames/ --size 1280x720 --dsf 1.5 --toggle "робоча зона" --view Ззаду-збоку --wheel 11

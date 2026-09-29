@@ -8,8 +8,8 @@ Where the 3D pages get their geometry, how the STL for printing differs from the
 
 | Consumer | Source | Output |
 |---|---|---|
-| WASM page (`tools/viewer-wasm/`) | `scad/excavator_boom.scad` — steel at 1:1, welded bodies | OFF in browser memory |
-| Page with a server (`tools/viewer.py`) | the same model | one OFF per body → JSON |
+| WASM page (`web/viewer-wasm/`) | `scad/excavator_boom.scad` — steel at 1:1, welded bodies | OFF in browser memory |
+| Page with a server (`web/viewer.py`) | the same model | one OFF per body → JSON |
 | `tools/build_version.sh` | the same model | STL 1:1 in `versions/…/stl/` |
 | `print3d-parts/make.sh` | `print3d-parts/parts.scad` (the model as a library) | STL 1:5, one component per file |
 
@@ -74,7 +74,7 @@ Converting OFF to glTF for the pages makes no sense: the mesh never crosses a ne
 
 ## 5. How 12 bodies fit in one file
 
-`part="view_all"` places the i-th body from the `view_parts` list in its own coordinate system, shifted by `i · view_spacing` (5000 mm) along Y. The model prints the list and the step in `echo(VIEW = …)` (keys `parts`, `spacing`). `tools/viewer-wasm/src/offmesh.js` cuts the file apart:
+`part="view_all"` places the i-th body from the `view_parts` list in its own coordinate system, shifted by `i · view_spacing` (5000 mm) along Y. The model prints the list and the step in `echo(VIEW = …)` (keys `parts`, `spacing`). `web/viewer-wasm/src/offmesh.js` cuts the file apart:
 
 1. A vertex's body number is `round(y / spacing)`; the shift is subtracted and the vertex returns to the body's own coordinates.
 2. A face goes to the body of its first vertex, and there into the group of its colour; indices are renumbered within the body.

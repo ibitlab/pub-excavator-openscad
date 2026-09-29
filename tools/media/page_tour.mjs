@@ -2,12 +2,12 @@
 // щоб з першого погляду було видно, що за посиланням. Знімає WASM-сторінку (вона двомовна
 // і свіжіша за опубліковану), кадри → tools/media/readme_media.sh → GIF у docs/img/.
 //
-//   cd tools/viewer-wasm && npx vite build && npx vite preview --port 8797 --strictPort &
+//   cd web/viewer-wasm && npx vite build && npx vite preview --port 8797 --strictPort &
 //   node tools/media/page_tour.mjs "http://localhost:8797/?lang=en" --lang en --frames /tmp/tour_en --fps 10
 //
 // Сцени: ізометрія + цикл копання → збоку з робочою зоною, пози «виліт / глибина» →
 // ззаду-збоку, «що з чим зварене», обертання камери → згори → назад в ізометрію.
-// Кути — з POSES сторінки (tools/viewer-wasm/src/main.js), між ними — плавна інтерполяція.
+// Кути — з POSES сторінки (web/viewer-wasm/src/main.js), між ними — плавна інтерполяція.
 // Код виходу 3 = на сторінці були помилки JS.
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 let puppeteer; try { puppeteer = (await import('puppeteer-core')).default; } catch (e) { console.error('Спершу: npm i --no-save --prefix tools/media puppeteer-core'); process.exit(2); }

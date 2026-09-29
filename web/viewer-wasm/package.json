@@ -6,10 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --open",
-    "dev:sm": "../with-spacemouse.sh vite --open",
+    "dev:sm": "../../tools/dev/with-spacemouse.sh vite --open",
     "build": "vite build",
     "preview": "vite preview --open",
-    "preview:sm": "../with-spacemouse.sh vite preview --open",
+    "preview:sm": "../../tools/dev/with-spacemouse.sh vite preview --open",
     "test": "node test/smoke.mjs",
     "test:spacemouse": "node test/spacemouse.mjs"
   },

@@ -10,9 +10,9 @@ tools/media/make_media.sh [ТЕКА]        # за замовчуванням te
 ```
 Дає `01_hero.png`, `02_poses.png`, `03_viewer_ui.png`, `04_bucket.png`, `05_drawings.png`, `06_clearances.png`, `07_dig_cycle.mp4` (квадрат, чиста сцена), `08_dig_cycle_ui.mp4` (уся сторінка з панеллю і робочою зоною). Окремі знімки — `tools/media/page_shot.mjs`, колажі — `tools/media/compose.py` (skill `browser-verify` — про граблі headless Chrome).
 
-**Англійські варіанти скрипт не робить.** Він знімає СЕРВЕРНУ сторінку (`tools/viewer.py`), а вона лише українська. Для `03en_…`/`08en_…` бери WASM-сторінку з `?lang=en` і англійські підписи в опціях — інакше `page_shot.mjs` не знайде кнопку:
+**Англійські варіанти скрипт не робить.** Він знімає СЕРВЕРНУ сторінку (`web/viewer.py`), а вона лише українська. Для `03en_…`/`08en_…` бери WASM-сторінку з `?lang=en` і англійські підписи в опціях — інакше `page_shot.mjs` не знайде кнопку:
 ```
-cd tools/viewer-wasm && npx vite build && npx vite preview --port 8797 --strictPort &
+cd web/viewer-wasm && npx vite build && npx vite preview --port 8797 --strictPort &
 node tools/media/page_shot.mjs "http://127.0.0.1:8797/?lang=en" --out 03en_viewer_ui.png \
      --size 1600x1000 --dsf 2 --angles -20,100,55 --toggle "work envelope" --view "Side"
 ```

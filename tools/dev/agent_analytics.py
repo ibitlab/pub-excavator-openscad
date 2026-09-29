@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Аналітика агентної роботи за журналами Claude Code: головна сесія + субагенти workflow.
-Використання: tools/agent_analytics.py [шлях_до_теки_проєкту_в_~/.claude/projects] > звіт.json"""
+Використання: tools/dev/agent_analytics.py [шлях_до_теки_проєкту_в_~/.claude/projects] > звіт.json"""
 import json, glob, os, re, sys, collections, datetime
 
-ROOT = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+ROOT = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 # СЛІД СКІЛА. Кількість викликів Skill нічого не каже про те, чи скілом користувалися:
 # він завантажується раз і діє до кінця сесії. Зате видно, чи запускалися інструменти,

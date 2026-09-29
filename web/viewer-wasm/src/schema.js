@@ -1,4 +1,4 @@
-// Параметри Customizer з тексту .scad (те саме, що read_schema() у tools/viewer.py):
+// Параметри Customizer з тексту .scad (те саме, що read_schema() у web/viewer.py):
 // групи /* [Назва] */, присвоєння `name = value; // [min:step:max] | [a, b, c] | коментар`, рядки-коментарі над параметром = опис.
 const CLIENT = new Set(['boom_angle', 'stick_angle', 'bucket_angle', 'clamp_to_cylinders', 'ground_below_A']);
 

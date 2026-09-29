@@ -91,7 +91,7 @@
   <div class="row" style="align-items:center;margin-top:4px"><label for="gz">вісь A над землею, мм</label><input type="number" id="gz" step="10" style="width:80px"></div>
 
   <h2 class="adv">Параметри моделі — через OpenSCAD</h2>
-  <div id="static-note" class="note adv" hidden>Це статична сторінка: геометрія зафіксована на момент збирання, працюють лише кути та вигляд. Щоб міняти довжини, труби, кріплення і ківш — запустіть <code>tools/viewer.sh</code>.</div>
+  <div id="static-note" class="note adv" hidden>Це статична сторінка: геометрія зафіксована на момент збирання, працюють лише кути та вигляд. Щоб міняти довжини, труби, кріплення і ківш — запустіть <code>web/viewer.sh</code>.</div>
   <div class="row adv"><button id="reset">Скинути все</button><button id="copy">Копіювати зміни</button><button id="rebuild" title="Перечитати .scad і побудувати заново">↻ Перечитати модель</button></div>
   <div id="status" class="adv"></div>
   <div id="groups" class="adv"></div>
@@ -371,7 +371,7 @@ async function rebuild(fresh = false) {
   try {
     const t0 = performance.now(), r = await fetch('/api/build', { method: 'POST', body: JSON.stringify({ params: changed(), fresh }) }), d = await r.json();
     if (d.error) status('Помилка: ' + d.error, 'err'); else { applyBuild(d); status(`OpenSCAD: ${d.cached ? 'з кешу' : (d.ms / 1000).toFixed(2) + ' с'} · разом ${((performance.now() - t0) / 1000).toFixed(2)} с · змінено параметрів: ${Object.keys(changed()).length}`); }
-  } catch (e) { status('Сервер недоступний — запустіть tools/viewer.sh (' + e.message + ')', 'err'); }
+  } catch (e) { status('Сервер недоступний — запустіть web/viewer.sh (' + e.message + ')', 'err'); }
   inflight = false; if (again) { again = false; rebuild(); }
 }
 function status(t, cls = '') { const s = $('status'); s.textContent = t; s.className = 'adv ' + cls; }   // adv — мітка «розширене», її не можна стирати
@@ -401,9 +401,9 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
-// Заглушка перекладу: блок spacemouse нижче спільний з tools/viewer-wasm/src/main.js і має лишатися
+// Заглушка перекладу: блок spacemouse нижче спільний з web/viewer-wasm/src/main.js і має лишатися
 // байт-у-байт однаковим (це перевіряє npm test), тому текст у ньому береться через t().
-// Ця сторінка україномовна, тож словник тут один; двомовна версія — tools/viewer-wasm/src/i18n.js.
+// Ця сторінка україномовна, тож словник тут один; двомовна версія — web/viewer-wasm/src/i18n.js.
 const SM_UK = {
   'sm.btn.title': '3Dconnexion SpaceMouse / SpaceNavigator',
   'sm.speed': 'чутливість', 'sm.invPan': 'інв. зсув', 'sm.invZoom': 'інв. масштаб', 'sm.invRot': 'інв. оберт.',
@@ -411,7 +411,7 @@ const SM_UK = {
   'sm.press': 'натисніть кнопку і виберіть мишу у вікні браузера',
   'sm.nohid': 'тут немає WebHID — порухайте ковпачок, миша підхопиться через Gamepad API',
   'sm.nodev': 'пристрій не вибрано',
-  'sm.failed': 'не вдалося відкрити: {msg} — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз',
+  'sm.failed': 'не вдалося відкрити: {msg} — мишу монопольно тримає драйвер 3Dconnexion. macOS: tools/dev/spacemouse-driver.sh off (або закрити 3DconnexionHelper), Windows: вийти з 3DxWare; Linux: права на /dev/hidraw*. Потім натисніть кнопку ще раз',
   'sm.nodata': 'даних немає (звітів: {n}) — порухайте ковпачок; якщо так і лишиться, пристрій тримає драйвер 3DxWare',
   'sm.report': 'звіт {id}·{n} байт', 'sm.dbg': '{src} · зсув {t} · оберт {r}',
   'vw.name': 'назва ракурсу',

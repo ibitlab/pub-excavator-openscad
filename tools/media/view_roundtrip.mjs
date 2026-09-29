@@ -2,7 +2,7 @@
 // Це перевірка перерахунку камери: сторінка має 32° по вертикалі, OpenSCAD 22.5°, і views.py
 // відсуває око на tan(16°)/tan(11.25°). Перевіряти треба саме так — числом, а не оком.
 //
-//   python3 tools/viewer.py --port 8791 &
+//   python3 web/viewer.py --port 8791 &
 //   node tools/media/view_roundtrip.mjs http://127.0.0.1:8791/ /tmp/rt
 //   tools/views.py check круговий-тест --file /tmp/rt.json --page /tmp/rt.png
 //

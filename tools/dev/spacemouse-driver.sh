@@ -2,10 +2,10 @@
 # macOS: 3DconnexionHelper відкриває SpaceMouse МОНОПОЛЬНО (IOHID seize), тому Chrome/WebHID отримує «Failed to open the device».
 # Цей скрипт тимчасово вимикає/вмикає помічник драйвера. Системне розширення com.3dconnexion.driver не чіпається; після
 # перезавантаження або входу в систему помічник стартує сам (LaunchAgent com.3dconnexion.helper, RunAtLoad).
-#   tools/spacemouse-driver.sh status   — хто зараз тримає мишу
-#   tools/spacemouse-driver.sh off      — закрити помічник → миша вільна для браузера (CAD-програми її на цей час не бачать)
-#   tools/spacemouse-driver.sh on       — запустити помічник знову
-# Автоматично (вимкнути на час роботи сервера і повернути після виходу): tools/with-spacemouse.sh <команда>, npm run preview:sm
+#   tools/dev/spacemouse-driver.sh status   — хто зараз тримає мишу
+#   tools/dev/spacemouse-driver.sh off      — закрити помічник → миша вільна для браузера (CAD-програми її на цей час не бачать)
+#   tools/dev/spacemouse-driver.sh on       — запустити помічник знову
+# Автоматично (вимкнути на час роботи сервера і повернути після виходу): tools/dev/with-spacemouse.sh <команда>, npm run preview:sm
 [ "$(uname)" = "Darwin" ] || { echo "лише для macOS"; exit 1; }
 holders() { ioreg -l -w 0 | awk '/"Product" = "Space(Mouse|Navigator|Pilot)/{f=1;c=0} f{c++; if ($0 ~ /IOUserClientCreator/) print "  тримає: " $0; if (c>60) exit}' | sed 's/.*"IOUserClientCreator" = //' | sort -u | sed 's/^/  відкрито процесом: /'; }
 case "${1:-status}" in

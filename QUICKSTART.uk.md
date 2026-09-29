@@ -34,14 +34,14 @@ tools/check_motion.sh
 print3d-parts/make.sh
 
 # 3D-сторінка в браузері: кути — миттєво, інші параметри — через OpenSCAD за ≈ 0.4 с
-tools/viewer.sh
+web/viewer.sh
 
 # те саме без бекенду: OpenSCAD-WASM у браузері (перший раз сам зробить npm install)
-tools/viewer-wasm.sh              # dev-сервер;  build → статичний сайт у dist/;  preview;  test
+web/viewer-wasm.sh              # dev-сервер;  build → статичний сайт у dist/;  preview;  test
 
 # зі SpaceMouse на macOS: драйвер вимикається на час роботи сервера і повертається після виходу
-tools/with-spacemouse.sh tools/viewer.sh
-cd tools/viewer-wasm && npm run preview:sm
+tools/dev/with-spacemouse.sh web/viewer.sh
+cd web/viewer-wasm && npm run preview:sm
 ```
 
 Один раз після клонування: `git config core.hooksPath tools/git-hooks` — перевірка перекриттів перед комітом змін моделі.

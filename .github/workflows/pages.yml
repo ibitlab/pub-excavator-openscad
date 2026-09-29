@@ -1,4 +1,4 @@
-# Публікація 3D-сторінки (tools/viewer-wasm) на GitHub Pages.
+# Публікація 3D-сторінки (web/viewer-wasm) на GitHub Pages.
 #
 # Сторінка вшиває сам OpenSCAD під GPL-2.0, тому разом із нею викладаються текст ліцензії
 # і THIRD-PARTY.md із посиланням на вихідні коди — цього вимагає §1 і §3 GPL-2.0.
@@ -34,20 +34,20 @@ jobs:
           # у квітні 2026, тому беремо 22 — другу, живу гілку цієї вимоги.
           node-version: '22'
           cache: npm
-          cache-dependency-path: tools/viewer-wasm/package-lock.json
+          cache-dependency-path: web/viewer-wasm/package-lock.json
 
       - name: Встановити залежності
-        working-directory: tools/viewer-wasm
+        working-directory: web/viewer-wasm
         run: npm ci
 
       # Захист від публікації зламаної моделі: тест будує її рушієм сторінки
       # і валиться на будь-якому попередженні, порожній деталі чи розходженні перекладу.
       - name: Перевірити модель і сторінку
-        working-directory: tools/viewer-wasm
+        working-directory: web/viewer-wasm
         run: npm test
 
       - name: Зібрати сайт
-        working-directory: tools/viewer-wasm
+        working-directory: web/viewer-wasm
         run: npm run build
 
       - name: Додати обов'язкові за GPL файли
@@ -55,13 +55,13 @@ jobs:
           # З розширенням .txt: файл без розширення Pages віддає як
           # application/octet-stream, і посилання «GPL-2.0» у панелі
           # завантажувало б файл замість того, щоб показати текст.
-          cp tools/viewer-wasm/LICENSE tools/viewer-wasm/dist/LICENSE.txt
-          cp THIRD-PARTY.md            tools/viewer-wasm/dist/THIRD-PARTY.md
-          ls -lh tools/viewer-wasm/dist/
+          cp web/viewer-wasm/LICENSE web/viewer-wasm/dist/LICENSE.txt
+          cp THIRD-PARTY.md            web/viewer-wasm/dist/THIRD-PARTY.md
+          ls -lh web/viewer-wasm/dist/
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: tools/viewer-wasm/dist
+          path: web/viewer-wasm/dist
 
   deploy:
     needs: build

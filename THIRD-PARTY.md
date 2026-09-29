@@ -10,11 +10,11 @@ This file lists everything in this repository that was **not** written here, tog
 
 | Component | Version | Licence | Where it ends up |
 |---|---|---|---|
-| **OpenSCAD**, compiled to WebAssembly, via the npm package `openscad-wasm-prebuilt` | engine reports **OpenSCAD version 2025.01.19**; npm package `openscad-wasm-prebuilt@1.2.0` | **GPL-2.0-or-later** — the package ships the licence text itself, copied to [tools/viewer-wasm/LICENSE](tools/viewer-wasm/LICENSE) | embedded into `tools/viewer-wasm/dist/` at build time (≈11 MB of the ≈12 MB bundle) |
+| **OpenSCAD**, compiled to WebAssembly, via the npm package `openscad-wasm-prebuilt` | engine reports **OpenSCAD version 2025.01.19**; npm package `openscad-wasm-prebuilt@1.2.0` | **GPL-2.0-or-later** — the package ships the licence text itself, copied to [web/viewer-wasm/LICENSE](web/viewer-wasm/LICENSE) | embedded into `web/viewer-wasm/dist/` at build time (≈11 MB of the ≈12 MB bundle) |
 
 **Corresponding source:** `https://github.com/lorenzowritescode/openscad-wasm`, declared as the `repository` of the npm package. That project builds the engine from OpenSCAD itself (`https://github.com/openscad/openscad`, GPL-2.0-or-later).
 
-Building `tools/viewer-wasm` produces a `dist/` folder that **contains OpenSCAD itself**. Publishing that folder (for example to GitHub Pages) is distribution of a GPL-2.0 binary, and GPL-2.0 §1 and §3 then apply: the copyright and licence notices must be kept intact, and the recipient must be able to obtain the corresponding source code. To satisfy this, publish `tools/viewer-wasm/LICENSE` and this file alongside the site.
+Building `web/viewer-wasm` produces a `dist/` folder that **contains OpenSCAD itself**. Publishing that folder (for example to GitHub Pages) is distribution of a GPL-2.0 binary, and GPL-2.0 §1 and §3 then apply: the copyright and licence notices must be kept intact, and the recipient must be able to obtain the corresponding source code. To satisfy this, publish `web/viewer-wasm/LICENSE` and this file alongside the site.
 
 ### Why not the official `openscad/openscad-wasm` artefact
 
@@ -28,7 +28,7 @@ The project previously used `openscad-wasm@0.0.4`, which **shipped no licence fi
 
 | Component | Version | Licence | Notes |
 |---|---|---|---|
-| **three.js** | 0.160.1 (npm) / 0.160.0 (CDN) | MIT | bundled into `tools/viewer-wasm/dist/`; the server page `tools/viewer/index.html` and the exported `viewer.html` load it from `cdn.jsdelivr.net` instead |
+| **three.js** | 0.160.1 (npm) / 0.160.0 (CDN) | MIT | bundled into `web/viewer-wasm/dist/`; the server page `web/viewer/index.html` and the exported `viewer.html` load it from `cdn.jsdelivr.net` instead |
 
 ## Build-time only — never shipped
 
@@ -58,11 +58,11 @@ Standards cited by number only (ДСТУ 8940, ГОСТ 8645, РД 22-158-86, IS
 
 | Складник | Версія | Ліцензія | Куди потрапляє |
 |---|---|---|---|
-| **OpenSCAD**, скомпільований у WebAssembly, через пакет `openscad-wasm-prebuilt` | рушій повідомляє **OpenSCAD version 2025.01.19**; пакет `openscad-wasm-prebuilt@1.2.0` | **GPL-2.0-or-later** — пакет сам містить текст ліцензії, скопійований у [tools/viewer-wasm/LICENSE](tools/viewer-wasm/LICENSE) | вшивається у `tools/viewer-wasm/dist/` під час збирання (≈11 МБ із ≈12 МБ) |
+| **OpenSCAD**, скомпільований у WebAssembly, через пакет `openscad-wasm-prebuilt` | рушій повідомляє **OpenSCAD version 2025.01.19**; пакет `openscad-wasm-prebuilt@1.2.0` | **GPL-2.0-or-later** — пакет сам містить текст ліцензії, скопійований у [web/viewer-wasm/LICENSE](web/viewer-wasm/LICENSE) | вшивається у `web/viewer-wasm/dist/` під час збирання (≈11 МБ із ≈12 МБ) |
 
 **Відповідні вихідні коди:** `https://github.com/lorenzowritescode/openscad-wasm` — вказано як `repository` пакета npm. Той проєкт збирає рушій із самого OpenSCAD (`https://github.com/openscad/openscad`, GPL-2.0-or-later).
 
-Збирання `tools/viewer-wasm` дає теку `dist/`, яка **містить сам OpenSCAD**. Публікація цієї теки (наприклад, на GitHub Pages) — це поширення GPL-бінарника, і діють §1 та §3 GPL-2.0: зберегти повідомлення про авторство й ліцензію та дати одержувачу можливість отримати відповідні вихідні коди. Щоб це виконати, публікуй поруч із сайтом `tools/viewer-wasm/LICENSE` і цей файл.
+Збирання `web/viewer-wasm` дає теку `dist/`, яка **містить сам OpenSCAD**. Публікація цієї теки (наприклад, на GitHub Pages) — це поширення GPL-бінарника, і діють §1 та §3 GPL-2.0: зберегти повідомлення про авторство й ліцензію та дати одержувачу можливість отримати відповідні вихідні коди. Щоб це виконати, публікуй поруч із сайтом `web/viewer-wasm/LICENSE` і цей файл.
 
 ### Чому не офіційний артефакт `openscad/openscad-wasm`
 
@@ -76,7 +76,7 @@ Standards cited by number only (ДСТУ 8940, ГОСТ 8645, РД 22-158-86, IS
 
 | Складник | Версія | Ліцензія | Примітка |
 |---|---|---|---|
-| **three.js** | 0.160.1 (npm) / 0.160.0 (CDN) | MIT | вшивається у `tools/viewer-wasm/dist/`; серверна сторінка `tools/viewer/index.html` і експортована `viewer.html` тягнуть її з `cdn.jsdelivr.net` |
+| **three.js** | 0.160.1 (npm) / 0.160.0 (CDN) | MIT | вшивається у `web/viewer-wasm/dist/`; серверна сторінка `web/viewer/index.html` і експортована `viewer.html` тягнуть її з `cdn.jsdelivr.net` |
 
 ## Лише для збирання — нікуди не потрапляє
 

@@ -126,7 +126,8 @@ flowchart LR
 | Folder | Contents |
 |---|---|
 | `scad/` | the model and the logo polygons |
-| `tools/` | twins, generators, checks, the page server, `viewer/`, `viewer-wasm/`, `media/`, `git-hooks/` |
+| `tools/` | twins, generators, checks, `media/`, `git-hooks/`, `dev/` (SpaceMouse helper, agent analytics) |
+| `web/` | the pages: `viewer/` with its server `viewer.py`, `viewer-wasm/` (published on Pages) |
 | `versions/VNNN-…/` | `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (snapshot of the model and scripts), `viewer.html`, `VERSION.md` |
 | `print3d-parts/` | the 1:5 kit: `parts.scad`, `parts.tsv`, `assembly.tsv`, `stl/`, `BOM.md`, `sheets/`, `stand/` (a separate display stand with its own `make.sh`) |
 | `docs/img/` | README images (updated by `build_version.sh` and `readme_media.sh`) |

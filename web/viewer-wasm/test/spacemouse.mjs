@@ -1,5 +1,5 @@
 // Перевірка навігації SpaceMouse БЕЗ заліза: підставні Gamepad API і WebHID у headless Chrome.
-// Запуск: спершу підніміть сторінку (npm run preview або tools/viewer.sh), потім
+// Запуск: спершу підніміть сторінку (npm run preview або web/viewer.sh), потім
 //   npm run test:spacemouse -- http://localhost:8767/            (CHROME=/шлях/до/chrome, якщо Chrome не в типовому місці)
 // puppeteer-core свідомо НЕ в package.json (тягне залежність із зауваженням npm audit): перед запуском — npm i --no-save puppeteer-core
 let puppeteer; try { puppeteer = (await import('puppeteer-core')).default; } catch (e) { console.error('Спершу: npm i --no-save puppeteer-core'); process.exit(2); }

@@ -408,7 +408,7 @@ module ring_plate_xz(center2, r_out, r_in, t, y0 = 0) {
 
 // Половина циліндра у власній системі (вісь уздовж +X): "body" — вушко бази у початку координат, корпус, порти;
 // "rod" — вушко штока у початку координат, шток тягнеться у −X на rod_vis (за замовчуванням — увесь хід + запас,
-// для інтерактивного перегляду tools/viewer.py: зайва довжина ховається всередині корпусу)
+// для інтерактивного перегляду web/viewer.py: зайва довжина ховається всередині корпусу)
 module hyd_cyl_part(which, bore, rod, closed, stroke, pin, wall = 5, eye_len = 45, rod_vis = undef, col_body = [0.13, 0.13, 0.14]) {
     body_od = bore + 2*wall;
     body_L = closed - 2*eye_len - 30;               // корпус (гільза + кришки)
@@ -944,7 +944,7 @@ module part_by_name(n) {
     else if (n == "bucket_ears")     bucket_ears();
     else if (n == "bucket_wear")     bucket_wear();
     // рухомі вузли у світовій системі при поточних кутах — для перевірки зіткнень (part="collide")
-    // деталі у ВЛАСНИХ системах для інтерактивного перегляду (tools/viewer.py): поза складається у браузері
+    // деталі у ВЛАСНИХ системах для інтерактивного перегляду (web/viewer.py): поза складається у браузері
     else if (n == "v_stick")         { stick_assembly(); washers_B(); }
     else if (n == "v_rocker")        rocker_link_pts([0, 0], [rocker_L, 0], [0, 0], "rocker");
     else if (n == "v_link")          rocker_link_pts([0, 0], [0, 0], [link_L, 0], "link");
@@ -1038,9 +1038,9 @@ echo(BOM_PINS = [            // [ключ, к-сть, діаметр, довжи
     ["pin_G", 1, stick_cyl_pin, stick_pack_w + 20, "Палець штока циліндра рукояті G"],
     ["pin_JQ", 2, pin_JQ, pin_JQ_len, "Пальці J (шток циліндра ковша) і Q (тяга–ківш)"]]);
 
-// ---- Дані для інтерактивного перегляду (tools/viewer.py): локальні точки шарнірів, довжини ланок, межі кутів, пальці.
+// ---- Дані для інтерактивного перегляду (web/viewer.py): локальні точки шарнірів, довжини ланок, межі кутів, пальці.
 // Позу (світові точки) браузер складає за тими самими формулами, що й функції pt_*() вище.
-// view_all — усі деталі перегляду ОДНИМ запуском (для OpenSCAD-WASM у браузері, tools/viewer-wasm): i-та деталь зсунута на i·view_spacing
+// view_all — усі деталі перегляду ОДНИМ запуском (для OpenSCAD-WASM у браузері, web/viewer-wasm): i-та деталь зсунута на i·view_spacing
 // уздовж Y, сторінка розрізає сітку назад за координатою Y. Порядок = список view_parts.
 view_parts = ["post", "boom", "v_stick", "bucket", "v_rocker", "v_link", "v_cyl_boom_body", "v_cyl_boom_rod",
               "v_cyl_stick_body", "v_cyl_stick_rod", "v_cyl_bucket_body", "v_cyl_bucket_rod"];

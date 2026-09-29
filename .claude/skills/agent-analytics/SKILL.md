@@ -6,7 +6,7 @@ description: Звіт про витрати агентної роботи за �
 # Аналітика агентної роботи
 
 ```
-python3 tools/agent_analytics.py [тека_проєкту_в_~/.claude/projects] > /tmp/agent_analytics.json
+python3 tools/dev/agent_analytics.py [тека_проєкту_в_~/.claude/projects] > /tmp/agent_analytics.json
 ```
 Без аргументу береться тека цього проєкту. Скрипт лише читає журнали (головна сесія `*.jsonl`, субагенти `*/subagents/workflows/*/agent-*.jsonl`, ролі — з `journal.jsonl` і `*.meta.json`) і нічого не пише поза stdout.
 

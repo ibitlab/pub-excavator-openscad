@@ -98,11 +98,11 @@ PNG=build/drawings-png; rm -rf "$PNG"
 ./tools/bom_drawings.sh --out "$DIR" --version "$(basename "$DIR")" --png "$PNG" | tail -1
 
 # 4а'. Статична інтерактивна 3D-сторінка цієї версії (кути — у браузері; відкривається подвійним кліком, three.js тягнеться з CDN)
-python3 tools/viewer.py --export "$DIR/viewer.html" | tail -1
+python3 web/viewer.py --export "$DIR/viewer.html" | tail -1
 
-# 4а''. Версія перегляду без бекенду (OpenSCAD-WASM): чи будує модель старіший браузерний рушій. Не зупиняє збирання; потрібен npm install у tools/viewer-wasm
-if [ -d tools/viewer-wasm/node_modules ]; then
-  (cd tools/viewer-wasm && npm test --silent) > "$DIR/docs/viewer-wasm-test.txt" 2>&1 && echo "  viewer-wasm: тест пройдено" || echo "!!! viewer-wasm: тест НЕ пройдено — див. docs/viewer-wasm-test.txt"
+# 4а''. Версія перегляду без бекенду (OpenSCAD-WASM): чи будує модель старіший браузерний рушій. Не зупиняє збирання; потрібен npm install у web/viewer-wasm
+if [ -d web/viewer-wasm/node_modules ]; then
+  (cd web/viewer-wasm && npm test --silent) > "$DIR/docs/viewer-wasm-test.txt" 2>&1 && echo "  viewer-wasm: тест пройдено" || echo "!!! viewer-wasm: тест НЕ пройдено — див. docs/viewer-wasm-test.txt"
 fi
 
 # 4б. Картинки для README (єдине згенероване, що лежить поза versions/)
@@ -124,7 +124,7 @@ done
   echo "## Діапазони (echo моделі)"; echo '```'; sed 's/^ECHO: //' "$WORK/ranges.echo"; echo '```'; echo
   echo "## STL"; echo '```'; cat "$WORK/stl_list.txt"; echo '```'
   echo "Вузли стріли — у системі стріли (A = 0, хорда вздовж +X), вузли рукояті — у системі рукояті (B = 0, вісь уздовж +X); вузли ковша — у системі ковша (E = 0, x — до вістря зуба); rocker/link/post/assembly — у позі за замовчуванням."; echo
-  echo "## Інтерактивний перегляд"; echo "- viewer.html — 3D-сторінка цієї версії (обертання/масштаб, кути стріли/рукояті/ковша, цикл копання). Зміна геометрії наживо — tools/viewer.sh."; echo
+  echo "## Інтерактивний перегляд"; echo "- viewer.html — 3D-сторінка цієї версії (обертання/масштаб, кути стріли/рукояті/ковша, цикл копання). Зміна геометрії наживо — web/viewer.sh."; echo
   echo "## BOM і креслення"; echo "- bom/bom.md, bom/bom.csv — специфікація; dxf/*.dxf — контури пластин 1:1; drawings/parts.pdf — ескізи з основними розмірами (drawings/pages.tsv — яка деталь на якій сторінці)."; echo
   echo "## Перетини пластин"; echo '```'; tail -1 "$DIR/docs/overlaps.txt"; echo '```'
   echo "## Рухомі пари"; echo '```'; grep РЕЗУЛЬТАТ "$DIR/docs/motion.txt"; echo '```'

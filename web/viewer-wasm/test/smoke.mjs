@@ -1,7 +1,7 @@
 // Димовий тест без браузера: `npm test`
 //  1) рушій openscad-wasm-prebuilt (він старіший за настільний OpenSCAD!) будує модель у режимі part="view_all" без помилок;
 //  2) усі деталі зі списку view_parts непорожні, echo(VIEW) читається, схема параметрів розбирається;
-//  3) блок //<pose> однаковий у цій сторінці та в tools/viewer/index.html (поза рахується однаково в обох версіях);
+//  3) блок //<pose> однаковий у цій сторінці та в web/viewer/index.html (поза рахується однаково в обох версіях);
 //  4) поза з JavaScript збігається з echo самої моделі ("ЗУБ КОВША: x=… z=…");
 //  5) переклад повний: обидві мови мають однакові ключі, усі групи й описані параметри моделі є у словнику,
 //     і кожен ключ, який викликає main.js, у словнику існує.
@@ -45,13 +45,13 @@ const L1 = all.find(p => p.name === 'boom_L1'); scadLiteral(L1, 950) === '950' ?
 
 // Маркери мають стояти НА ПОЧАТКУ рядка: інакше згадка тегу в коментарі вище зсуває межу блоку і ховає розходження.
 const poseBlock = f => (readFileSync(f, 'utf8').match(/^\/\/<pose>[^\n]*\n([\s\S]*?)^\/\/<\/pose>/m) || [])[1];
-const p1 = poseBlock(path.join(here, '../src/main.js')), p2 = poseBlock(path.join(root, 'tools/viewer/index.html'));
+const p1 = poseBlock(path.join(here, '../src/main.js')), p2 = poseBlock(path.join(root, 'web/viewer/index.html'));
 const smBlock = f => (readFileSync(f, 'utf8').match(/^\/\/<spacemouse>[^\n]*\n([\s\S]*?)^\/\/<\/spacemouse>/m) || [])[1];
-const s1 = smBlock(path.join(here, '../src/main.js')), s2 = smBlock(path.join(root, 'tools/viewer/index.html'));
+const s1 = smBlock(path.join(here, '../src/main.js')), s2 = smBlock(path.join(root, 'web/viewer/index.html'));
 s1 && s1 === s2 ? ok('блок //<spacemouse> однаковий в обох версіях сторінки') : fail('блок //<spacemouse> у двох версіях сторінки розійшовся');
-p1 && p1 === p2 ? ok('блок //<pose> однаковий в обох версіях сторінки') : fail('блок //<pose> у tools/viewer-wasm/src/main.js і tools/viewer/index.html розійшовся');
+p1 && p1 === p2 ? ok('блок //<pose> однаковий в обох версіях сторінки') : fail('блок //<pose> у web/viewer-wasm/src/main.js і web/viewer/index.html розійшовся');
 const vjBlock = f => (readFileSync(f, 'utf8').match(/^\/\/<viewjson>[^\n]*\n([\s\S]*?)^\/\/<\/viewjson>/m) || [])[1];
-const v1 = vjBlock(path.join(here, '../src/main.js')), v2 = vjBlock(path.join(root, 'tools/viewer/index.html'));
+const v1 = vjBlock(path.join(here, '../src/main.js')), v2 = vjBlock(path.join(root, 'web/viewer/index.html'));
 v1 && v1 === v2 ? ok('блок //<viewjson> однаковий в обох версіях сторінки') : fail('блок //<viewjson> у двох версіях сторінки розійшовся');
 
 // Зіткнення в AR: сеанс є лише на телефоні, тож геометрію кімнати перевіряємо тут числами.

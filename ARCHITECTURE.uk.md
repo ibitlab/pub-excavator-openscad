@@ -126,7 +126,8 @@ flowchart LR
 | Тека | Вміст |
 |---|---|
 | `scad/` | модель і полігони логотипа |
-| `tools/` | двійники, генератори, перевірки, сервер сторінки, `viewer/`, `viewer-wasm/`, `media/`, `git-hooks/` |
+| `tools/` | двійники, генератори, перевірки, `media/`, `git-hooks/`, `dev/` (помічник SpaceMouse, аналітика агентів) |
+| `web/` | сторінки: `viewer/` із сервером `viewer.py`, `viewer-wasm/` (публікується на Pages) |
 | `versions/VNNN-…/` | `stl/`, `renders/`, `docs/`, `bom/`, `dxf/`, `drawings/`, `scad/` (знімок моделі й скриптів), `viewer.html`, `VERSION.md` |
 | `print3d-parts/` | набір 1:5: `parts.scad`, `parts.tsv`, `assembly.tsv`, `stl/`, `BOM.md`, `sheets/`, `stand/` (окрема стійка, свій `make.sh`) |
 | `docs/img/` | картинки README (оновлюють `build_version.sh` і `readme_media.sh`) |
