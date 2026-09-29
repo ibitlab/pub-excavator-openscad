@@ -439,7 +439,7 @@ const t = (key, vars) => { const s = SM_UK[key] ?? key; return vars ? s.replace(
 //  * WebHID — Chrome / Edge / Opera: кнопка «SpaceMouse» → дозвіл на пристрій (сторінка має бути на https або localhost);
 //  * Gamepad API — Firefox (і Chrome як запасний шлях): миша видна як 6-осьовий «геймпад»; з'являється після першого руху ковпачка.
 // Система миші права: X — праворуч, Y — до себе, Z — вниз; сирі значення ≈ ±350. Режим «об'єкт у руці»: модель рухається за ковпачком.
-const SM = { t: [0, 0, 0], r: [0, 0, 0], src: null, hids: [], btn: 0, last: 0, view: 0, cfg: { speed: 1, invPan: false, invZoom: false, invRot: false } };
+const SM = { t: [0, 0, 0], r: [0, 0, 0], src: null, hids: [], btn: 0, last: 0, view: 0, arm: null, cfg: { speed: 1, invPan: false, invZoom: false, invRot: false } };
 try { Object.assign(SM.cfg, JSON.parse(localStorage.getItem('spacemouse') || '{}')); } catch (e) { /* сховище недоступне — лишаються типові */ }
 const smSave = () => { try { localStorage.setItem('spacemouse', JSON.stringify(SM.cfg)); } catch (e) { /* не критично */ } };
 function smUI() {                                            // підписи через t() — сторінка може бути будь-якою мовою
@@ -495,9 +495,11 @@ function smGamepad() {
 function smTick(dt) {                                         // викликається кожен кадр перед controls.update()
   smGamepad();
   if (!SM.src || performance.now() - SM.last > 400) return;
-  const dz = x => Math.abs(x) < 0.04 ? 0 : Math.max(-1, Math.min(1, x)), [tx, ty, tz] = SM.t.map(dz), [rx, , rz] = SM.r.map(dz);
-  if (!(tx || ty || tz || rx || rz)) return;
+  const dz = x => Math.abs(x) < 0.04 ? 0 : Math.max(-1, Math.min(1, x)), [tx, ty, tz] = SM.t.map(dz), [rx, ry, rz] = SM.r.map(dz);
+  if (!(tx || ty || tz || rx || ry || rz)) return;
   const c = SM.cfg, k = c.speed * dt, sp = c.invPan ? -1 : 1, sz = c.invZoom ? -1 : 1, sr = c.invRot ? -1 : 1;
+  // Сторінка може забрати рух собі (SM.arm; у WASM-сторінці при замку камери миша веде ківш) — тоді камера стоїть.
+  if (SM.arm && SM.arm([sp * tx, sz * ty, sp * tz], [sr * rx, sr * ry, sr * rz], k)) return;
   const off = camera.position.clone().sub(controls.target); let r = off.length();
   let th = Math.atan2(off.y, off.x), ph = Math.acos(Math.max(-1, Math.min(1, off.z / r)));
   th += sr * rz * 1.8 * k;                                   // скрут ковпачка за годинниковою → модель крутиться за годинниковою (камера — проти)

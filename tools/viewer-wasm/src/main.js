@@ -11,7 +11,7 @@ import { readSchema, scadLiteral } from './schema.js';
 import workerUrl from './scad-worker.js?worker&url';
 import { LEGEND } from './legend.js';
 import { KIN, PIN_HEX, kinLegend } from './kin.js';
-import { armFromTip } from './ik.js';   // саме так, інакше Vite не підставить збудований шлях
+import { armFromTip, armFromBucket } from './ik.js';   // саме так, інакше Vite не підставить збудований шлях
 import { Room, KIND, planeTris, meshTris } from './room.js';
 import { Keep } from './keep.js';
 import { Scan } from './scan.js';
@@ -540,7 +540,7 @@ window.addEventListener('resize', resize);
 //  * WebHID — Chrome / Edge / Opera: кнопка «SpaceMouse» → дозвіл на пристрій (сторінка має бути на https або localhost);
 //  * Gamepad API — Firefox (і Chrome як запасний шлях): миша видна як 6-осьовий «геймпад»; з'являється після першого руху ковпачка.
 // Система миші права: X — праворуч, Y — до себе, Z — вниз; сирі значення ≈ ±350. Режим «об'єкт у руці»: модель рухається за ковпачком.
-const SM = { t: [0, 0, 0], r: [0, 0, 0], src: null, hids: [], btn: 0, last: 0, view: 0, cfg: { speed: 1, invPan: false, invZoom: false, invRot: false } };
+const SM = { t: [0, 0, 0], r: [0, 0, 0], src: null, hids: [], btn: 0, last: 0, view: 0, arm: null, cfg: { speed: 1, invPan: false, invZoom: false, invRot: false } };
 try { Object.assign(SM.cfg, JSON.parse(localStorage.getItem('spacemouse') || '{}')); } catch (e) { /* сховище недоступне — лишаються типові */ }
 const smSave = () => { try { localStorage.setItem('spacemouse', JSON.stringify(SM.cfg)); } catch (e) { /* не критично */ } };
 function smUI() {                                            // підписи через t() — сторінка може бути будь-якою мовою
@@ -596,9 +596,11 @@ function smGamepad() {
 function smTick(dt) {                                         // викликається кожен кадр перед controls.update()
   smGamepad();
   if (!SM.src || performance.now() - SM.last > 400) return;
-  const dz = x => Math.abs(x) < 0.04 ? 0 : Math.max(-1, Math.min(1, x)), [tx, ty, tz] = SM.t.map(dz), [rx, , rz] = SM.r.map(dz);
-  if (!(tx || ty || tz || rx || rz)) return;
+  const dz = x => Math.abs(x) < 0.04 ? 0 : Math.max(-1, Math.min(1, x)), [tx, ty, tz] = SM.t.map(dz), [rx, ry, rz] = SM.r.map(dz);
+  if (!(tx || ty || tz || rx || ry || rz)) return;
   const c = SM.cfg, k = c.speed * dt, sp = c.invPan ? -1 : 1, sz = c.invZoom ? -1 : 1, sr = c.invRot ? -1 : 1;
+  // Сторінка може забрати рух собі (SM.arm; у WASM-сторінці при замку камери миша веде ківш) — тоді камера стоїть.
+  if (SM.arm && SM.arm([sp * tx, sz * ty, sp * tz], [sr * rx, sr * ry, sr * rz], k)) return;
   const off = camera.position.clone().sub(controls.target); let r = off.length();
   let th = Math.atan2(off.y, off.x), ph = Math.acos(Math.max(-1, Math.min(1, off.z / r)));
   th += sr * rz * 1.8 * k;                                   // скрут ковпачка за годинниковою → модель крутиться за годинниковою (камера — проти)
@@ -844,6 +846,64 @@ lockBtn.onclick = () => {
   canvas.style.cursor = locked ? 'grab' : '';
   syncLock();
 };
+
+// ------------------------------------------ SpaceMouse веде ківш (коли камера замкнена)
+// Оператор керує КОВШЕМ, а не циліндрами: зсув ковпачка — куди йде зуб, нахил — поворот
+// ковша навколо пальця E. Стріла, рукоять і сам ківш рахуються разом (armFromBucket), тож
+// ківш іде не хитаючись. Осі ковпачка — «від бази» (оператор стоїть біля осі A й дивиться
+// вздовж стріли, +X) або «від камери» (осі екрана). Машина пласка — поворот колони ще не
+// спроєктовано, — тож усе поза площиною XZ відкидається: від бази вліво/вправо, скрут
+// і бічний нахил нічого не роблять.
+const ARM_MMS = 700, ARM_DEGS = 70;                           // повне відхилення ковпачка: мм/с зуба, °/с ковша
+if (!['base', 'camera'].includes(SM.cfg.frame)) SM.cfg.frame = 'base';
+function smAxes() {                                           // осі ковпачка (праворуч, до себе, вниз) у світі
+  if (SM.cfg.frame === 'camera') {
+    const col = i => new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, i).normalize();
+    return [col(0), col(2), col(1).negate()];                 // камера дивиться вздовж −z, тож «до себе» — це +z
+  }
+  return [new THREE.Vector3(0, -1, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, -1)];
+}
+const inLim = (key, v) => { const l = limits(key); return !$('clamp').checked || !l || (v >= l[0] - 1e-6 && v <= l[1] + 1e-6); };
+SM.arm = (tr, rt, k) => {
+  if (!locked || !V || drag) return false;                    // без замку миша, як і раніше, крутить камеру
+  const [ax, ay, az] = smAxes(), toWorld = v => ax.clone().multiplyScalar(v[0]).addScaledVector(ay, v[1]).addScaledVector(az, v[2]);
+  const d = toWorld(tr).multiplyScalar(ARM_MMS * k), w = toWorld(rt), a = effAngles();
+  // Оберт навколо +Y у площині XZ — за годинниковою, тобто кут ковша до рукояті росте
+  // (підгортання): нахил ковпачка вперед підіймає зуби до себе, назад — висипає.
+  const om = clampAng('bucket', a.bucket + w.y * ARM_DEGS * k);
+  let next = { boom: a.boom, stick: a.stick, bucket: om };
+  if (Math.hypot(d.x, d.z) > 1e-6) {
+    const P = pose(V, a.boom, a.stick, om), fits = (r, tgt) => r && inLim('boom', r.boom) && inLim('stick', r.stick) && inLim('bucket', r.bucket)
+      && Math.hypot(...sub(pose(V, r.boom, r.stick, r.bucket).T, tgt)) < 0.5;
+    // Спершу ківш без повороту; не виходить (упор котрогось циліндра) — з кутом до рукояті;
+    // далі ковзання вздовж упору: лише горизонтальна або лише вертикальна складова.
+    found: for (const s of [[d.x, d.z], [d.x, 0], [0, d.z]]) {
+      if (!s[0] && !s[1]) continue;
+      const tgt = add(P.T, s);
+      const keepOm = armFromTip(V, tgt, om, a);
+      for (const r of [armFromBucket(V, tgt, P.bdir, a), keepOm && { ...keepOm, bucket: om }])
+        if (fits(r, tgt)) { next = r; break found; }
+    }
+  }
+  if (next.boom === a.boom && next.stick === a.stick && next.bucket === a.bucket) return true;
+  if (playing) stopPlay();
+  ang3.boom = next.boom; ang3.stick = next.stick; ang3.bucket = next.bucket;
+  updatePose();
+  return true;
+};
+function smArmUI() {                                          // перемикач системи відліку — під кнопками миші
+  const row = el('div', { className: 'row' }); row.style.alignItems = 'center';
+  row.append(el('span', { textContent: t('sm.arm'), title: t('sm.arm.title'), style: 'color:var(--mute);font-size:11.5px' }));
+  for (const f of ['base', 'camera']) {
+    const b = el('button', { textContent: t('sm.arm.' + f), title: t('sm.arm.' + f + '.title') });
+    b.classList.toggle('on', SM.cfg.frame === f); b.setAttribute('aria-pressed', String(SM.cfg.frame === f));
+    b.onclick = () => { SM.cfg.frame = f; smSave(); smArmUI(); };
+    row.append(b);
+  }
+  $('sm_arm')?.remove(); row.id = 'sm_arm';
+  $('sm_dbg').before(row);
+}
+window.__ARM__ = () => { const a = effAngles(), P = pose(V, a.boom, a.stick, a.bucket); return { ...a, T: P.T, bdir: P.bdir, locked }; };   // для тестів
 
 // ------------------------------------------------------- знімок кадру у PNG
 // Канва рендериться з preserveDrawingBuffer, тож її можна просто перемалювати в
@@ -1546,7 +1606,7 @@ function buildLangUI() {
 }
 // Зміна мови лише перемальовує підписи: OpenSCAD не перезапускається, кути, галочки й змінені параметри лишаються.
 function renderAll() {
-  buildLangUI(); applyStatic(); buildAngleUI(); buildPoseUI(); buildViewUI(); buildToggleUI(); buildLegend(); smUI();
+  buildLangUI(); applyStatic(); buildAngleUI(); buildPoseUI(); buildViewUI(); buildToggleUI(); buildLegend(); smUI(); smArmUI();
   if (schema.length) buildParamUI();
   if (lastStatus) status(lastStatus.key, lastStatus.vars, lastStatus.cls);
   updateAngleRanges(); updatePose();

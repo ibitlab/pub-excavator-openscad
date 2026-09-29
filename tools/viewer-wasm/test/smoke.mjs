@@ -13,7 +13,7 @@ import { splitOff } from '../src/offmesh.js';
 import { readSchema, scadLiteral } from '../src/schema.js';
 import { UI, LANGS, GROUPS_EN, PARAMS_EN } from '../src/i18n.js';
 import { LEGEND } from '../src/legend.js';
-import { armFromTip } from '../src/ik.js';
+import { armFromTip, armFromBucket } from '../src/ik.js';
 import { Room, KIND, planeTris, meshTris } from '../src/room.js';
 import { Keep } from '../src/keep.js';
 import { Scan } from '../src/scan.js';
@@ -259,6 +259,20 @@ else {
     миші === 0 && worst < 0.01
       ? ok(`зворотна задача: зуб стає на місце, похибка ${worst.toExponential(1)} мм`)
       : fail(`зворотна задача: без розв'язку ${миші}, похибка до ${worst.toFixed(3)} мм`);
+  }
+
+  // Те саме для ковша, що йде не повертаючись (SpaceMouse при замку камери): ті самі
+  // зуб і напрям ковша мають повернути ті самі три кути.
+  {
+    let worst = 0, нема = 0;
+    for (const [b, s2, o] of [[15, 100, 60], [-20, 140, 20], [40, 80, 90], [5, 120, 45], [0, 158, 0]]) {
+      const Q = pose(V, b, s2, o), r = armFromBucket(V, Q.T, Q.bdir, { boom: b, stick: s2 });
+      if (!r) { нема++; continue; }
+      worst = Math.max(worst, Math.abs(r.boom - b), Math.abs(r.stick - s2), Math.abs(r.bucket - o));
+    }
+    нема === 0 && worst < 1e-6
+      ? ok(`ківш без повороту: кути повертаються ті самі, похибка ${worst.toExponential(1)}°`)
+      : fail(`ківш без повороту: без розв'язку ${нема}, похибка кутів до ${worst.toFixed(4)}°`);
   }
 
   const [th, psi, om] = V.angles, P = pose(V, th, psi, om), tm = err.join('\n').match(/ЗУБ КОВША: x=(-?\d+) z=(-?\d+)/);

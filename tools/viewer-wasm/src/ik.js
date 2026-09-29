@@ -58,3 +58,25 @@ export function armFromTip(V, target, om, cur) {
   }
   return best;
 }
+
+/**
+ * Те саме, але ківш іде, НЕ ПОВЕРТАЮЧИСЬ: його напрям `bdir` у площині машини
+ * лишається сталим, тож працюють усі три циліндри разом (так веде ківш SpaceMouse).
+ * Тоді відомий і шарнір E = ціль − зуб, а B — перетин кола навколо A і кола навколо E.
+ * Недосяжна ціль дає null: мишею ківш має спинитися, а не стрибнути до межі.
+ */
+export function armFromBucket(V, target, bdir, cur) {
+  const E = sub(target, rot([V.tip, 0], bdir));
+  let best = null;
+  for (const side of [1, -1]) {
+    const B = circX([0, 0], len(V.B_l), E, len(V.E_s), side);
+    if (!B) continue;
+    const boom = n180(ang(B) - ang(V.B_l));
+    const sdir = ang(sub(E, B)) - ang(V.E_s);
+    const stick = n360(sdir - ang([-B[0], -B[1]]));
+    const bucket = n180(sdir - bdir);
+    const cost = Math.abs(n180(boom - cur.boom)) + Math.abs(n180(stick - cur.stick));
+    if (!best || cost < best.cost) best = { boom, stick, bucket, cost };
+  }
+  return best;
+}
