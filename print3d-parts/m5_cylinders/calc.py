@@ -58,7 +58,7 @@ def scad_consts():
         if not m:
             sys.exit(f'calc.py: у m5_cyl.scad немає сталої {name}')
         return ast.literal_eval(m.group(1).strip())
-    names = ('SC MOTOR GEAR_M GEAR_ALPHA Z_NUT Z_PIN TUBE_ID PUCK REAR_WALL EYE_LEN FRONT_GAP '
+    names = ('SC MOTOR GEAR_M GEAR_ALPHA Z_NUT Z_PIN PISTON PISTON_FIT PUCK REAR_WALL EYE_LEN FRONT_GAP '
              'LIP GAP_SH GEAR_B GAP_F FWALL BRG N20_T').split()
     c = {n: get(n) for n in names}
     c['HEAD_CORE'] = c['LIP'] + c['BRG'][2] + c['GAP_SH'] + c['GEAR_B'] + c['GAP_F'] + c['FWALL']
@@ -76,7 +76,8 @@ KEYS = ('boom', 'stick', 'bucket')
 # маса покупного, г
 STEEL_G_PER_MM = 0.154   # шпилька M5 (DIN 976), 1 м ≈ 154 г
 N20_G = 10.0             # 12GAN20 з редуктором
-BUY_G = 1.1 + 0.6 + 0.3  # гайка M5, MR128ZZ, магніти й датчики
+BUY_G = 1.1 + 7.0 + 0.3  # ходова гайка M5 (латунна), 698ZZ, магніти й датчики
+PISTON_G = 0.9           # поршень — сталева гайка M5 (7.9 під ключ × 4)
 
 
 def inv(a):
@@ -106,7 +107,8 @@ def geometry(sc):
     for i, k in enumerate(KEYS):
         wall = 6.5 if k == 'boom' else 5.0                      # як у hyd_cylinder() моделі
         c = dict(L0=val(f'{k}_cyl_closed') / sc, S=val(f'{k}_cyl_stroke') / sc,
-                 od=(val(f'{k}_cyl_bore') + 2 * wall) / sc, pin=val(f'{k}_cyl_pin') / sc, id=C['TUBE_ID'][i])
+                 od=(val(f'{k}_cyl_bore') + 2 * wall) / sc, pin=val(f'{k}_cyl_pin') / sc,
+                 id=C['PISTON'][0] + 2 * C['PISTON_FIT'])            # канал — шестигранник, під ключ
         c['x_ci'] = C['EYE_LEN'] + C['REAR_WALL']                # дно кришки: упор поршня у зведеному
         c['x_hr'] = c['x_ci'] + c['S'] + C['PUCK']              # задній торець голови: упор у розкритому
         c['nose'] = c['L0'] - C['EYE_LEN'] - C['FRONT_GAP'] - c['x_hr'] - C['HEAD_CORE']
@@ -135,7 +137,7 @@ def own_mass():
         m = re.match(r'(boom|stick|bucket)_(\w+)_x(\d+)\.stl$', os.path.basename(f))
         if m:
             k, part, qty = m.group(1), m.group(2), int(m.group(3))
-            side = 'rod' if part in ('puck', 'eye') else 'body'
+            side = 'rod' if part == 'eye' else 'body'
             out[k, side] = out.get((k, side), 0.0) + md.stl_volume(f) * qty * md.PLA * md.FILL
     if len(out) < 2 * len(KEYS):
         sys.exit(f'calc.py: немає STL циліндрів у {OWN_STL} — спершу make.sh stl')
@@ -159,7 +161,7 @@ def main():
         head_x = c['x_hr'] + 6                                    # мотор, гайка, підшипник
         body_m = body_p + N20_G + BUY_G
         body_x = (body_p * c['L0'] * 0.55 + (N20_G + BUY_G) * head_x) / body_m
-        steel = c['screw'] * STEEL_G_PER_MM
+        steel = c['screw'] * STEEL_G_PER_MM + PISTON_G
         rod_back = c['L0'] - (c['x_ci'] + c['screw'] / 2)         # від пальця штока — не міняється з ходом
         p1, p2 = ends[k]
         cyl_load += [(body_m, ('ax', p1, p2, body_x * sc)), (rod_p + steel, ('axr', p1, p2, rod_back * sc))]
@@ -243,10 +245,10 @@ def main():
     w('')
     w(f'## Довжини (друковані мм, 1:{sc})')
     w('')
-    w('Зведена довжина й хід — ті самі, що в моделі. Упори — поршень об дно кришки (зведений) і об задній '
+    w('Зведена довжина й хід — ті самі, що в моделі. Упори — поршень (сталева гайка) об дно кришки (зведений) і об задній '
       'торець голови (розкритий); шийка вушка штока голови не торкається.')
     w('')
-    w('| Циліндр | Зведений | Хід | Розкритий | Гільза Ø зовн. / внутр. | Дно кришки | Голова від | Запас на ніс | Шпилька M5 |')
+    w('| Циліндр | Зведений | Хід | Розкритий | Гільза: Ø зовн. / канал під ключ | Дно кришки | Голова від | Запас на ніс | Шпилька M5 |')
     w('|---|---:|---:|---:|---|---:|---:|---:|---:|')
     for k, c in geo.items():
         w(f'| {md.NAMES[k]} | {c["L0"]:.0f} | {c["S"]:.0f} | {c["L0"] + c["S"]:.0f} | {c["od"]:.1f} / {c["id"]:.1f} | '
@@ -290,7 +292,7 @@ def main():
     w(f'**Упори.** Номінальний момент з даташиту ({T_RATED:.0f} Н·мм) дає на шпильці ≈ {T_RATED * ETA_SPUR / kf:.0f} Н, '
       f'момент зупинки ({min(TS, TS_DS):.0f}–{max(TS, TS_DS):.0f} Н·мм) — ≈ {min(TS, TS_DS) * ETA_SPUR / kf:.0f} Н'
       + (' (струм зупинки в даташиті — «заглушка» 1.00 А)' if IST == 1.0 else '') +
-      f'. Вага ж — не більше {max(max(F_sand[k]) for k in KEYS):.0f} Н. Друковані упори й MR128 (осьово ≈ 150 Н) '
+      f'. Вага ж — не більше {max(max(F_sand[k]) for k in KEYS):.0f} Н. Друковані упори (698ZZ осьово тримає ≈ 400 Н) '
       'розраховані на вагу, а не на мотор: зупиняють датчики кінцевиків, драйвер обмежує струм.')
     w('')
     w('## Що дали б інші N20')

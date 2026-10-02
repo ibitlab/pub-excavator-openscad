@@ -1,0 +1,2961 @@
+{
+ "version": "V006.2",
+ "date": "2026-10-02",
+ "sheets": [
+  {
+   "no": 1,
+   "slug": "boom",
+   "title": "Стріла",
+   "files": 10,
+   "parts": 15,
+   "layout_pages": 1,
+   "cells": [
+    {
+     "file": "01_tube_boom_seg1",
+     "step": "1.1",
+     "page": 1,
+     "x": 0.0,
+     "y": 10.0,
+     "w": 37.0,
+     "h": 221.56,
+     "rot": true,
+     "outline": [
+      201.78,
+      24.0,
+      16.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 24.0,
+       "text": "24"
+      },
+      {
+       "kind": "edge",
+       "value": 201.78,
+       "text": "201.8"
+      },
+      {
+       "kind": "edge",
+       "value": 194.22,
+       "text": "194.2"
+      },
+      {
+       "kind": "edge",
+       "value": 25.16,
+       "text": "25.2"
+      }
+     ],
+     "holes": [
+      13.2
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": 264.2
+    },
+    {
+     "file": "02_tube_boom_seg2",
+     "step": "1.2",
+     "page": 1,
+     "x": 38.2,
+     "y": 10.0,
+     "w": 137.32,
+     "h": 46.19,
+     "rot": false,
+     "outline": [
+      119.78,
+      24.0,
+      16.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 24.0,
+       "text": "24"
+      },
+      {
+       "kind": "edge",
+       "value": 112.22,
+       "text": "112.2"
+      },
+      {
+       "kind": "edge",
+       "value": 87.78,
+       "text": "87.8"
+      },
+      {
+       "kind": "edge",
+       "value": 40.0,
+       "text": "40"
+      },
+      {
+       "kind": "edge",
+       "value": 25.16,
+       "text": "25.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "04_gusset",
+     "step": "1.3",
+     "page": 1,
+     "x": 38.2,
+     "y": 57.39,
+     "w": 121.28,
+     "h": 65.47,
+     "rot": false,
+     "outline": [
+      113.12,
+      48.13,
+      1.6
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 28.0,
+       "text": "28"
+      },
+      {
+       "kind": "edge",
+       "value": 64.41,
+       "text": "64.4"
+      },
+      {
+       "kind": "edge",
+       "value": 54.41,
+       "text": "54.4"
+      },
+      {
+       "kind": "edge",
+       "value": 28.0,
+       "text": "28"
+      },
+      {
+       "kind": "edge",
+       "value": 55.59,
+       "text": "55.6"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "10_B_fork",
+     "step": "1.7",
+     "page": 1,
+     "x": 38.2,
+     "y": 124.07,
+     "w": 95.42,
+     "h": 64.72,
+     "rot": false,
+     "outline": [
+      84.58,
+      45.98,
+      2.4
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 24.0,
+       "text": "24"
+      },
+      {
+       "kind": "edge",
+       "value": 50.0,
+       "text": "50"
+      },
+      {
+       "kind": "edge",
+       "value": 44.0,
+       "text": "44"
+      },
+      {
+       "kind": "edge",
+       "value": 33.75,
+       "text": "33.7"
+      },
+      {
+       "kind": "flat",
+       "value": 27.99,
+       "text": "28"
+      }
+     ],
+     "holes": [
+      6.1
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "05_cover",
+     "step": "1.4",
+     "page": 1,
+     "x": 160.68,
+     "y": 57.39,
+     "w": 29.32,
+     "h": 79.67,
+     "rot": true,
+     "outline": [
+      62.37,
+      16.0,
+      20.98
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 16.0,
+       "text": "16"
+      },
+      {
+       "kind": "flats",
+       "value": 62.37,
+       "text": "62.4"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "07_D_saddle",
+     "step": "1.9",
+     "page": 1,
+     "x": 134.82,
+     "y": 138.26,
+     "w": 37.98,
+     "h": 69.29,
+     "rot": true,
+     "outline": [
+      52.0,
+      16.0,
+      2.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 16.0,
+       "text": "16"
+      },
+      {
+       "kind": "flats",
+       "value": 52.0,
+       "text": "52"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "06_D_clevis",
+     "step": "1.10",
+     "page": 1,
+     "x": 38.2,
+     "y": 189.98,
+     "w": 54.23,
+     "h": 46.51,
+     "rot": false,
+     "outline": [
+      41.41,
+      24.25,
+      2.4
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 44.0,
+       "text": "44"
+      },
+      {
+       "kind": "flat",
+       "value": 17.4,
+       "text": "17.4"
+      },
+      {
+       "kind": "edge",
+       "value": 12.12,
+       "text": "12.1"
+      },
+      {
+       "kind": "flat",
+       "value": 29.29,
+       "text": "29.3"
+      }
+     ],
+     "holes": [
+      6.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "08_F_tower",
+     "step": "1.8",
+     "page": 1,
+     "x": 93.63,
+     "y": 208.75,
+     "w": 44.53,
+     "h": 50.51,
+     "rot": false,
+     "outline": [
+      27.82,
+      30.97,
+      2.4
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 27.6,
+       "text": "27.6"
+      },
+      {
+       "kind": "flat",
+       "value": 24.5,
+       "text": "24.5"
+      },
+      {
+       "kind": "length",
+       "value": 38.94,
+       "text": "38.9"
+      },
+      {
+       "kind": "end",
+       "value": 13.0,
+       "text": "13"
+      }
+     ],
+     "holes": [
+      5.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "09_A_doubler",
+     "step": "1.6",
+     "page": 1,
+     "x": 139.36,
+     "y": 208.75,
+     "w": 38.93,
+     "h": 38.39,
+     "rot": false,
+     "outline": [
+      26.0,
+      26.0,
+      2.0
+     ],
+     "dims": [],
+     "holes": [
+      13.2
+     ],
+     "ring": {
+      "od": 25.999914651718882,
+      "id": 13.199828952163722
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "33_A_bushing",
+     "step": "1.5",
+     "page": 1,
+     "x": 0.0,
+     "y": 232.76,
+     "w": 25.53,
+     "h": 25.59,
+     "rot": false,
+     "outline": [
+      13.2,
+      13.2,
+      28.0
+     ],
+     "dims": [],
+     "holes": [
+      6.0
+     ],
+     "ring": {
+      "od": 13.199978639170146,
+      "id": 5.999957258169151
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    }
+   ],
+   "renders_on_sheet": [],
+   "renders_overflow": [
+    "стріла, згори (55°/25°)",
+    "стріла, знизу (125°/295°)"
+   ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [
+    "F_tower",
+    "D_clevis"
+   ],
+   "views": {
+    "boom": {
+     "keys": [
+      "tube_boom_seg1",
+      "tube_boom_seg2",
+      "gusset",
+      "cover",
+      "A_bushing",
+      "A_doubler",
+      "B_fork",
+      "F_tower",
+      "D_saddle",
+      "D_clevis"
+     ],
+     "chosen": [
+      [
+       55,
+       25
+      ],
+      [
+       125,
+       295
+      ]
+     ],
+     "ref_px": [
+      13314,
+      3765,
+      10691,
+      1859,
+      688,
+      1307,
+      7969,
+      1794,
+      1022,
+      2192
+     ]
+    }
+   },
+   "uncovered": [],
+   "steps": [
+    {
+     "step": "1.1",
+     "key": "tube_boom_seg1",
+     "view": [
+      55,
+      25
+     ],
+     "px": 40497
+    },
+    {
+     "step": "1.2",
+     "key": "tube_boom_seg2",
+     "view": [
+      55,
+      25
+     ],
+     "px": 16559
+    },
+    {
+     "step": "1.3",
+     "key": "gusset",
+     "view": [
+      55,
+      25
+     ],
+     "px": 14518
+    },
+    {
+     "step": "1.4",
+     "key": "cover",
+     "view": [
+      55,
+      25
+     ],
+     "px": 3136
+    },
+    {
+     "step": "1.5",
+     "key": "A_bushing",
+     "view": [
+      55,
+      25
+     ],
+     "px": 810
+    },
+    {
+     "step": "1.6",
+     "key": "A_doubler",
+     "view": [
+      55,
+      25
+     ],
+     "px": 1658
+    },
+    {
+     "step": "1.7",
+     "key": "B_fork",
+     "view": [
+      55,
+      25
+     ],
+     "px": 10005
+    },
+    {
+     "step": "1.8",
+     "key": "F_tower",
+     "view": [
+      55,
+      25
+     ],
+     "px": 1855
+    },
+    {
+     "step": "1.9",
+     "key": "D_saddle",
+     "view": [
+      125,
+      295
+     ],
+     "px": 2963
+    },
+    {
+     "step": "1.10",
+     "key": "D_clevis",
+     "view": [
+      55,
+      25
+     ],
+     "px": 939
+    }
+   ],
+   "free_area": 9490.0,
+   "pdf_page": 1
+  },
+  {
+   "no": 2,
+   "slug": "stick",
+   "title": "Рукоять",
+   "files": 10,
+   "parts": 14,
+   "layout_pages": 1,
+   "cells": [
+    {
+     "file": "03_tube_stick",
+     "step": "2.1",
+     "page": 1,
+     "x": 0.0,
+     "y": 10.0,
+     "w": 35.3,
+     "h": 227.29,
+     "rot": true,
+     "outline": [
+      210.0,
+      20.0,
+      12.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 20.0,
+       "text": "20"
+      },
+      {
+       "kind": "edge",
+       "value": 205.0,
+       "text": "205"
+      },
+      {
+       "kind": "flat",
+       "value": 210.0,
+       "text": "210"
+      }
+     ],
+     "holes": [
+      13.2,
+      13.2
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": 136.0
+    },
+    {
+     "file": "11_cheek",
+     "step": "2.2",
+     "page": 1,
+     "x": 36.5,
+     "y": 10.0,
+     "w": 62.15,
+     "h": 169.71,
+     "rot": true,
+     "outline": [
+      134.3,
+      47.7,
+      1.6
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 28.0,
+       "text": "28"
+      },
+      {
+       "kind": "flats",
+       "value": 94.01,
+       "text": "94"
+      },
+      {
+       "kind": "edge",
+       "value": 86.0,
+       "text": "86"
+      },
+      {
+       "kind": "edge",
+       "value": 20.0,
+       "text": "20"
+      },
+      {
+       "kind": "flat",
+       "value": 35.09,
+       "text": "35.1"
+      }
+     ],
+     "holes": [
+      13.2,
+      5.1
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "15_tip_plate",
+     "step": "2.8",
+     "page": 1,
+     "x": 36.5,
+     "y": 180.91,
+     "w": 42.22,
+     "h": 85.29,
+     "rot": true,
+     "outline": [
+      64.4,
+      31.9,
+      2.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 64.4,
+       "text": "64.4"
+      },
+      {
+       "kind": "flat",
+       "value": 31.9,
+       "text": "31.9"
+      },
+      {
+       "kind": "edge",
+       "value": 35.58,
+       "text": "35.6"
+      },
+      {
+       "kind": "edge",
+       "value": 23.3,
+       "text": "23.3"
+      },
+      {
+       "kind": "edge",
+       "value": 20.0,
+       "text": "20"
+      }
+     ],
+     "holes": [
+      13.2,
+      9.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "12_heel_rib",
+     "step": "2.3",
+     "page": 1,
+     "x": 79.92,
+     "y": 180.91,
+     "w": 26.66,
+     "h": 79.47,
+     "rot": true,
+     "outline": [
+      62.18,
+      12.0,
+      2.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 12.0,
+       "text": "12"
+      },
+      {
+       "kind": "flats",
+       "value": 62.18,
+       "text": "62.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "14_H_saddle",
+     "step": "2.5",
+     "page": 1,
+     "x": 107.78,
+     "y": 10.0,
+     "w": 35.78,
+     "h": 41.29,
+     "rot": true,
+     "outline": [
+      24.0,
+      12.0,
+      2.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 12.0,
+       "text": "12"
+      },
+      {
+       "kind": "flats",
+       "value": 24.0,
+       "text": "24"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "13_H_clevis",
+     "step": "2.6",
+     "page": 1,
+     "x": 144.76,
+     "y": 10.0,
+     "w": 37.55,
+     "h": 41.76,
+     "rot": true,
+     "outline": [
+      22.1,
+      18.5,
+      2.4
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 21.2,
+       "text": "21.2"
+      },
+      {
+       "kind": "flat",
+       "value": 18.5,
+       "text": "18.5"
+      },
+      {
+       "kind": "edge",
+       "value": 11.05,
+       "text": "11.1"
+      }
+     ],
+     "holes": [
+      5.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "34_B_bushing",
+     "step": "2.4",
+     "page": 1,
+     "x": 99.85,
+     "y": 52.49,
+     "w": 38.39,
+     "h": 28.02,
+     "rot": false,
+     "outline": [
+      13.2,
+      13.2,
+      15.2
+     ],
+     "dims": [],
+     "holes": [
+      6.0
+     ],
+     "ring": {
+      "od": 13.199978639170146,
+      "id": 5.999957258169151
+     },
+     "pin": null,
+     "note": "≈ 35_E_bushing: висота 16 проти 15.2",
+     "logo_mm2": null
+    },
+    {
+     "file": "35_E_bushing",
+     "step": "2.9",
+     "page": 1,
+     "x": 139.45,
+     "y": 52.96,
+     "w": 38.39,
+     "h": 28.02,
+     "rot": false,
+     "outline": [
+      13.2,
+      13.2,
+      16.0
+     ],
+     "dims": [],
+     "holes": [
+      6.0
+     ],
+     "ring": {
+      "od": 13.199978639170146,
+      "id": 5.999957258169151
+     },
+     "pin": null,
+     "note": "≈ 34_B_bushing: висота 15.2 проти 16",
+     "logo_mm2": null
+    },
+    {
+     "file": "36_R_bushing",
+     "step": "2.10",
+     "page": 1,
+     "x": 107.78,
+     "y": 81.72,
+     "w": 26.9,
+     "h": 21.39,
+     "rot": false,
+     "outline": [
+      9.0,
+      9.0,
+      16.0
+     ],
+     "dims": [],
+     "holes": [
+      6.0
+     ],
+     "ring": {
+      "od": 8.99997861814513,
+      "id": 5.999957258169151
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "37_G_boss",
+     "step": "2.7",
+     "page": 1,
+     "x": 0.0,
+     "y": 238.49,
+     "w": 34.8,
+     "h": 20.19,
+     "rot": false,
+     "outline": [
+      7.8,
+      7.8,
+      3.3
+     ],
+     "dims": [],
+     "holes": [
+      5.1
+     ],
+     "ring": {
+      "od": 7.799978582659438,
+      "id": 5.099957357625872
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    }
+   ],
+   "renders_on_sheet": [],
+   "renders_overflow": [
+    "рукоять, згори (55°/25°)",
+    "рукоять, згори (55°/115°)"
+   ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [
+    "H_clevis"
+   ],
+   "views": {
+    "stick": {
+     "keys": [
+      "tube_stick",
+      "cheek",
+      "heel_rib",
+      "B_bushing",
+      "H_saddle",
+      "H_clevis",
+      "G_boss",
+      "tip_plate",
+      "E_bushing",
+      "R_bushing"
+     ],
+     "chosen": [
+      [
+       55,
+       25
+      ],
+      [
+       55,
+       115
+      ]
+     ],
+     "ref_px": [
+      11530,
+      22560,
+      3010,
+      981,
+      321,
+      2474,
+      410,
+      9863,
+      1027,
+      748
+     ]
+    }
+   },
+   "uncovered": [],
+   "steps": [
+    {
+     "step": "2.1",
+     "key": "tube_stick",
+     "view": [
+      55,
+      25
+     ],
+     "px": 50984
+    },
+    {
+     "step": "2.2",
+     "key": "cheek",
+     "view": [
+      55,
+      25
+     ],
+     "px": 28628
+    },
+    {
+     "step": "2.3",
+     "key": "heel_rib",
+     "view": [
+      55,
+      25
+     ],
+     "px": 2960
+    },
+    {
+     "step": "2.4",
+     "key": "B_bushing",
+     "view": [
+      55,
+      25
+     ],
+     "px": 841
+    },
+    {
+     "step": "2.5",
+     "key": "H_saddle",
+     "view": [
+      55,
+      25
+     ],
+     "px": 1122
+    },
+    {
+     "step": "2.6",
+     "key": "H_clevis",
+     "view": [
+      55,
+      25
+     ],
+     "px": 2707
+    },
+    {
+     "step": "2.7",
+     "key": "G_boss",
+     "view": [
+      55,
+      25
+     ],
+     "px": 405
+    },
+    {
+     "step": "2.8",
+     "key": "tip_plate",
+     "view": [
+      55,
+      25
+     ],
+     "px": 12644
+    },
+    {
+     "step": "2.9",
+     "key": "E_bushing",
+     "view": [
+      55,
+      25
+     ],
+     "px": 997
+    },
+    {
+     "step": "2.10",
+     "key": "R_bushing",
+     "view": [
+      55,
+      25
+     ],
+     "px": 800
+    }
+   ],
+   "free_area": 36938.0,
+   "pdf_page": 5
+  },
+  {
+   "no": 3,
+   "slug": "bucket",
+   "title": "Ківш",
+   "files": 11,
+   "parts": 16,
+   "layout_pages": 1,
+   "cells": [
+    {
+     "file": "19_bk_side_R",
+     "step": "3.3",
+     "page": 1,
+     "x": 0.0,
+     "y": 10.0,
+     "w": 82.57,
+     "h": 69.55,
+     "rot": false,
+     "outline": [
+      66.97,
+      52.15,
+      1.2
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 67.64,
+       "text": "67.6"
+      },
+      {
+       "kind": "edge",
+       "value": 34.39,
+       "text": "34.4"
+      },
+      {
+       "kind": "edge",
+       "value": 26.06,
+       "text": "26.1"
+      },
+      {
+       "kind": "edge",
+       "value": 16.38,
+       "text": "16.4"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "дзеркальна до 19_bk_side_L",
+     "logo_mm2": 136.0
+    },
+    {
+     "file": "19_bk_side_L",
+     "step": "3.2",
+     "page": 1,
+     "x": 83.77,
+     "y": 10.0,
+     "w": 82.57,
+     "h": 69.55,
+     "rot": false,
+     "outline": [
+      66.97,
+      52.15,
+      1.2
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 67.64,
+       "text": "67.6"
+      },
+      {
+       "kind": "edge",
+       "value": 34.39,
+       "text": "34.4"
+      },
+      {
+       "kind": "edge",
+       "value": 26.06,
+       "text": "26.1"
+      },
+      {
+       "kind": "edge",
+       "value": 16.38,
+       "text": "16.4"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "дзеркальна до 19_bk_side_R",
+     "logo_mm2": 136.0
+    },
+    {
+     "file": "18_bk_shell",
+     "step": "3.1",
+     "page": 1,
+     "x": 83.77,
+     "y": 80.75,
+     "w": 68.36,
+     "h": 69.44,
+     "rot": false,
+     "outline": [
+      58.26,
+      52.15,
+      57.6
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 1.0,
+       "text": "1"
+      },
+      {
+       "kind": "edge",
+       "value": 34.0,
+       "text": "34"
+      },
+      {
+       "kind": "edge",
+       "value": 26.06,
+       "text": "26.1"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "20_bk_top",
+     "step": "3.4",
+     "page": 1,
+     "x": 0.0,
+     "y": 80.75,
+     "w": 68.1,
+     "h": 51.29,
+     "rot": true,
+     "outline": [
+      34.0,
+      60.0,
+      1.6
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 34.0,
+       "text": "34"
+      },
+      {
+       "kind": "flats",
+       "value": 60.0,
+       "text": "60"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "23_bk_edge",
+     "step": "3.9",
+     "page": 1,
+     "x": 153.33,
+     "y": 80.75,
+     "w": 28.1,
+     "h": 77.29,
+     "rot": false,
+     "outline": [
+      20.0,
+      60.0,
+      2.4
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 20.0,
+       "text": "20"
+      },
+      {
+       "kind": "flats",
+       "value": 60.0,
+       "text": "60"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "22_bk_ear",
+     "step": "3.6",
+     "page": 1,
+     "x": 0.0,
+     "y": 133.24,
+     "w": 52.5,
+     "h": 42.73,
+     "rot": true,
+     "outline": [
+      23.2,
+      44.4,
+      2.4
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 32.4,
+       "text": "32.4"
+      },
+      {
+       "kind": "flat",
+       "value": 23.2,
+       "text": "23.2"
+      },
+      {
+       "kind": "edge",
+       "value": 24.77,
+       "text": "24.8"
+      },
+      {
+       "kind": "edge",
+       "value": 13.58,
+       "text": "13.6"
+      }
+     ],
+     "holes": [
+      5.1,
+      6.1
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "21_bk_lip_rib",
+     "step": "3.5",
+     "page": 1,
+     "x": 53.7,
+     "y": 133.24,
+     "w": 26.73,
+     "h": 74.89,
+     "rot": false,
+     "outline": [
+      8.0,
+      57.6,
+      1.6
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 8.0,
+       "text": "8"
+      },
+      {
+       "kind": "flats",
+       "value": 57.6,
+       "text": "57.6"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "24_bk_tooth",
+     "step": "3.10",
+     "page": 1,
+     "x": 0.0,
+     "y": 177.17,
+     "w": 38.75,
+     "h": 44.09,
+     "rot": true,
+     "outline": [
+      22.41,
+      26.06,
+      8.0
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 18.04,
+       "text": "18"
+      },
+      {
+       "kind": "flat",
+       "value": 6.39,
+       "text": "6.4"
+      },
+      {
+       "kind": "edge",
+       "value": 14.28,
+       "text": "14.3"
+      },
+      {
+       "kind": "length",
+       "value": 32.09,
+       "text": "32.1"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "25_bk_wear",
+     "step": "3.11",
+     "page": 1,
+     "x": 81.62,
+     "y": 151.39,
+     "w": 37.38,
+     "h": 49.65,
+     "rot": true,
+     "outline": [
+      37.12,
+      9.76,
+      8.0
+     ],
+     "dims": [
+      {
+       "kind": "length",
+       "value": 37.16,
+       "text": "37.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "40_bk_boss_E",
+     "step": "3.8",
+     "page": 1,
+     "x": 81.62,
+     "y": 202.23,
+     "w": 38.94,
+     "h": 24.39,
+     "rot": false,
+     "outline": [
+      12.0,
+      12.0,
+      2.0
+     ],
+     "dims": [],
+     "holes": [
+      6.1
+     ],
+     "ring": {
+      "od": 11.99997852114061,
+      "id": 6.09995726978499
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "41_bk_spacer_Q",
+     "step": "3.7",
+     "page": 1,
+     "x": 39.95,
+     "y": 209.33,
+     "w": 38.62,
+     "h": 21.39,
+     "rot": false,
+     "outline": [
+      9.0,
+      9.0,
+      16.4
+     ],
+     "dims": [],
+     "holes": [
+      5.1
+     ],
+     "ring": {
+      "od": 8.99997861814513,
+      "id": 5.099957357625872
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    }
+   ],
+   "renders_on_sheet": [],
+   "renders_overflow": [
+    "ківш, згори (55°/205°)",
+    "ківш, знизу (125°/295°)",
+    "ківш, зсередини (125°/115°) — де стоїть 21_bk_lip_rib"
+   ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [
+    "bk_ear"
+   ],
+   "views": {
+    "bucket": {
+     "keys": [
+      "bk_shell",
+      "bk_side_L",
+      "bk_side_R",
+      "bk_top",
+      "bk_lip_rib",
+      "bk_ear",
+      "bk_spacer_Q",
+      "bk_boss_E",
+      "bk_edge",
+      "bk_tooth",
+      "bk_wear"
+     ],
+     "chosen": [
+      [
+       55,
+       205
+      ],
+      [
+       125,
+       295
+      ],
+      [
+       125,
+       115
+      ]
+     ],
+     "ref_px": [
+      53500,
+      47993,
+      48264,
+      27983,
+      7855,
+      20990,
+      3032,
+      2218,
+      16622,
+      18804,
+      9914
+     ]
+    }
+   },
+   "uncovered": [],
+   "steps": [
+    {
+     "step": "3.1",
+     "key": "bk_shell",
+     "view": [
+      55,
+      205
+     ],
+     "px": 142149
+    },
+    {
+     "step": "3.2",
+     "key": "bk_side_L",
+     "view": [
+      55,
+      205
+     ],
+     "px": 86900
+    },
+    {
+     "step": "3.3",
+     "key": "bk_side_R",
+     "view": [
+      125,
+      295
+     ],
+     "px": 42378
+    },
+    {
+     "step": "3.4",
+     "key": "bk_top",
+     "view": [
+      55,
+      205
+     ],
+     "px": 39149
+    },
+    {
+     "step": "3.5",
+     "key": "bk_lip_rib",
+     "view": [
+      125,
+      295
+     ],
+     "px": 13050
+    },
+    {
+     "step": "3.6",
+     "key": "bk_ear",
+     "view": [
+      55,
+      205
+     ],
+     "px": 34210
+    },
+    {
+     "step": "3.7",
+     "key": "bk_spacer_Q",
+     "view": [
+      55,
+      205
+     ],
+     "px": 2890
+    },
+    {
+     "step": "3.8",
+     "key": "bk_boss_E",
+     "view": [
+      55,
+      205
+     ],
+     "px": 3179
+    },
+    {
+     "step": "3.9",
+     "key": "bk_edge",
+     "view": [
+      55,
+      205
+     ],
+     "px": 5036
+    },
+    {
+     "step": "3.10",
+     "key": "bk_tooth",
+     "view": [
+      55,
+      205
+     ],
+     "px": 5734
+    },
+    {
+     "step": "3.11",
+     "key": "bk_wear",
+     "view": [
+      55,
+      205
+     ],
+     "px": 11720
+    }
+   ],
+   "free_area": 33394.0,
+   "pdf_page": 9
+  },
+  {
+   "no": 4,
+   "slug": "linkage",
+   "title": "Коромисло і тяга",
+   "files": 4,
+   "parts": 10,
+   "layout_pages": 1,
+   "cells": [
+    {
+     "file": "17_link_plate",
+     "step": "4.3",
+     "page": 1,
+     "x": 0.0,
+     "y": 10.0,
+     "w": 71.14,
+     "h": 71.49,
+     "rot": true,
+     "outline": [
+      54.79,
+      63.31,
+      2.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 12.97,
+       "text": "13"
+      },
+      {
+       "kind": "edge",
+       "value": 66.25,
+       "text": "66.2"
+      }
+     ],
+     "holes": [
+      5.1,
+      5.1
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "16_rocker_plate",
+     "step": "4.1",
+     "page": 1,
+     "x": 72.34,
+     "y": 10.0,
+     "w": 42.88,
+     "h": 88.9,
+     "rot": true,
+     "outline": [
+      71.67,
+      15.79,
+      2.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 14.78,
+       "text": "14.8"
+      },
+      {
+       "kind": "edge",
+       "value": 58.69,
+       "text": "58.7"
+      },
+      {
+       "kind": "edge",
+       "value": 57.78,
+       "text": "57.8"
+      }
+     ],
+     "holes": [
+      5.1,
+      6.1
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "39_link_boss",
+     "step": "4.4",
+     "page": 1,
+     "x": 0.0,
+     "y": 82.69,
+     "w": 38.75,
+     "h": 22.39,
+     "rot": false,
+     "outline": [
+      10.0,
+      10.0,
+      5.0
+     ],
+     "dims": [],
+     "holes": [
+      5.1
+     ],
+     "ring": {
+      "od": 9.999978563524229,
+      "id": 5.099957357625872
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "38_J_boss",
+     "step": "4.2",
+     "page": 1,
+     "x": 116.41,
+     "y": 10.0,
+     "w": 34.8,
+     "h": 20.59,
+     "rot": false,
+     "outline": [
+      8.2,
+      8.2,
+      5.5
+     ],
+     "dims": [],
+     "holes": [
+      5.1
+     ],
+     "ring": {
+      "od": 8.199978642012644,
+      "id": 5.099957357625872
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    }
+   ],
+   "renders_on_sheet": [
+    {
+     "view": "коромисло, згори (55°/25°)",
+     "page": 1,
+     "x": 0.0,
+     "y": 106.28260253503962,
+     "w": 168.053,
+     "h": 65.65970961887477,
+     "img_w": 125.0,
+     "labels": 2
+    },
+    {
+     "view": "тяга, згори (55°/25°)",
+     "page": 1,
+     "x": 0.0,
+     "y": 173.1423121539144,
+     "w": 147.711,
+     "h": 68.1788990825688,
+     "img_w": 125.0,
+     "labels": 2
+    }
+   ],
+   "renders_overflow": [],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [],
+   "views": {
+    "rocker": {
+     "keys": [
+      "rocker_plate",
+      "J_boss"
+     ],
+     "chosen": [
+      [
+       55,
+       25
+      ]
+     ],
+     "ref_px": [
+      109668,
+      7202
+     ]
+    },
+    "link": {
+     "keys": [
+      "link_plate",
+      "link_boss"
+     ],
+     "chosen": [
+      [
+       55,
+       25
+      ]
+     ],
+     "ref_px": [
+      85193,
+      13305
+     ]
+    }
+   },
+   "uncovered": [],
+   "steps": [
+    {
+     "step": "4.1",
+     "key": "rocker_plate",
+     "view": [
+      55,
+      25
+     ],
+     "px": 139842
+    },
+    {
+     "step": "4.2",
+     "key": "J_boss",
+     "view": [
+      55,
+      25
+     ],
+     "px": 7476
+    },
+    {
+     "step": "4.3",
+     "key": "link_plate",
+     "view": [
+      55,
+      25
+     ],
+     "px": 124966
+    },
+    {
+     "step": "4.4",
+     "key": "link_boss",
+     "view": [
+      55,
+      25
+     ],
+     "px": 16435
+    }
+   ],
+   "free_area": 24632.0,
+   "pdf_page": 14
+  },
+  {
+   "no": 5,
+   "slug": "post_cyl",
+   "title": "Колона і гідроциліндри",
+   "files": 7,
+   "parts": 8,
+   "layout_pages": 1,
+   "cells": [
+    {
+     "file": "27_cyl_boom_body",
+     "step": "6.1",
+     "page": 1,
+     "x": 0.0,
+     "y": 10.0,
+     "w": 143.8,
+     "h": 40.99,
+     "rot": false,
+     "outline": [
+      130.8,
+      18.0,
+      15.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 15.2,
+       "text": "15.2"
+      },
+      {
+       "kind": "edge",
+       "value": 116.0,
+       "text": "116"
+      },
+      {
+       "kind": "end",
+       "value": 11.6,
+       "text": "11.6"
+      },
+      {
+       "kind": "flat",
+       "value": 130.8,
+       "text": "130.8"
+      },
+      {
+       "kind": "edge",
+       "value": 102.76,
+       "text": "102.8"
+      }
+     ],
+     "holes": [
+      6.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "28_cyl_boom_rod",
+     "step": "6.2",
+     "page": 1,
+     "x": 145.0,
+     "y": 10.0,
+     "w": 29.48,
+     "h": 146.99,
+     "rot": true,
+     "outline": [
+      124.8,
+      11.6,
+      8.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 8.0,
+       "text": "8"
+      },
+      {
+       "kind": "end",
+       "value": 11.6,
+       "text": "11.6"
+      },
+      {
+       "kind": "flat",
+       "value": 124.8,
+       "text": "124.8"
+      },
+      {
+       "kind": "edge",
+       "value": 109.98,
+       "text": "110"
+      }
+     ],
+     "holes": [
+      6.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "26_post_plate",
+     "step": "5.1",
+     "page": 1,
+     "x": 0.0,
+     "y": 52.19,
+     "w": 120.1,
+     "h": 75.92,
+     "rot": true,
+     "outline": [
+      50.0,
+      112.0,
+      2.4
+     ],
+     "dims": [
+      {
+       "kind": "edge",
+       "value": 91.44,
+       "text": "91.4"
+      },
+      {
+       "kind": "flat",
+       "value": 49.96,
+       "text": "50"
+      },
+      {
+       "kind": "edge",
+       "value": 67.1,
+       "text": "67.1"
+      },
+      {
+       "kind": "length",
+       "value": 112.0,
+       "text": "112"
+      },
+      {
+       "kind": "edge",
+       "value": 42.93,
+       "text": "42.9"
+      }
+     ],
+     "holes": [
+      6.0,
+      6.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": 122.5
+    },
+    {
+     "file": "29_cyl_stick_body",
+     "step": "6.3",
+     "page": 1,
+     "x": 0.0,
+     "y": 129.32,
+     "w": 39.4,
+     "h": 132.49,
+     "rot": true,
+     "outline": [
+      110.3,
+      14.8,
+      12.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 12.0,
+       "text": "12"
+      },
+      {
+       "kind": "edge",
+       "value": 96.0,
+       "text": "96"
+      },
+      {
+       "kind": "end",
+       "value": 10.6,
+       "text": "10.6"
+      },
+      {
+       "kind": "flat",
+       "value": 110.3,
+       "text": "110.3"
+      },
+      {
+       "kind": "edge",
+       "value": 82.76,
+       "text": "82.8"
+      }
+     ],
+     "holes": [
+      5.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "30_cyl_stick_rod",
+     "step": "6.4",
+     "page": 1,
+     "x": 40.6,
+     "y": 129.32,
+     "w": 30.85,
+     "h": 126.49,
+     "rot": true,
+     "outline": [
+      104.3,
+      10.6,
+      5.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 5.0,
+       "text": "5"
+      },
+      {
+       "kind": "length",
+       "value": 104.33,
+       "text": "104.3"
+      },
+      {
+       "kind": "end",
+       "value": 10.6,
+       "text": "10.6"
+      },
+      {
+       "kind": "edge",
+       "value": 89.98,
+       "text": "90"
+      }
+     ],
+     "holes": [
+      5.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "31_cyl_bucket_body",
+     "step": "6.5",
+     "page": 1,
+     "x": 72.65,
+     "y": 158.19,
+     "w": 105.3,
+     "h": 41.39,
+     "rot": false,
+     "outline": [
+      92.3,
+      14.8,
+      12.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 12.0,
+       "text": "12"
+      },
+      {
+       "kind": "edge",
+       "value": 78.0,
+       "text": "78"
+      },
+      {
+       "kind": "flat",
+       "value": 92.3,
+       "text": "92.3"
+      },
+      {
+       "kind": "end",
+       "value": 10.6,
+       "text": "10.6"
+      },
+      {
+       "kind": "edge",
+       "value": 64.76,
+       "text": "64.8"
+      }
+     ],
+     "holes": [
+      5.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "32_cyl_bucket_rod",
+     "step": "6.6",
+     "page": 1,
+     "x": 72.65,
+     "y": 200.78,
+     "w": 97.3,
+     "h": 33.51,
+     "rot": false,
+     "outline": [
+      84.3,
+      10.6,
+      5.0
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 5.0,
+       "text": "5"
+      },
+      {
+       "kind": "flats",
+       "value": 7.42,
+       "text": "7.4"
+      },
+      {
+       "kind": "length",
+       "value": 84.34,
+       "text": "84.3"
+      },
+      {
+       "kind": "edge",
+       "value": 69.98,
+       "text": "70"
+      },
+      {
+       "kind": "edge",
+       "value": 5.21,
+       "text": "5.2"
+      }
+     ],
+     "holes": [
+      5.0
+     ],
+     "ring": null,
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    }
+   ],
+   "renders_on_sheet": [],
+   "renders_overflow": [
+    "гідроциліндри, згори (55°/25°)"
+   ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [],
+   "views": {
+    "cyl": {
+     "keys": [
+      "cyl_boom_body",
+      "cyl_boom_rod",
+      "cyl_stick_body",
+      "cyl_stick_rod",
+      "cyl_bucket_body",
+      "cyl_bucket_rod"
+     ],
+     "chosen": [
+      [
+       55,
+       25
+      ]
+     ],
+     "ref_px": [
+      17213,
+      3990,
+      11581,
+      2579,
+      9707,
+      2312
+     ]
+    },
+    "post": {
+     "keys": [
+      "post_plate"
+     ],
+     "chosen": [],
+     "ref_px": [
+      126664
+     ]
+    }
+   },
+   "uncovered": [],
+   "steps": [
+    {
+     "step": "6.1",
+     "key": "cyl_boom_body",
+     "view": [
+      55,
+      25
+     ],
+     "px": -1
+    },
+    {
+     "step": "6.2",
+     "key": "cyl_boom_rod",
+     "view": [
+      55,
+      25
+     ],
+     "px": -1
+    },
+    {
+     "step": "6.3",
+     "key": "cyl_stick_body",
+     "view": [
+      55,
+      25
+     ],
+     "px": -1
+    },
+    {
+     "step": "6.4",
+     "key": "cyl_stick_rod",
+     "view": [
+      55,
+      25
+     ],
+     "px": -1
+    },
+    {
+     "step": "6.5",
+     "key": "cyl_bucket_body",
+     "view": [
+      55,
+      25
+     ],
+     "px": -1
+    },
+    {
+     "step": "6.6",
+     "key": "cyl_bucket_rod",
+     "view": [
+      55,
+      25
+     ],
+     "px": -1
+    },
+    {
+     "step": "5.1",
+     "key": "post_plate",
+     "view": [
+      90,
+      205
+     ],
+     "px": 156357
+    }
+   ],
+   "free_area": 17659.0,
+   "pdf_page": 16
+  },
+  {
+   "no": 6,
+   "slug": "pins",
+   "title": "Пальці й шайби",
+   "files": 12,
+   "parts": 13,
+   "layout_pages": 1,
+   "cells": [
+    {
+     "file": "43_pin_A",
+     "step": "7.1",
+     "page": 1,
+     "x": 0.0,
+     "y": 10.0,
+     "w": 27.2,
+     "h": 61.52,
+     "rot": false,
+     "outline": [
+      7.2,
+      36.9,
+      7.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 36.9,
+       "text": "36.9"
+      },
+      {
+       "kind": "flats",
+       "value": 5.6,
+       "text": "5.6"
+      },
+      {
+       "kind": "edge",
+       "value": 7.2,
+       "text": "7.2"
+      },
+      {
+       "kind": "edge",
+       "value": 35.88,
+       "text": "35.9"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 36.900001525878906,
+      "d": 5.599999904632568,
+      "head": 7.199999809265137
+     },
+     "note": "= 44_pin_C (однакові)",
+     "logo_mm2": null
+    },
+    {
+     "file": "44_pin_C",
+     "step": "7.2",
+     "page": 1,
+     "x": 28.4,
+     "y": 10.0,
+     "w": 27.2,
+     "h": 61.52,
+     "rot": false,
+     "outline": [
+      7.2,
+      36.9,
+      7.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 36.9,
+       "text": "36.9"
+      },
+      {
+       "kind": "flats",
+       "value": 5.6,
+       "text": "5.6"
+      },
+      {
+       "kind": "edge",
+       "value": 7.2,
+       "text": "7.2"
+      },
+      {
+       "kind": "edge",
+       "value": 35.88,
+       "text": "35.9"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 36.900001525878906,
+      "d": 5.599999904632568,
+      "head": 7.199999809265137
+     },
+     "note": "= 43_pin_A (однакові)",
+     "logo_mm2": null
+    },
+    {
+     "file": "42_washer_B",
+     "step": "7.4",
+     "page": 1,
+     "x": 56.81,
+     "y": 10.0,
+     "w": 37.55,
+     "h": 27.59,
+     "rot": false,
+     "outline": [
+      15.2,
+      15.2,
+      0.4
+     ],
+     "dims": [],
+     "holes": [
+      6.1
+     ],
+     "ring": {
+      "od": 15.19997850481821,
+      "id": 6.099957269784988
+     },
+     "pin": null,
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "48_pin_F",
+     "step": "7.6",
+     "page": 1,
+     "x": 95.56,
+     "y": 10.0,
+     "w": 27.2,
+     "h": 39.32,
+     "rot": false,
+     "outline": [
+      6.2,
+      14.7,
+      6.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 4.6,
+       "text": "4.6"
+      },
+      {
+       "kind": "flat",
+       "value": 14.7,
+       "text": "14.7"
+      },
+      {
+       "kind": "edge",
+       "value": 6.2,
+       "text": "6.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 14.699999809265137,
+      "d": 4.599999904632568,
+      "head": 6.199999809265137
+     },
+     "note": "= 50_pin_H (однакові)",
+     "logo_mm2": null
+    },
+    {
+     "file": "50_pin_H",
+     "step": "7.10",
+     "page": 1,
+     "x": 123.96,
+     "y": 10.0,
+     "w": 27.2,
+     "h": 39.32,
+     "rot": false,
+     "outline": [
+      6.2,
+      14.7,
+      6.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 4.6,
+       "text": "4.6"
+      },
+      {
+       "kind": "flat",
+       "value": 14.7,
+       "text": "14.7"
+      },
+      {
+       "kind": "edge",
+       "value": 6.2,
+       "text": "6.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 14.699999809265137,
+      "d": 4.599999904632568,
+      "head": 6.199999809265137
+     },
+     "note": "= 48_pin_F (однакові)",
+     "logo_mm2": null
+    },
+    {
+     "file": "51_pin_J",
+     "step": "7.11",
+     "page": 1,
+     "x": 152.36,
+     "y": 10.0,
+     "w": 27.2,
+     "h": 64.72,
+     "rot": false,
+     "outline": [
+      6.2,
+      40.1,
+      6.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 4.6,
+       "text": "4.6"
+      },
+      {
+       "kind": "edge",
+       "value": 6.2,
+       "text": "6.2"
+      },
+      {
+       "kind": "flat",
+       "value": 40.1,
+       "text": "40.1"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 40.099998474121094,
+      "d": 4.599999904632568,
+      "head": 6.199999809265137
+     },
+     "note": "= 52_pin_Q (однакові)",
+     "logo_mm2": null
+    },
+    {
+     "file": "52_pin_Q",
+     "step": "7.12",
+     "page": 1,
+     "x": 56.81,
+     "y": 38.79,
+     "w": 27.2,
+     "h": 64.72,
+     "rot": false,
+     "outline": [
+      6.2,
+      40.1,
+      6.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 4.6,
+       "text": "4.6"
+      },
+      {
+       "kind": "edge",
+       "value": 6.2,
+       "text": "6.2"
+      },
+      {
+       "kind": "flat",
+       "value": 40.1,
+       "text": "40.1"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 40.099998474121094,
+      "d": 4.599999904632568,
+      "head": 6.199999809265137
+     },
+     "note": "= 51_pin_J (однакові)",
+     "logo_mm2": null
+    },
+    {
+     "file": "45_pin_B",
+     "step": "7.3",
+     "page": 1,
+     "x": 85.21,
+     "y": 50.52,
+     "w": 27.2,
+     "h": 48.29,
+     "rot": false,
+     "outline": [
+      7.2,
+      26.1,
+      7.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 26.1,
+       "text": "26.1"
+      },
+      {
+       "kind": "flats",
+       "value": 5.6,
+       "text": "5.6"
+      },
+      {
+       "kind": "edge",
+       "value": 7.2,
+       "text": "7.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 26.100000381469727,
+      "d": 5.599999904632568,
+      "head": 7.199999809265137
+     },
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "46_pin_D",
+     "step": "7.5",
+     "page": 1,
+     "x": 113.61,
+     "y": 50.52,
+     "w": 27.2,
+     "h": 37.49,
+     "rot": false,
+     "outline": [
+      7.2,
+      15.3,
+      7.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 15.3,
+       "text": "15.3"
+      },
+      {
+       "kind": "flats",
+       "value": 5.6,
+       "text": "5.6"
+      },
+      {
+       "kind": "edge",
+       "value": 7.2,
+       "text": "7.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 15.300000190734863,
+      "d": 5.599999904632568,
+      "head": 7.199999809265137
+     },
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "47_pin_E",
+     "step": "7.8",
+     "page": 1,
+     "x": 0.0,
+     "y": 72.72,
+     "w": 27.2,
+     "h": 52.69,
+     "rot": false,
+     "outline": [
+      7.2,
+      30.5,
+      7.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 30.5,
+       "text": "30.5"
+      },
+      {
+       "kind": "flats",
+       "value": 5.6,
+       "text": "5.6"
+      },
+      {
+       "kind": "edge",
+       "value": 7.2,
+       "text": "7.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 30.5,
+      "d": 5.599999904632568,
+      "head": 7.199999809265137
+     },
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "53_pin_R",
+     "step": "7.9",
+     "page": 1,
+     "x": 28.4,
+     "y": 72.72,
+     "w": 27.2,
+     "h": 43.09,
+     "rot": false,
+     "outline": [
+      7.2,
+      20.9,
+      7.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 20.9,
+       "text": "20.9"
+      },
+      {
+       "kind": "flats",
+       "value": 5.6,
+       "text": "5.6"
+      },
+      {
+       "kind": "edge",
+       "value": 7.2,
+       "text": "7.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 20.899999618530273,
+      "d": 5.599999904632568,
+      "head": 7.199999809265137
+     },
+     "note": "",
+     "logo_mm2": null
+    },
+    {
+     "file": "49_pin_G",
+     "step": "7.7",
+     "page": 1,
+     "x": 142.01,
+     "y": 75.92,
+     "w": 27.2,
+     "h": 41.89,
+     "rot": false,
+     "outline": [
+      6.2,
+      19.7,
+      6.2
+     ],
+     "dims": [
+      {
+       "kind": "flats",
+       "value": 4.6,
+       "text": "4.6"
+      },
+      {
+       "kind": "flat",
+       "value": 19.7,
+       "text": "19.7"
+      },
+      {
+       "kind": "edge",
+       "value": 6.2,
+       "text": "6.2"
+      }
+     ],
+     "holes": [],
+     "ring": null,
+     "pin": {
+      "L": 19.700000762939453,
+      "d": 4.599999904632568,
+      "head": 6.199999809265137
+     },
+     "note": "",
+     "logo_mm2": null
+    }
+   ],
+   "renders_on_sheet": [
+    {
+     "view": "уся машина, збоку (90°/115°)",
+     "page": 1,
+     "x": 28.403,
+     "y": 119.0159574390147,
+     "w": 141.60854261079118,
+     "h": 146.78404256098528,
+     "img_w": 107.98554261079117,
+     "labels": 12
+    }
+   ],
+   "renders_overflow": [
+    "уся машина, згори (55°/115°)"
+   ],
+   "schemes_on_sheet": [],
+   "schemes_overflow": [],
+   "views": {
+    "pins": {
+     "keys": [
+      "pin_A",
+      "pin_C",
+      "pin_B",
+      "washer_B",
+      "pin_D",
+      "pin_F",
+      "pin_G",
+      "pin_E",
+      "pin_R",
+      "pin_H",
+      "pin_J",
+      "pin_Q"
+     ],
+     "chosen": [
+      [
+       55,
+       115
+      ],
+      [
+       90,
+       115
+      ]
+     ],
+     "ref_px": [
+      214,
+      511,
+      146,
+      392,
+      243,
+      222,
+      289,
+      280,
+      270,
+      220,
+      361,
+      411
+     ]
+    }
+   },
+   "uncovered": [],
+   "steps": [
+    {
+     "step": "7.1",
+     "key": "pin_A",
+     "view": [
+      55,
+      115
+     ],
+     "px": 4995
+    },
+    {
+     "step": "7.2",
+     "key": "pin_C",
+     "view": [
+      55,
+      115
+     ],
+     "px": 13366
+    },
+    {
+     "step": "7.3",
+     "key": "pin_B",
+     "view": [
+      55,
+      115
+     ],
+     "px": 5977
+    },
+    {
+     "step": "7.4",
+     "key": "washer_B",
+     "view": [
+      55,
+      295
+     ],
+     "px": 16942
+    },
+    {
+     "step": "7.5",
+     "key": "pin_D",
+     "view": [
+      55,
+      115
+     ],
+     "px": 5181
+    },
+    {
+     "step": "7.6",
+     "key": "pin_F",
+     "view": [
+      55,
+      115
+     ],
+     "px": 5273
+    },
+    {
+     "step": "7.7",
+     "key": "pin_G",
+     "view": [
+      55,
+      115
+     ],
+     "px": 5149
+    },
+    {
+     "step": "7.8",
+     "key": "pin_E",
+     "view": [
+      55,
+      115
+     ],
+     "px": 7347
+    },
+    {
+     "step": "7.9",
+     "key": "pin_R",
+     "view": [
+      55,
+      115
+     ],
+     "px": 3043
+    },
+    {
+     "step": "7.10",
+     "key": "pin_H",
+     "view": [
+      55,
+      115
+     ],
+     "px": 5470
+    },
+    {
+     "step": "7.11",
+     "key": "pin_J",
+     "view": [
+      55,
+      115
+     ],
+     "px": 6075
+    },
+    {
+     "step": "7.12",
+     "key": "pin_Q",
+     "view": [
+      55,
+      115
+     ],
+     "px": 4643
+    }
+   ],
+   "free_area": 14550.0,
+   "pdf_page": 18
+  }
+ ],
+ "renders_made": 181,
+ "pdf_pages": 21
+}

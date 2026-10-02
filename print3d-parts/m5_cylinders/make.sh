@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Циліндри моделі на шпильці M5 і моторедукторі N20: перевірки, STL, рендери, CALC.md, схема підключення.
+# Циліндри моделі на шпильці M5 і моторедукторі N20: перевірки, STL, рендери, CALC.md, схеми підключення й датчиків.
 #
 #   print3d-parts/m5_cylinders/make.sh                        # усе → build/m5_cylinders/
 #   print3d-parts/m5_cylinders/make.sh --out ТЕКА --kit-stl ТЕКА   # так кличе print3d-parts/make.sh
@@ -9,7 +9,7 @@
 # Кроки: pairs — власні деталі не перетинаються (у двох крайніх положеннях штока);
 #        collide — новий циліндр без вушок не зачіпає машину (вушка ті самі, що в моделі);
 #        stl — деталі на стіл + check_print.py набору; png — збірки й розрізи; calc — CALC.md;
-#        wiring — схема підключення WIRING.svg.
+#        wiring — схема підключення WIRING.svg; sensors — як ставити датчики Холла, SENSORS.svg.
 # Перетин чи зіткнення зупиняє збирання (код 1) — і набір разом із ним.
 set -u
 OUT=""; KIT=""; STEPS=""
@@ -24,7 +24,7 @@ done
 cd "$(dirname "$0")" || exit 1
 ROOT=../..
 OUT=${OUT:-$PWD/$ROOT/build/m5_cylinders}
-STEPS=${STEPS:-pairs collide stl png calc wiring}
+STEPS=${STEPS:-pairs collide stl png calc wiring sensors}
 mkdir -p "$OUT"
 TMP=$(mktemp -d)
 vol() { if [ -s "$1" ]; then python3 $ROOT/tools/stl_volume.py "$1"; else echo 0.000; fi; }   # см³
@@ -51,10 +51,12 @@ bad=0
 
 case " $STEPS " in *" pairs "*)
 echo "== перетини власних деталей (допуск 0.0005 см³)"
-# пари, що мають лише торкатися; шпилька у вушку й поршні — у натяг навмисно (нарізає PLA), не перевіряється
+# пари, що мають лише торкатися; шпилька у вушку — у натяг навмисно (нарізає PLA), не перевіряється
 PAIRS="tube:head_rear head_rear:head_front gear:head_rear gear:head_front pinion:head_rear pinion:head_front pinion:gear
-motor:tube motor:head_rear motor:pinion puck:tube screw:gear screw:head_front screw:head_rear bearing:head_rear
-bearing:gear nut:gear cap:tube halls:tube halls:head_front halls:cap magnets:gear magnets:puck eye:head_front"
+motor:tube motor:head_rear motor:pinion piston:tube screw:gear screw:head_front screw:head_rear bearing:head_rear
+bearing:gear nut:gear cap:tube halls:tube halls:head_front halls:cap magnets:gear magnets:tube piston:cap piston:head_rear eye:head_front
+gear_glue:head_rear gear_glue:head_front pinion:gear_glue bearing:gear_glue nut_glue:gear_glue screw:gear_glue
+magnets:gear_glue"
 for c in $CYLS; do
     v=STROKE_$c; S=${!v}
     for e in 0 $S; do
@@ -105,10 +107,10 @@ case " $STEPS " in *" stl "*)
 echo "== STL і друкованість"
 mkdir -p "$OUT/stl"; rm -f "$OUT"/stl/*.stl
 for c in $CYLS; do
-    for p in tube head_rear head_front gear pinion puck cap eye; do
+    for p in tube head_rear head_front gear gear_glue pinion cap eye; do
         f="$OUT/stl/${c}_${p}_x1.stl"
-        openscad -o "$f" --export-format binstl -D "cyl=\"$c\"" -D "pp=\"$p\"" m5_cyl.scad >/dev/null 2>"$TMP/err.txt" \
-            || { echo "  ПОМИЛКА рендера: $c $p"; cat "$TMP/err.txt"; bad=1; }
+        # через scad(): зрідка openscad падає сам (segfault) — до трьох спроб
+        scad "$f" -D "cyl=\"$c\"" -D "pp=\"$p\"" || { echo "  ПОМИЛКА рендера: $c $p"; cat "$TMP/scad_err.txt"; }
         [ -s "$f" ] || { echo "  ПОМИЛКА: $f порожній"; bad=1; }
     done
 done
@@ -141,6 +143,11 @@ python3 calc.py ${KIT:+--kit-stl "$KIT"} --own-stl "$OUT/stl" --out "$OUT/CALC.m
 case " $STEPS " in *" wiring "*)
 echo "== схема підключення"
 python3 wiring.py --out "$OUT/WIRING.svg" || bad=1
+;; esac
+
+case " $STEPS " in *" sensors "*)
+echo "== схема датчиків"
+python3 sensors.py --out "$OUT/SENSORS.svg" || bad=1
 ;; esac
 
 rm -rf "$TMP"
