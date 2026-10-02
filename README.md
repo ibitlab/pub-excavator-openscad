@@ -15,6 +15,10 @@
 
 [![A tour of the 3D page: the dig cycle, the work envelope, the extreme poses, what is welded to what](docs/img/page_tour.gif)](https://ibitlab.github.io/pub-excavator-openscad/)
 
+**AR at 1:1.** On an Android phone with Chrome the same page puts the machine on the ground through the camera, at full size; the sliders move the boom, stick and bucket exactly as on screen (clip sped up 4×). How it works: [web/README.md](web/README.md).
+
+<img src="docs/img/ar-1to1.gif" width="280" alt="The excavator in AR at 1:1 on a patch of ground, sliders moving the boom, stick and bucket">
+
 ## Documents (PDF, in Ukrainian)
 
 **[Part sketches in steel](latest/drawings/parts.pdf)** — the bill of materials, every plate with its hole positions tied to real edges, the tubes unfolded on all four sides; the logo is marked where the decal goes. For cutting: DXF 1:1 in [`dxf/`](latest/dxf/).
@@ -50,6 +54,12 @@ The bucket is welded up from real parts (side plates, shell, cutting edge, teeth
 ## The 1:5 printed kit
 
 Every component can be printed at 1:5 and glued together exactly where it would be welded in steel: 54 files, 76 pieces. The 1:1 sorting sheets above are made for gluing it; how the kit is split up and printed is in [print3d-parts/README.md](print3d-parts/README.md).
+
+Printed, not glued together yet:
+
+| Cylinders | Plates and a tube on the build plate | Logo plates |
+| --- | --- | --- |
+| ![The hydraulic cylinders of the 1:5 kit, printed](docs/img/photo-kit-cylinders.jpg) | ![Yellow plates and the stick tube on the build plate](docs/img/photo-kit-plates-on-bed.jpg) | ![Plates with the logo where the decal goes](docs/img/photo-kit-logo-plates.jpg) |
 
 ## How this was made
 
