@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Картка посилання (LinkedIn, Facebook, месенджери): англійською, бо її читає зовнішній читач.
+     Картинка — public/og.png (1200×627), Vite кладе її в корінь dist/ без змін. Адреси абсолютні:
+     скрапери відносних не розуміють, тож при переїзді сайту їх треба змінити тут. -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://ibitlab.github.io/pub-excavator-openscad/">
+<meta property="og:title" content="Mini excavator arm: live 3D model in the browser">
+<meta property="og:description" content="One parametric OpenSCAD model, rebuilt in your browser with OpenSCAD-WASM: drag the bucket, check cylinder limits, AR at 1:1 on Android. Not engineer-reviewed.">
+<meta property="og:image" content="https://ibitlab.github.io/pub-excavator-openscad/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta property="og:image:alt" content="Mini excavator arm with boom, stick, bucket and hydraulic cylinders">
+<meta name="twitter:card" content="summary_large_image">
 <title data-i18n="title">Міні-екскаватор — модель у браузері (OpenSCAD-WASM)</title>
 <style>
   :root { --bg:#f3f1ec; --panel:#fbfaf7; --ink:#23262b; --mute:#6d7278; --line:#ddd8cd; --acc:#c9731a; --acc-on:#a85d12; --acc2:#2f5d8a; --bad:#c0392b; --ok:#3d7a4a; }
