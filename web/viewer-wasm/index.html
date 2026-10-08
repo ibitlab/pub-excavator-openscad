@@ -31,6 +31,7 @@
   .lang button { padding: 2px 7px; font-size: 11px; line-height: 1.5; letter-spacing: .4px; }
   .lic { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--mute); font-size: 11px; line-height: 1.5; }
   .lic a { color: var(--acc2); }
+  .repo { display: inline-block; margin: 0 0 10px; font-size: 12px; color: var(--acc2); }
   h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--mute); margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
   .ang { margin-bottom: 12px; }
   .ang .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -179,7 +180,7 @@
        правда, і вимикати її з телефона нема потреби (прапорець просто схований).
        Смужка ходу циліндра теж зникає: при ввімкненому обмеженні вона ніколи не
        червоніє, тобто на телефоні це три рядки чисел без роботи. */
-    .hdr, #clamp_row, .cyl { display: none; }        /* перемикач мови JS переносить у ручку */
+    .hdr, .repo, #clamp_row, .cyl { display: none; } /* перемикач мови JS переносить у ручку; репозиторій — у підвалі панелі */
     /* Види переїжджають у рядок заголовка «Кути»: самі іконки, без підписів —
        так увесь набір ракурсів на першому екрані й не з'їдає окремого блоку. */
     #h2ang { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -305,6 +306,7 @@
     <h1 data-i18n="h1">Міні-екскаватор: стріла · рукоять · ківш</h1>
     <div class="lang" id="lang" data-i18n-title="lang.title"></div>
   </div>
+  <a class="repo" href="https://github.com/ibitlab/pub-excavator-openscad" target="_blank" rel="noopener" data-i18n="repo">Код, креслення й звіти — на GitHub ↗</a>
   <details class="note" id="warn"><summary data-i18n="warn.short"></summary><span data-i18n="warn"></span>
     <b class="hh" data-i18n="howto.h"></b><span data-i18n="howto"></span></details>
 
