@@ -679,7 +679,7 @@ class Renders:
         return {k: v for k, v in json.loads(m.group(1))}
 
 
-# classify / anchors / finish_image — tools/hue_callouts.py (спільні з media-kit)
+# classify / anchors / finish_image — tools/hue_callouts.py (спільні з tools/media/)
 def data_uri(path):
     return 'data:image/png;base64,' + base64.b64encode(open(path, 'rb').read()).decode()
 

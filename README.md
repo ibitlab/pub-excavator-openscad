@@ -89,6 +89,11 @@ None of this has been checked by a qualified engineer — see the disclaimer bel
 
 ## Licence
 
-**No licence has been chosen for this project yet**, so what was authored here is "all rights reserved" for the time being. This is deliberate: a licence can be added later, but one that has been granted cannot be withdrawn. The output of OpenSCAD (STL, DXF, sketches, BOM) belongs to the project either way: OpenSCAD's own GPL does not reach its output, and this model includes no external SCAD library.
+© 2026 Ihor Ivaniuk, [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (full text in [LICENSE](LICENSE)): credit the author, non-commercial use only, adaptations under the same terms. Commercial use — by agreement with the author. This covers the model, the drawings, DXF, STL, the printed kit, the reports, the documents and the renders, and the code in `tools/` and `print3d-parts/`. OpenSCAD's own GPL does not reach the model or its output: the output of a GPL program is not a derivative work, and this model includes no external SCAD library.
 
-Separately: the `web/viewer-wasm/dist/` build **embeds OpenSCAD itself under GPL-2.0** ([web/viewer-wasm/LICENSE](web/viewer-wasm/LICENSE)). The engine comes from `openscad-wasm-prebuilt@1.2.0`, which ships the GPL text and names its source, so the terms can be met: when you publish `dist/`, put `web/viewer-wasm/LICENSE` and [THIRD-PARTY.md](THIRD-PARTY.md) next to it — that file lists every third-party component and points at the engine sources.
+Two exceptions:
+
+- **The page code in `web/`** is licensed under **GPL-2.0-or-later** ([web/viewer-wasm/LICENSE](web/viewer-wasm/LICENSE)): the `web/viewer-wasm/` build embeds OpenSCAD itself, and a non-commercial clause cannot be combined with the GPL. The model that the build carries stays under CC BY-NC-SA.
+- **The name and logo IBITLAB** (`docs/logo/`, `print3d-parts/brand/` and the parts that carry them) are not covered by any licence here: all rights reserved.
+
+The `web/viewer-wasm/dist/` build **embeds OpenSCAD itself under GPL-2.0** ([web/viewer-wasm/LICENSE](web/viewer-wasm/LICENSE)). The engine comes from `openscad-wasm-prebuilt@1.2.0`, which ships the GPL text and names its source, so the terms can be met: when you publish `dist/`, put `web/viewer-wasm/LICENSE` and [THIRD-PARTY.md](THIRD-PARTY.md) next to it — that file lists every third-party component and points at the engine sources.

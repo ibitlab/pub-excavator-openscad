@@ -4,7 +4,7 @@
 
 This file lists everything in this repository that was **not** written here, together with the licence that applies to it.
 
-**The project has not chosen its own licence yet.** Until it does, what was authored here is simply "all rights reserved" — no permission to use, modify or redistribute it is granted. That is deliberate: a licence can be added at any time, but one that has been granted cannot be taken back. It does not affect the disclaimers in [README.md](README.md) and [SAFETY.md](SAFETY.md), which stand regardless.
+**The project's own work is licensed under CC BY-NC-SA 4.0** ([LICENSE](LICENSE)), the page code in `web/` under GPL-2.0-or-later, and the IBITLAB name and logo are not licensed at all — details in [README.md → Licence](README.md#licence). None of this affects the disclaimers in [README.md](README.md) and [SAFETY.md](SAFETY.md), which stand regardless.
 
 ## Redistributed as a binary — GPL obligations apply
 
@@ -52,7 +52,7 @@ Standards cited by number only (ДСТУ 8940, ГОСТ 8645, РД 22-158-86, IS
 
 Тут перелічено все, що **не** написано в цьому репозиторії, разом із ліцензіями.
 
-**Власну ліцензію проєкт поки не обрав.** Доки її немає, створене тут лишається «всі права збережено»: дозволу використовувати, змінювати чи поширювати не надано. Це свідомо — ліцензію можна додати будь-коли, а от видану вже не відкликати. На застереження в [README.uk.md](README.uk.md) і [SAFETY.uk.md](SAFETY.uk.md) це не впливає: вони діють незалежно.
+**Власна робота проєкту — під CC BY-NC-SA 4.0** ([LICENSE](LICENSE)), код сторінок у `web/` — під GPL-2.0-or-later, а назва й логотип IBITLAB не ліцензовані взагалі — подробиці в [README.uk.md → Ліцензія](README.uk.md#ліцензія). На застереження в [README.uk.md](README.uk.md) і [SAFETY.uk.md](SAFETY.uk.md) це не впливає: вони діють незалежно.
 
 ## Роздається як бінарник — діють вимоги GPL
 
